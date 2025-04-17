@@ -47,10 +47,6 @@ interface IXan {
     /// @return votes The total votes implementation.
     function totalVotes(address newImplementation) external view returns (uint256 votes);
 
-    /// @notice Returns the most voted implementation.
-    /// @return mostVotedNewImplementation The most voted new implementation.
-    function mostVotedImplementation() external view returns (address mostVotedNewImplementation);
-
     /// @notice Checks if the delay period has ended and reverts with errors if not.
     /// @param newImplementation The new implementation to check the delay period for.
     function checkDelayPeriod(address newImplementation) external view;
@@ -77,5 +73,7 @@ interface IXan {
     /// @return currentImplementation The current implementation.
     function implementation() external view returns (address currentImplementation);
 
-    function DELAY_DURATION() external view returns (uint32 delay);
+    /// @notice Returns the delay duration.
+    /// @return duration The delay duration.
+    function delayDuration() external pure returns (uint32 duration);
 }
