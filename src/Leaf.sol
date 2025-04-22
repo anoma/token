@@ -2,12 +2,7 @@
 pragma solidity ^0.8.27;
 
 library Leaf {
-    function hash(
-        uint256 index,
-        address to,
-        uint256 value,
-        uint256 lockedValue
-    )
+    function hash(uint256 index, address to, uint256 value, uint256 lockedValue)
         internal
         pure
         returns (bytes32 leafHash)

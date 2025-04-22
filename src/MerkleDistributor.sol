@@ -31,8 +31,7 @@ contract MerkleDistributor is IMerkleDistributor {
     uint256 internal immutable _END_DATE;
 
     /// @notice A packed array of booleans containing the information who claimed.
-    mapping(uint256 claimedWordIndex => uint256 claimedWord)
-        internal _claimedBitMap;
+    mapping(uint256 claimedWordIndex => uint256 claimedWord) internal _claimedBitMap;
 
     error StartDateAfterEndDate();
     error StartDateInTheFuture();
@@ -68,12 +67,7 @@ contract MerkleDistributor is IMerkleDistributor {
         // solhint-enable not-rely-on-time, gas-strict-inequalities
 
         _XAN = Xan(
-            address(
-                new ERC1967Proxy({
-                    implementation: address(new Xan()),
-                    _data: abi.encodeCall(Xan.initialize, ())
-                })
-            )
+            address(new ERC1967Proxy({implementation: address(new Xan()), _data: abi.encodeCall(Xan.initialize, ())}))
         );
 
         _ROOT = root;
@@ -137,23 +131,18 @@ contract MerkleDistributor is IMerkleDistributor {
     ) public view override returns (uint256 unclaimedValue) {
         if (isClaimed(index)) return 0;
 
-        return
-            unclaimedValue = _verifyProof({
-                index: index,
-                to: to,
-                value: value,
-                lockedValue: lockedValue,
-                proof: proof,
-                directionBits: directionBits
-            })
-                ? value
-                : 0;
+        return unclaimedValue = _verifyProof({
+            index: index,
+            to: to,
+            value: value,
+            lockedValue: lockedValue,
+            proof: proof,
+            directionBits: directionBits
+        }) ? value : 0;
     }
 
     /// @inheritdoc IMerkleDistributor
-    function isClaimed(
-        uint256 index
-    ) public view override returns (bool claimed) {
+    function isClaimed(uint256 index) public view override returns (bool claimed) {
         uint256 claimedWordIndex = index / 256;
         uint256 claimedBitIndex = index % 256;
         uint256 claimedWord = _claimedBitMap[claimedWordIndex];
@@ -166,9 +155,7 @@ contract MerkleDistributor is IMerkleDistributor {
     function _setClaimed(uint256 index) internal {
         uint256 claimedWordIndex = index / 256;
         uint256 claimedBitIndex = index % 256;
-        _claimedBitMap[claimedWordIndex] =
-            _claimedBitMap[claimedWordIndex] |
-            (1 << claimedBitIndex);
+        _claimedBitMap[claimedWordIndex] = _claimedBitMap[claimedWordIndex] | (1 << claimedBitIndex);
     }
 
     /// @notice Verifies a Merkle inclusion proof.
@@ -186,18 +173,9 @@ contract MerkleDistributor is IMerkleDistributor {
         bytes32[] memory proof,
         uint256 directionBits
     ) internal view returns (bool valid) {
-        bytes32 leaf = Leaf.hash({
-            index: index,
-            to: to,
-            value: value,
-            lockedValue: lockedValue
-        });
+        bytes32 leaf = Leaf.hash({index: index, to: to, value: value, lockedValue: lockedValue});
 
-        bytes32 computedRoot = MerkleTree.processProof({
-            siblings: proof,
-            directionBits: directionBits,
-            leaf: leaf
-        });
+        bytes32 computedRoot = MerkleTree.processProof({siblings: proof, directionBits: directionBits, leaf: leaf});
 
         valid = computedRoot == _ROOT;
     }

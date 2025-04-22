@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.27;
 
-import { Script } from "forge-std/Script.sol";
-import { MerkleDistributor } from "../src/MerkleDistributor.sol";
+import {Script} from "forge-std/Script.sol";
+import {MerkleDistributor} from "../src/MerkleDistributor.sol";
 
 contract Deploy is Script {
     // function setUp() public {}
@@ -16,7 +16,7 @@ contract Deploy is Script {
         // solhint-disable-next-line not-rely-on-time
         uint256 startDate = block.timestamp + 5 minutes;
 
-        new MerkleDistributor({ root: root, startDate: startDate, endDate: startDate + 4 weeks });
+        new MerkleDistributor({root: root, startDate: startDate, endDate: startDate + 4 weeks});
 
         vm.stopBroadcast();
     }
