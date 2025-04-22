@@ -13,12 +13,16 @@ contract XanTest is Test {
     function setUp() public {
         (, _defaultSender,) = vm.readCallers();
 
+        vm.prank(_defaultSender);
         _xanProxy = Xan(
-            Upgrades.deployUUPSProxy({contractName: "Xan.sol:Xan", initializerData: abi.encodeCall(Xan.initialize, ())})
+            Upgrades.deployUUPSProxy({
+                contractName: "Xan.sol:Xan",
+                initializerData: abi.encodeCall(Xan.initialize, (_defaultSender))
+            })
         );
     }
 
-    function test_lock_emits_the_locked_event() public {
+    function test_lock_emits_the_Locked_event() public {
         uint256 valueToLock = _xanProxy.unlockedBalanceOf(_defaultSender) / 2;
 
         vm.expectEmit(address(_xanProxy));
@@ -26,6 +30,38 @@ contract XanTest is Test {
 
         vm.prank(_defaultSender);
         _xanProxy.lock(valueToLock);
+    }
+
+    function test_castVote_emits_the_VoteCast_event() public {
+        uint256 valueToLock = _xanProxy.unlockedBalanceOf(_defaultSender) / 2;
+
+        address impl = address(uint160(1));
+
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(valueToLock);
+
+        vm.expectEmit(address(_xanProxy));
+        emit IXan.VoteCast({voter: _defaultSender, implementation: impl, value: valueToLock});
+
+        _xanProxy.castVote(impl);
+
+        // TODO lock more
+    }
+
+    function test_revokeVote_emits_the_VoteRevoked_event() public {
+        uint256 valueToLock = _xanProxy.unlockedBalanceOf(_defaultSender) / 2;
+
+        address impl = address(uint160(1));
+
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(valueToLock);
+        _xanProxy.castVote(impl);
+
+        vm.expectEmit(address(_xanProxy));
+        emit IXan.VoteRevoked({voter: _defaultSender, implementation: impl, value: valueToLock});
+        _xanProxy.revokeVote(impl);
+
+        vm.stopPrank();
     }
 
     function testFuzz_lockedBalanceOf_and_unlockedBalanceOf_sum_to_balanceOf(address owner) public view {

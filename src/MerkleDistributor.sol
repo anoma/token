@@ -67,7 +67,12 @@ contract MerkleDistributor is IMerkleDistributor {
         // solhint-enable not-rely-on-time, gas-strict-inequalities
 
         _XAN = Xan(
-            address(new ERC1967Proxy({implementation: address(new Xan()), _data: abi.encodeCall(Xan.initialize, ())}))
+            address(
+                new ERC1967Proxy({
+                    implementation: address(new Xan()),
+                    _data: abi.encodeCall(Xan.initialize, (address(this)))
+                })
+            )
         );
 
         _ROOT = root;

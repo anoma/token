@@ -18,8 +18,13 @@ contract XanTest is Test, MockVoters {
     address internal _implC;
 
     function setUp() public {
+        (, address _defaultSender,) = vm.readCallers();
+
         _xanProxy = Xan(
-            Upgrades.deployUUPSProxy({contractName: "Xan.sol:Xan", initializerData: abi.encodeCall(Xan.initialize, ())})
+            Upgrades.deployUUPSProxy({
+                contractName: "Xan.sol:Xan",
+                initializerData: abi.encodeCall(Xan.initialize, (_defaultSender))
+            })
         );
 
         _census = ["Alice", "Bob", "Carol", "Dave"];
@@ -37,6 +42,7 @@ contract XanTest is Test, MockVoters {
             assertEq(_xanProxy.balanceOf(voterAddr), 0);
             assertEq(_xanProxy.lockedBalanceOf(voterAddr), 0);
 
+            vm.prank(_defaultSender);
             _xanProxy.transferAndLock({to: voterAddr, value: share});
 
             assertEq(_xanProxy.balanceOf(voterAddr), share);

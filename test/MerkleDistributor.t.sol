@@ -14,10 +14,6 @@ contract E2ETest is Test, MockDistribution {
 
     string[4] internal _census;
 
-    address internal _implA;
-    address internal _implB;
-    address internal _implC;
-
     function setUp() public {
         // solhint-disable-next-line not-rely-on-time
         uint256 currentDate = block.timestamp;
@@ -26,10 +22,6 @@ contract E2ETest is Test, MockDistribution {
         _xanProxy = Xan(_md.token());
 
         _census = ["Alice", "Bob", "Carol", "Dave"];
-
-        _implA = address(new Xan());
-        _implB = address(new Xan());
-        _implC = address(new Xan());
 
         // Allocate token
         for (uint256 i = 0; i < _census.length; ++i) {
@@ -54,79 +46,6 @@ contract E2ETest is Test, MockDistribution {
             assertEq(_xanProxy.balanceOf(voterAddr), VOTE_SHARE);
             assertEq(_xanProxy.unlockedBalanceOf(voterAddr), 0);
             assertEq(_xanProxy.lockedBalanceOf(voterAddr), VOTE_SHARE);
-        }
-    }
-
-    function test_e2e_proposal_execution() public {
-        // Vote for Implementation
-        {
-            vm.prank(voter("Alice"));
-            _xanProxy.castVote(_implA);
-            vm.expectRevert(abi.encodeWithSelector(Xan.QuorumNotReached.selector, _implA));
-            _xanProxy.checkUpgradeCriteria(_implA);
-
-            vm.prank(voter("Bob"));
-            _xanProxy.castVote(_implA);
-
-            vm.expectRevert(abi.encodeWithSelector(Xan.QuorumNotReached.selector, _implA));
-            _xanProxy.checkUpgradeCriteria(_implA);
-
-            vm.prank(voter("Carol"));
-            _xanProxy.castVote(_implA);
-            _xanProxy.checkUpgradeCriteria(_implA);
-        }
-
-        // Delay period
-        {
-            // Delay period hasn't started.
-            vm.expectRevert(abi.encodeWithSelector(Xan.DelayPeriodNotStarted.selector, _implA));
-            _xanProxy.checkDelayPeriod(_implA);
-
-            // Start the delay period
-            _xanProxy.startDelayPeriod(_implA);
-
-            // Delay period hasn't ended.
-            vm.expectRevert(abi.encodeWithSelector(Xan.DelayPeriodNotEnded.selector, _implA));
-            _xanProxy.checkDelayPeriod(_implA);
-
-            // Advance to the end of the delay period
-            skip(_xanProxy.delayDuration());
-
-            // Check that the delay has passed
-            _xanProxy.checkDelayPeriod(_implA);
-        }
-
-        // Upgrade
-        {
-            _xanProxy.upgradeToAndCall({newImplementation: _implA, data: ""});
-
-            // Check that the upgrade was successful.
-            assertEq(_xanProxy.implementation(), _implA);
-        }
-
-        // Check that storage is as expected.
-        {
-            // The vote was reset.
-            assertEq(_xanProxy.totalVotes(_implA), 0);
-
-            for (uint256 i = 0; i < _census.length; ++i) {
-                address voterAddr = voter(_census[i]);
-
-                // Balances should be the same
-                assertEq(_xanProxy.balanceOf(voterAddr), VOTE_SHARE);
-
-                // Tokens should be unlocked
-                assertEq(_xanProxy.unlockedBalanceOf(voterAddr), VOTE_SHARE);
-                assertEq(_xanProxy.lockedBalanceOf(voterAddr), 0);
-
-                // Call as voter to lock tokens
-                vm.prank(voterAddr);
-                _xanProxy.lock(VOTE_SHARE);
-
-                assertEq(_xanProxy.balanceOf(voterAddr), VOTE_SHARE);
-                assertEq(_xanProxy.unlockedBalanceOf(voterAddr), 0);
-                assertEq(_xanProxy.lockedBalanceOf(voterAddr), VOTE_SHARE);
-            }
         }
     }
 }

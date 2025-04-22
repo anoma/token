@@ -57,8 +57,8 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     }
 
     // solhint-disable-next-line comprehensive-interface
-    function initialize() external initializer {
-        __Xan_init();
+    function initialize(address owner) external initializer {
+        __Xan_init(owner);
     }
 
     /// @inheritdoc IXan
@@ -300,9 +300,9 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     /// @notice Initializes the component to be used by inheriting contracts.
     /// @dev This method is required to support [ERC-1822](https://eips.ethereum.org/EIPS/eip-1822).
     // solhint-disable-next-line func-name-mixedcase
-    function __Xan_init() internal onlyInitializing {
+    function __Xan_init(address owner) internal onlyInitializing {
         __ERC20_init("Anoma", "Xan");
-        _mint(msg.sender, 1_000_000_000);
+        _mint(owner, 1_000_000_000);
     }
 
     /// @inheritdoc ERC20Upgradeable
