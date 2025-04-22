@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.27;
 
-import { Test } from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 
-import { MerkleDistributor } from "../src/MerkleDistributor.sol";
-import { Xan } from "../src/Xan.sol";
+import {MerkleDistributor} from "../src/MerkleDistributor.sol";
+import {Xan} from "../src/Xan.sol";
 
-import { MockDistribution } from "./Distribution.m.sol";
+import {MockDistribution} from "./Distribution.m.sol";
 
 contract E2ETest is Test, MockDistribution {
     MerkleDistributor internal _md;
@@ -21,7 +21,7 @@ contract E2ETest is Test, MockDistribution {
     function setUp() public {
         // solhint-disable-next-line not-rely-on-time
         uint256 currentDate = block.timestamp;
-        _md = new MerkleDistributor({ root: ROOT, startDate: currentDate, endDate: currentDate + 2 weeks });
+        _md = new MerkleDistributor({root: ROOT, startDate: currentDate, endDate: currentDate + 2 weeks});
 
         _xanProxy = Xan(_md.token());
 
@@ -38,7 +38,7 @@ contract E2ETest is Test, MockDistribution {
             assertEq(_xanProxy.balanceOf(voterAddr), 0);
             assertEq(_xanProxy.lockedBalanceOf(voterAddr), 0);
 
-            (bytes32[] memory siblings, uint256 directionBits) = _merkleProof({ index: voterId(_census[i]) });
+            (bytes32[] memory siblings, uint256 directionBits) = _merkleProof({index: voterId(_census[i])});
 
             // Call as voter.
             vm.prank(voterAddr);
@@ -50,15 +50,6 @@ contract E2ETest is Test, MockDistribution {
                 proof: siblings,
                 directionBits: directionBits
             });
-
-            assertEq(_xanProxy.balanceOf(voterAddr), VOTE_SHARE);
-            assertEq(_xanProxy.unlockedBalanceOf(voterAddr), VOTE_SHARE);
-            assertEq(_xanProxy.lockedBalanceOf(voterAddr), 0);
-
-            // TODO refactor: this should happen automatically
-            // Call as voter.
-            vm.prank(voterAddr);
-            _xanProxy.lock(VOTE_SHARE);
 
             assertEq(_xanProxy.balanceOf(voterAddr), VOTE_SHARE);
             assertEq(_xanProxy.unlockedBalanceOf(voterAddr), 0);
@@ -106,7 +97,7 @@ contract E2ETest is Test, MockDistribution {
 
         // Upgrade
         {
-            _xanProxy.upgradeToAndCall({ newImplementation: _implA, data: "" });
+            _xanProxy.upgradeToAndCall({newImplementation: _implA, data: ""});
 
             // Check that the upgrade was successful.
             assertEq(_xanProxy.implementation(), _implA);

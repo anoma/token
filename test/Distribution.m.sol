@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.27;
 
-import { Leaf } from "../src/Leaf.sol";
-import { MerkleTree } from "../src/MerkleTree.sol";
-import { MockVoters } from "./Voters.m.sol";
+import {Leaf} from "../src/Leaf.sol";
+import {MerkleTree} from "../src/MerkleTree.sol";
+import {MockVoters} from "./Voters.m.sol";
 
 contract MockDistribution is MockVoters {
     using MerkleTree for MerkleTree.Tree;
@@ -17,11 +17,11 @@ contract MockDistribution is MockVoters {
     bytes32 public immutable ROOT;
 
     constructor() {
-        _tree.setup({ treeDepth: _TREE_DEPTH });
+        _tree.setup({treeDepth: _TREE_DEPTH});
 
         bytes32 newRoot;
         for (uint256 i = 0; i < 2 * _TREE_DEPTH; ++i) {
-            bytes32 leaf = Leaf.hash({ index: i, to: voter(i), value: VOTE_SHARE, lockedValue: VOTE_SHARE });
+            bytes32 leaf = Leaf.hash({index: i, to: voter(i), value: VOTE_SHARE, lockedValue: VOTE_SHARE});
 
             uint256 index;
             (index, newRoot) = _tree.push(leaf);

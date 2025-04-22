@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.27;
 
-import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import { ERC1967Utils } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
-import { Time } from "@openzeppelin/contracts/utils/types/Time.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
-import { IXan } from "./IXan.sol";
+import {IXan} from "./IXan.sol";
 
 contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.
@@ -36,6 +36,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
 
     /// @notice The ERC-7201 storage location of the contract (see https://eips.ethereum.org/EIPS/eip-7201).
     /// @dev `keccak256(abi.encode(uint256(keccak256("anoma.storage.Xan.v1")) - 1)) & ~bytes32(uint256(0xff))`
+    // solhint-disable-next-line max-line-length
     bytes32 internal constant _XAN_STORAGE_LOCATION = 0x52f7d5fb153315ca313a5634db151fa7e0b41cd83fe6719e93ed3cd02b69d200;
 
     /// @notice The delay duration until an upgrade to a new implementation can take place.
@@ -63,18 +64,19 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     /// @inheritdoc IXan
     function lock(uint256 value) external override {
         address owner = msg.sender;
-
         uint256 unlockedBalance = unlockedBalanceOf(owner);
+
         if (value > unlockedBalance) {
-            revert InsufficientUnlockedBalance({ sender: owner, unlockedBalance: unlockedBalance, needed: value });
+            revert InsufficientUnlockedBalance({sender: owner, unlockedBalance: unlockedBalance, needed: value});
         }
 
-        address currentImpl = implementation();
-        XanStorage storage $ = _getXanStorage();
-        $._lockedTotalSupply[currentImpl] += value;
-        $._lockedBalances[currentImpl][owner] += value;
+        _lock({to: owner, value: value});
+    }
 
-        emit Locked({ owner: owner, value: value });
+    /// @inheritdoc IXan
+    function transferAndLock(address to, uint256 value) external override {
+        _transfer({from: msg.sender, to: to, value: value});
+        _lock({to: to, value: value});
     }
 
     /// @inheritdoc IXan
@@ -107,7 +109,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
 
         // Check that the locked balance is larger than the old votum.
         if (lockedBalance < oldVotum + 1) {
-            revert InsufficientLockedBalance({ sender: voter, lockedBalance: lockedBalance });
+            revert InsufficientLockedBalance({sender: voter, lockedBalance: lockedBalance});
         }
 
         // Calculate the votes that must be added.
@@ -148,7 +150,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
             }
         }
 
-        emit VoteCast({ voter: voter, newImplementation: newImplementation, value: delta });
+        emit VoteCast({voter: voter, implementation: newImplementation, value: delta});
     }
 
     /// @inheritdoc IXan
@@ -199,7 +201,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
             }
         }
 
-        emit VoteRevoked({ voter: voter, newImplementation: newImplementation, value: oldVotum });
+        emit VoteRevoked({voter: voter, implementation: newImplementation, value: oldVotum});
     }
 
     /// @inheritdoc IXan
@@ -217,7 +219,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
 
         _voteData.delayEndTime = startTime + delayDuration();
 
-        emit DelayStarted({ newImplementation: newImplementation, startTime: startTime, endTime: _voteData.delayEndTime });
+        emit DelayStarted({implementation: newImplementation, startTime: startTime, endTime: _voteData.delayEndTime});
     }
 
     /// @inheritdoc IXan
@@ -241,7 +243,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
         uint48 maxRank = $._implCount[thisImpl] - 1;
 
         if (rank > maxRank) {
-            revert ImplementationRankNotExistent({ maxRank: maxRank, rank: rank });
+            revert ImplementationRankNotExistent({maxRank: maxRank, rank: rank});
         }
 
         rankedImplementation = _getXanStorage()._implementationByRank[thisImpl][rank];
@@ -310,11 +312,21 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
             uint256 unlockedBalance = unlockedBalanceOf(from);
 
             if (value > unlockedBalance) {
-                revert InsufficientUnlockedBalance({ sender: from, unlockedBalance: unlockedBalance, needed: value });
+                revert InsufficientUnlockedBalance({sender: from, unlockedBalance: unlockedBalance, needed: value});
             }
         }
 
         super._update(from, to, value);
+    }
+
+    function _lock(address to, uint256 value) internal {
+        XanStorage storage $ = _getXanStorage();
+        address currentImpl = implementation();
+
+        $._lockedTotalSupply[currentImpl] += value;
+        $._lockedBalances[currentImpl][to] += value;
+
+        emit Locked({owner: to, value: value});
     }
 
     /// @notice Checks if the quorum is reached for a new implementation.

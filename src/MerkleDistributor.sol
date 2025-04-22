@@ -3,14 +3,14 @@ pragma solidity ^0.8.27;
 
 // Copied and modified from: https://github.com/Uniswap/merkle-distributor/blob/master/contracts/MerkleDistributor.sol
 
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { MerkleTree } from "../src/MerkleTree.sol";
-import { IMerkleDistributor } from "./IMerkleDistributor.sol";
+import {MerkleTree} from "../src/MerkleTree.sol";
+import {IMerkleDistributor} from "./IMerkleDistributor.sol";
 
-import { Leaf } from "./Leaf.sol";
-import { Xan } from "./Xan.sol";
+import {Leaf} from "./Leaf.sol";
+import {Xan} from "./Xan.sol";
 
 /// @title MerkleDistributor
 /// @author Uniswap 2020, Modified by Anoma Foundation
@@ -31,7 +31,6 @@ contract MerkleDistributor is IMerkleDistributor {
     uint256 internal immutable _END_DATE;
 
     /// @notice A packed array of booleans containing the information who claimed.
-    // TODO lookup name claimedWordIndex
     mapping(uint256 claimedWordIndex => uint256 claimedWord) internal _claimedBitMap;
 
     error StartDateAfterEndDate();
@@ -68,7 +67,7 @@ contract MerkleDistributor is IMerkleDistributor {
         // solhint-enable not-rely-on-time, gas-strict-inequalities
 
         _XAN = Xan(
-            address(new ERC1967Proxy({ implementation: address(new Xan()), _data: abi.encodeCall(Xan.initialize, ()) }))
+            address(new ERC1967Proxy({implementation: address(new Xan()), _data: abi.encodeCall(Xan.initialize, ())}))
         );
 
         _ROOT = root;
@@ -82,10 +81,7 @@ contract MerkleDistributor is IMerkleDistributor {
         uint256 lockedValue,
         bytes32[] calldata proof,
         uint256 directionBits
-    )
-        external
-        override
-    {
+    ) external override {
         // solhint-disable not-rely-on-time
         // slither-disable-next-line timestamp
         if (block.timestamp < _START_DATE) revert StartDateInTheFuture();
@@ -105,15 +101,13 @@ contract MerkleDistributor is IMerkleDistributor {
                 directionBits: directionBits
             })
         ) {
-            revert TokenClaimInvalid({ index: index, to: to, value: value });
+            revert TokenClaimInvalid({index: index, to: to, value: value});
         }
 
         _setClaimed(index);
-        _XAN.safeTransfer({ to: to, value: value });
-        // TODO
-        //_XAN.lock({});
+        emit Claimed({index: index, to: to, value: value});
 
-        emit Claimed({ index: index, to: to, value: value });
+        _XAN.transferAndLock({to: to, value: value});
     }
 
     /// @inheritdoc IMerkleDistributor
@@ -134,12 +128,7 @@ contract MerkleDistributor is IMerkleDistributor {
         uint256 lockedValue,
         bytes32[] memory proof,
         uint256 directionBits
-    )
-        public
-        view
-        override
-        returns (uint256 unclaimedValue)
-    {
+    ) public view override returns (uint256 unclaimedValue) {
         if (isClaimed(index)) return 0;
 
         return unclaimedValue = _verifyProof({
@@ -183,14 +172,10 @@ contract MerkleDistributor is IMerkleDistributor {
         uint256 lockedValue,
         bytes32[] memory proof,
         uint256 directionBits
-    )
-        internal
-        view
-        returns (bool valid)
-    {
-        bytes32 leaf = Leaf.hash({ index: index, to: to, value: value, lockedValue: lockedValue });
+    ) internal view returns (bool valid) {
+        bytes32 leaf = Leaf.hash({index: index, to: to, value: value, lockedValue: lockedValue});
 
-        bytes32 computedRoot = MerkleTree.processProof({ siblings: proof, directionBits: directionBits, leaf: leaf });
+        bytes32 computedRoot = MerkleTree.processProof({siblings: proof, directionBits: directionBits, leaf: leaf});
 
         valid = computedRoot == _ROOT;
     }

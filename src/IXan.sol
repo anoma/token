@@ -7,27 +7,32 @@ interface IXan {
     /// @param value The number of tokens being locked.
     event Locked(address owner, uint256 value);
 
-    /// @notice Emitted when a vote is cast for a new implementation.
+    /// @notice Emitted when a vote is cast for a implementation.
     /// @param voter The voter address.
-    /// @param newImplementation The new implementation the vote was cast for.
+    /// @param implementation The implementation the vote was cast for.
     /// @param value The number of votes cast.
-    event VoteCast(address voter, address newImplementation, uint256 value);
+    event VoteCast(address voter, address implementation, uint256 value);
 
     /// @notice Emitted when a vote is revoked from a new implementation.
     /// @param voter The voting account.
-    /// @param newImplementation The new implementation the vote was revoked from.
+    /// @param implementation The implementation the vote was revoked from.
     /// @param value The number of votes revoked.
-    event VoteRevoked(address voter, address newImplementation, uint256 value);
+    event VoteRevoked(address voter, address implementation, uint256 value);
 
     /// @notice Emitted when the upgrade delay period for a new implementation is started.
-    /// @param newImplementation The new implementation for which the delay period was started.
+    /// @param implementation The implementation for which the delay period was started.
     /// @param startTime The start time.
     /// @param endTime The end time.
-    event DelayStarted(address newImplementation, uint48 startTime, uint48 endTime);
+    event DelayStarted(address implementation, uint48 startTime, uint48 endTime);
 
     /// @notice Permanently locks tokens for the current implementation until it gets upgraded.
     /// @param value The value to be locked.
     function lock(uint256 value) external;
+
+    /// @notice Transfers tokens and immediately locks them.
+    /// @param to The receiver.
+    /// @param value The value to be transferred and locked.
+    function transferAndLock(address to, uint256 value) external;
 
     /// @notice Casts the vote with the currently locked balance for a new implementation.
     /// An old votum will only get updated if the new locked balance is larger than the old votum.

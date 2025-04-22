@@ -29,8 +29,7 @@ interface IMerkleDistributor {
         uint256 lockedValue,
         bytes32[] calldata proof,
         uint256 directionBits
-    )
-        external;
+    ) external;
 
     /// @notice Returns the value of unclaimed tokens.
     /// @param index The index in the balance tree to be claimed.
@@ -46,9 +45,7 @@ interface IMerkleDistributor {
         uint256 lockedValue,
         bytes32[] memory proof,
         uint256 directionBits
-    )
-        external
-        returns (uint256 unclaimedValue);
+    ) external returns (uint256 unclaimedValue);
 
     /// @notice Checks if an index on the merkle tree is claimed.
     /// @param index The index in the balance tree to be claimed.
