@@ -6,7 +6,7 @@ import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 
 import {IXan, Xan} from "../src/Xan.sol";
 
-contract XanTest is Test {
+contract UnitTest is Test {
     address internal _defaultSender;
     Xan internal _xanProxy;
 
@@ -62,6 +62,25 @@ contract XanTest is Test {
         _xanProxy.revokeVote(impl);
 
         vm.stopPrank();
+    }
+
+    function test_lockedBalanceOf_returns_the_locked_balance() public {
+        uint256 valueToLock = _xanProxy.unlockedBalanceOf(_defaultSender) / 3;
+
+        vm.prank(_defaultSender);
+        _xanProxy.lock(valueToLock);
+
+        assertEq(_xanProxy.lockedBalanceOf(_defaultSender), valueToLock);
+    }
+
+    function test_unlockedBalanceOf_returns_the_unlocked_balance() public {
+        uint256 valueToLock = _xanProxy.unlockedBalanceOf(_defaultSender) / 3;
+        uint256 expectedUnlocked = _xanProxy.unlockedBalanceOf(_defaultSender) - valueToLock;
+
+        vm.prank(_defaultSender);
+        _xanProxy.lock(valueToLock);
+
+        assertEq(_xanProxy.unlockedBalanceOf(_defaultSender), expectedUnlocked);
     }
 
     function testFuzz_lockedBalanceOf_and_unlockedBalanceOf_sum_to_balanceOf(address owner) public view {
