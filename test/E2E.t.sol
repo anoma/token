@@ -52,15 +52,6 @@ contract E2ETest is Test, MockDistribution {
             });
 
             assertEq(_xanProxy.balanceOf(voterAddr), VOTE_SHARE);
-            assertEq(_xanProxy.unlockedBalanceOf(voterAddr), VOTE_SHARE);
-            assertEq(_xanProxy.lockedBalanceOf(voterAddr), 0);
-
-            // TODO refactor: this should happen automatically
-            // Call as voter.
-            vm.prank(voterAddr);
-            _xanProxy.lock(VOTE_SHARE);
-
-            assertEq(_xanProxy.balanceOf(voterAddr), VOTE_SHARE);
             assertEq(_xanProxy.unlockedBalanceOf(voterAddr), 0);
             assertEq(_xanProxy.lockedBalanceOf(voterAddr), VOTE_SHARE);
         }

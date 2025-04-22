@@ -63,18 +63,29 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     /// @inheritdoc IXan
     function lock(uint256 value) external override {
         address owner = msg.sender;
-
         uint256 unlockedBalance = unlockedBalanceOf(owner);
+
         if (value > unlockedBalance) {
             revert InsufficientUnlockedBalance({ sender: owner, unlockedBalance: unlockedBalance, needed: value });
         }
 
-        address currentImpl = implementation();
-        XanStorage storage $ = _getXanStorage();
-        $._lockedTotalSupply[currentImpl] += value;
-        $._lockedBalances[currentImpl][owner] += value;
+        _lock({ to: owner, value: value });
+    }
 
-        emit Locked({ owner: owner, value: value });
+    /// @inheritdoc IXan
+    function transferAndLock(address to, uint256 value) external {
+        _transfer({ from: msg.sender, to: to, value: value });
+        _lock({ to: to, value: value });
+    }
+
+    function _lock(address to, uint256 value) internal {
+        XanStorage storage $ = _getXanStorage();
+        address currentImpl = implementation();
+
+        $._lockedTotalSupply[currentImpl] += value;
+        $._lockedBalances[currentImpl][to] += value;
+
+        emit Locked({ owner: to, value: value });
     }
 
     /// @inheritdoc IXan

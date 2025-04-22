@@ -29,6 +29,11 @@ interface IXan {
     /// @param value The value to be locked.
     function lock(uint256 value) external;
 
+    /// @notice Transfers tokens and immediately locks them.
+    /// @param to The receiver.
+    /// @param value The value to be transferred and locked.
+    function transferAndLock(address to, uint256 value) external;
+
     /// @notice Casts the vote with the currently locked balance for a new implementation.
     /// An old votum will only get updated if the new locked balance is larger than the old votum.
     /// Otherwise, the function will revert with an error.
