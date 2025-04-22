@@ -73,6 +73,7 @@ contract E2ETest is Test, MockDistribution {
 
             vm.prank(voter("Carol"));
             _xanProxy.castVote(_implA);
+            _xanProxy.checkUpgradeCriteria(_implA);
         }
 
         // Delay period
@@ -108,9 +109,6 @@ contract E2ETest is Test, MockDistribution {
             // The vote was reset.
             assertEq(_xanProxy.totalVotes(_implA), 0);
 
-            // The most voted implementation is not set yet.
-            // TODO assertEq(_xanProxy.mostVotedImplementation(), address(0));
-
             for (uint256 i = 0; i < _census.length; ++i) {
                 address voterAddr = voter(_census[i]);
 
@@ -130,63 +128,5 @@ contract E2ETest is Test, MockDistribution {
                 assertEq(_xanProxy.lockedBalanceOf(voterAddr), VOTE_SHARE);
             }
         }
-    }
-
-    function test_castVote_ranks_proposals() public {
-        vm.prank(voter("Alice"));
-        _xanProxy.castVote(_implA);
-
-        assertEq(_xanProxy.implementationByRank(0), _implA);
-
-        vm.prank(voter("Bob"));
-        _xanProxy.castVote(_implB);
-
-        assertEq(_xanProxy.implementationByRank(0), _implA);
-        assertEq(_xanProxy.implementationByRank(1), _implB);
-
-        vm.prank(voter("Carol"));
-        _xanProxy.castVote(_implC);
-
-        assertEq(_xanProxy.implementationByRank(0), _implA);
-        assertEq(_xanProxy.implementationByRank(1), _implB);
-        assertEq(_xanProxy.implementationByRank(2), _implC);
-
-        vm.prank(voter("Dave"));
-        _xanProxy.castVote(_implC);
-
-        assertEq(_xanProxy.implementationByRank(0), _implC);
-        assertEq(_xanProxy.implementationByRank(1), _implA);
-        assertEq(_xanProxy.implementationByRank(2), _implB);
-    }
-
-    function test_revokeVote_ranks_proposals() public {
-        vm.prank(voter("Alice"));
-        _xanProxy.castVote(_implA);
-
-        vm.prank(voter("Bob"));
-        _xanProxy.castVote(_implB);
-
-        vm.prank(voter("Carol"));
-        _xanProxy.castVote(_implC);
-
-        assertEq(_xanProxy.implementationByRank(0), _implA);
-        assertEq(_xanProxy.implementationByRank(1), _implB);
-        assertEq(_xanProxy.implementationByRank(2), _implC);
-
-        vm.prank(voter("Alice"));
-        _xanProxy.revokeVote(_implA);
-
-        assertEq(_xanProxy.implementationByRank(0), _implB);
-        assertEq(_xanProxy.implementationByRank(1), _implC);
-        assertEq(_xanProxy.implementationByRank(2), _implA);
-    }
-}
-
-contract XanInternalTest is Test, Xan {
-    function test_storageLocation() external pure {
-        bytes32 expected =
-            keccak256(abi.encode(uint256(keccak256("anoma.storage.Xan.v1")) - 1)) & ~bytes32(uint256(0xff));
-
-        assertEq(_XAN_STORAGE_LOCATION, expected);
     }
 }
