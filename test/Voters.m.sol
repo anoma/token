@@ -22,8 +22,8 @@ contract MockVoters {
     ];
 
     address[16] public addresses;
-    mapping(string name => address) public voters;
-    mapping(string name => uint256) public voterIds;
+    mapping(string name => address voter) public voters;
+    mapping(string name => uint256 voterId) public voterIds;
 
     constructor() {
         for (uint256 i = 0; i < names.length; ++i) {

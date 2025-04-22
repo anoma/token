@@ -71,27 +71,3 @@ jobs:
       - name: Run Forge tests
         run: forge test -vvv --gas-report
         id: test
-
-  juvix:
-    strategy:
-      fail-fast: true
-
-    name: Juvix project
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download latest nightly Juvix binary
-        uses: jaxxstorm/action-install-gh-release@v1.10.0
-        with:
-          repo: anoma/juvix-nightly-builds
-          tag: nightly-2025-02-13-0.6.9-8b06157
-          cache: enable
-
-      - name: Run Juvix typecheck
-        run: juvix dependencies update
-        working-directory: ./juvix
-
-      - name: Run Juvix typecheck
-        run: juvix typecheck
-        working-directory: ./juvix

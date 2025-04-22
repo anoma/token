@@ -8,23 +8,9 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 
 import { MerkleTree } from "../src/MerkleTree.sol";
 import { IMerkleDistributor } from "./IMerkleDistributor.sol";
-import { Xan } from "./Xan.sol";
 
-// TODO Move into separate file
-library Claim {
-    function leafHash(
-        uint256 index,
-        address to,
-        uint256 value,
-        uint256 lockedValue
-    )
-        internal
-        pure
-        returns (bytes32 hash)
-    {
-        hash = keccak256(abi.encode(index, to, value, lockedValue));
-    }
-}
+import { Leaf } from "./Leaf.sol";
+import { Xan } from "./Xan.sol";
 
 /// @title MerkleDistributor
 /// @author Uniswap 2020, Modified by Anoma Foundation
@@ -202,7 +188,7 @@ contract MerkleDistributor is IMerkleDistributor {
         view
         returns (bool valid)
     {
-        bytes32 leaf = Claim.leafHash({ index: index, to: to, value: value, lockedValue: lockedValue });
+        bytes32 leaf = Leaf.hash({ index: index, to: to, value: value, lockedValue: lockedValue });
 
         bytes32 computedRoot = MerkleTree.processProof({ siblings: proof, directionBits: directionBits, leaf: leaf });
 
