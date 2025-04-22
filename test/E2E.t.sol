@@ -12,25 +12,33 @@ contract E2ETest is Test, MockDistribution {
     MerkleDistributor internal _md;
     Xan internal _xanProxy;
 
+    string[4] internal _census;
+
+    address internal _implA;
+    address internal _implB;
+    address internal _implC;
+
     function setUp() public {
         // solhint-disable-next-line not-rely-on-time
         uint256 currentDate = block.timestamp;
         _md = new MerkleDistributor({ root: ROOT, startDate: currentDate, endDate: currentDate + 2 weeks });
 
         _xanProxy = Xan(_md.token());
-    }
 
-    function test_e2e() public {
-        string[4] memory census = ["Alice", "Bob", "Carol", "Dave"];
+        _census = ["Alice", "Bob", "Carol", "Dave"];
+
+        _implA = address(new Xan());
+        _implB = address(new Xan());
+        _implC = address(new Xan());
 
         // Allocate token
-        for (uint256 i = 0; i < census.length; ++i) {
-            address voterAddr = voter(census[i]);
+        for (uint256 i = 0; i < _census.length; ++i) {
+            address voterAddr = voter(_census[i]);
 
             assertEq(_xanProxy.balanceOf(voterAddr), 0);
             assertEq(_xanProxy.lockedBalanceOf(voterAddr), 0);
 
-            (bytes32[] memory siblings, uint256 directionBits) = _merkleProof({ index: voterId(census[i]) });
+            (bytes32[] memory siblings, uint256 directionBits) = _merkleProof({ index: voterId(_census[i]) });
 
             // Call as voter.
             vm.prank(voterAddr);
@@ -56,66 +64,64 @@ contract E2ETest is Test, MockDistribution {
             assertEq(_xanProxy.unlockedBalanceOf(voterAddr), 0);
             assertEq(_xanProxy.lockedBalanceOf(voterAddr), VOTE_SHARE);
         }
+    }
 
-        // Deploy new implementation.
-        address newImplementation = address(new Xan());
-        assertNotEq(newImplementation, _xanProxy.implementation());
-
+    function test_e2e_proposal_execution() public {
         // Vote for Implementation
         {
             vm.prank(voter("Alice"));
-            _xanProxy.castVote(newImplementation);
-            vm.expectRevert(abi.encodeWithSelector(Xan.QuorumNotReached.selector, newImplementation));
-            _xanProxy.checkUpgradeCriteria(newImplementation);
+            _xanProxy.castVote(_implA);
+            vm.expectRevert(abi.encodeWithSelector(Xan.QuorumNotReached.selector, _implA));
+            _xanProxy.checkUpgradeCriteria(_implA);
 
             vm.prank(voter("Bob"));
-            _xanProxy.castVote(newImplementation);
+            _xanProxy.castVote(_implA);
 
-            vm.expectRevert(abi.encodeWithSelector(Xan.QuorumNotReached.selector, newImplementation));
-            _xanProxy.checkUpgradeCriteria(newImplementation);
+            vm.expectRevert(abi.encodeWithSelector(Xan.QuorumNotReached.selector, _implA));
+            _xanProxy.checkUpgradeCriteria(_implA);
 
             vm.prank(voter("Carol"));
-            _xanProxy.castVote(newImplementation);
+            _xanProxy.castVote(_implA);
         }
 
         // Delay period
         {
             // Delay period hasn't started.
-            vm.expectRevert(abi.encodeWithSelector(Xan.DelayPeriodNotStarted.selector, newImplementation));
-            _xanProxy.checkDelayPeriod(newImplementation);
+            vm.expectRevert(abi.encodeWithSelector(Xan.DelayPeriodNotStarted.selector, _implA));
+            _xanProxy.checkDelayPeriod(_implA);
 
             // Start the delay period
-            _xanProxy.startDelayPeriod(newImplementation);
+            _xanProxy.startDelayPeriod(_implA);
 
             // Delay period hasn't ended.
-            vm.expectRevert(abi.encodeWithSelector(Xan.DelayPeriodNotEnded.selector, newImplementation));
-            _xanProxy.checkDelayPeriod(newImplementation);
+            vm.expectRevert(abi.encodeWithSelector(Xan.DelayPeriodNotEnded.selector, _implA));
+            _xanProxy.checkDelayPeriod(_implA);
 
             // Advance to the end of the delay period
             skip(_xanProxy.delayDuration());
 
             // Check that the delay has passed
-            _xanProxy.checkDelayPeriod(newImplementation);
+            _xanProxy.checkDelayPeriod(_implA);
         }
 
         // Upgrade
         {
-            _xanProxy.upgradeToAndCall({ newImplementation: newImplementation, data: "" });
+            _xanProxy.upgradeToAndCall({ newImplementation: _implA, data: "" });
 
             // Check that the upgrade was successful.
-            assertEq(_xanProxy.implementation(), newImplementation);
+            assertEq(_xanProxy.implementation(), _implA);
         }
 
         // Check that storage is as expected.
         {
             // The vote was reset.
-            assertEq(_xanProxy.totalVotes(newImplementation), 0);
+            assertEq(_xanProxy.totalVotes(_implA), 0);
 
             // The most voted implementation is not set yet.
             // TODO assertEq(_xanProxy.mostVotedImplementation(), address(0));
 
-            for (uint256 i = 0; i < census.length; ++i) {
-                address voterAddr = voter(census[i]);
+            for (uint256 i = 0; i < _census.length; ++i) {
+                address voterAddr = voter(_census[i]);
 
                 // Balances should be the same
                 assertEq(_xanProxy.balanceOf(voterAddr), VOTE_SHARE);
@@ -133,6 +139,55 @@ contract E2ETest is Test, MockDistribution {
                 assertEq(_xanProxy.lockedBalanceOf(voterAddr), VOTE_SHARE);
             }
         }
+    }
+
+    function test_castVote_ranks_proposals() public {
+        vm.prank(voter("Alice"));
+        _xanProxy.castVote(_implA);
+
+        assertEq(_xanProxy.implementationByRank(0), _implA);
+
+        vm.prank(voter("Bob"));
+        _xanProxy.castVote(_implB);
+
+        assertEq(_xanProxy.implementationByRank(0), _implA);
+        assertEq(_xanProxy.implementationByRank(1), _implB);
+
+        vm.prank(voter("Carol"));
+        _xanProxy.castVote(_implC);
+
+        assertEq(_xanProxy.implementationByRank(0), _implA);
+        assertEq(_xanProxy.implementationByRank(1), _implB);
+        assertEq(_xanProxy.implementationByRank(2), _implC);
+
+        vm.prank(voter("Dave"));
+        _xanProxy.castVote(_implC);
+
+        assertEq(_xanProxy.implementationByRank(0), _implC);
+        assertEq(_xanProxy.implementationByRank(1), _implA);
+        assertEq(_xanProxy.implementationByRank(2), _implB);
+    }
+
+    function test_revokeVote_ranks_proposals() public {
+        vm.prank(voter("Alice"));
+        _xanProxy.castVote(_implA);
+
+        vm.prank(voter("Bob"));
+        _xanProxy.castVote(_implB);
+
+        vm.prank(voter("Carol"));
+        _xanProxy.castVote(_implC);
+
+        assertEq(_xanProxy.implementationByRank(0), _implA);
+        assertEq(_xanProxy.implementationByRank(1), _implB);
+        assertEq(_xanProxy.implementationByRank(2), _implC);
+
+        vm.prank(voter("Alice"));
+        _xanProxy.revokeVote(_implA);
+
+        assertEq(_xanProxy.implementationByRank(0), _implB);
+        assertEq(_xanProxy.implementationByRank(1), _implC);
+        assertEq(_xanProxy.implementationByRank(2), _implA);
     }
 }
 

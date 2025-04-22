@@ -73,6 +73,10 @@ interface IXan {
     /// @return currentImplementation The current implementation.
     function implementation() external view returns (address currentImplementation);
 
+    /// @notice Returns the implementation with the respective rank.
+    /// @return rankedImplementation The implementation with the respective rank.
+    function implementationByRank(uint48 rank) external view returns (address rankedImplementation);
+
     /// @notice Returns the delay duration.
     /// @return duration The delay duration.
     function delayDuration() external pure returns (uint32 duration);

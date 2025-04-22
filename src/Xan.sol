@@ -48,6 +48,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     error DelayPeriodNotStarted(address newImplementation);
     error DelayPeriodNotEnded(address newImplementation);
     error QuorumNotReached(address newImplementation);
+    error ImplementationRankNotExistent(uint48 maxRank, uint48 rank);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -85,12 +86,13 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
         XanStorage storage $ = _getXanStorage();
         address thisImpl = implementation();
 
-        // Is first vote? If so initialize
+        // Check if this implementation is voted on for the first time.
         {
             if (!_voteData.exists) {
                 _voteData.exists = true;
                 _voteData.rank = $._implCount[thisImpl];
 
+                // Set the rank to the lowest number.
                 uint48 rank = $._implCount[thisImpl];
                 $._implementationByRank[thisImpl][rank] = newImplementation;
                 ++$._implCount[thisImpl];
@@ -121,23 +123,27 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
         // Update the total votes.
         _voteData.totalVotes += delta;
 
-        // Eventually update the ranking
-        {
-            if (_voteData.rank > 0) {
-                uint48 nextRank = _voteData.rank - 1;
-                address nextImpl = $._implementationByRank[thisImpl][nextRank];
-                uint256 nextVotes = $._voteData[thisImpl][nextImpl].totalVotes;
+        // Check if the implementation has a rank larger than zero.
+        if (_voteData.rank > 0) {
+            uint48 nextRank = _voteData.rank - 1;
+            address nextImpl = $._implementationByRank[thisImpl][nextRank];
+            uint256 nextVotes = $._voteData[thisImpl][nextImpl].totalVotes;
 
-                while (_voteData.totalVotes < nextVotes + 1) {
-                    // Switch ranks
-                    $._voteData[thisImpl][nextImpl].rank = _voteData.rank;
-                    _voteData.rank = nextRank;
+            // Check if the next better ranked implementation has less votes
+            while (_voteData.totalVotes > nextVotes) {
+                // Switch the ranking
+                $._implementationByRank[thisImpl][nextRank] = newImplementation;
+                $._implementationByRank[thisImpl][_voteData.rank] = nextImpl;
 
-                    if (_voteData.rank > 0) {
-                        --nextRank;
-                        nextImpl = $._implementationByRank[thisImpl][nextRank];
-                        nextVotes = $._voteData[thisImpl][nextImpl].totalVotes;
-                    }
+                $._voteData[thisImpl][nextImpl].rank = _voteData.rank;
+                _voteData.rank = nextRank;
+
+                if (_voteData.rank > 0) {
+                    --nextRank;
+                    nextImpl = $._implementationByRank[thisImpl][nextRank];
+                    nextVotes = $._voteData[thisImpl][nextImpl].totalVotes;
+                } else {
+                    break;
                 }
             }
         }
@@ -146,6 +152,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     }
 
     /// @inheritdoc IXan
+    // solhint-disable-next-line function-max-lines
     function revokeVote(address newImplementation) external override {
         address voter = msg.sender;
         VoteData storage _voteData = _getVoteData(newImplementation);
@@ -164,20 +171,29 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
             XanStorage storage $ = _getXanStorage();
             address thisImpl = implementation();
 
-            if (_voteData.rank < $._implCount[thisImpl] - 1) {
+            uint48 maxRank = $._implCount[thisImpl] - 1;
+
+            // Check if the implementation has a rank lower than the highest rank.
+            if (_voteData.rank < maxRank) {
                 uint48 nextRank = _voteData.rank + 1;
                 address nextImpl = $._implementationByRank[thisImpl][nextRank];
                 uint256 nextVotes = $._voteData[thisImpl][nextImpl].totalVotes;
 
+                // While
                 while (_voteData.totalVotes < nextVotes + 1) {
                     // Switch ranks
+                    $._implementationByRank[thisImpl][nextRank] = newImplementation;
+                    $._implementationByRank[thisImpl][_voteData.rank] = nextImpl;
+
                     $._voteData[thisImpl][nextImpl].rank = _voteData.rank;
                     _voteData.rank = nextRank;
 
-                    if (_voteData.rank < $._implCount[thisImpl] - 1) {
+                    if (_voteData.rank < maxRank) {
                         ++nextRank;
                         nextImpl = $._implementationByRank[thisImpl][nextRank];
                         nextVotes = $._voteData[thisImpl][nextImpl].totalVotes;
+                    } else {
+                        break;
                     }
                 }
             }
@@ -217,6 +233,18 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
 
     function implementation() public view override returns (address thisImplementation) {
         thisImplementation = ERC1967Utils.getImplementation();
+    }
+
+    function implementationByRank(uint48 rank) public view override returns (address rankedImplementation) {
+        XanStorage storage $ = _getXanStorage();
+        address thisImpl = implementation();
+        uint48 maxRank = $._implCount[thisImpl] - 1;
+
+        if (rank > maxRank) {
+            revert ImplementationRankNotExistent({ maxRank: maxRank, rank: rank });
+        }
+
+        rankedImplementation = _getXanStorage()._implementationByRank[thisImpl][rank];
     }
 
     /// @notice @inheritdoc IXan
