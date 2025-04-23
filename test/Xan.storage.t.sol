@@ -3,7 +3,6 @@ pragma solidity ^0.8.27;
 
 import {Test} from "forge-std/Test.sol";
 
-import {MerkleDistributor} from "../src/MerkleDistributor.sol";
 import {Xan} from "../src/Xan.sol";
 
 contract StorageTest is Test, Xan {

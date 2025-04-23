@@ -31,7 +31,7 @@
     "visibility-modifier-order": "error",
     "constructor-syntax": "error",
     "gas-calldata-parameters": "warn",
-    "gas-custom-errors": "warn",
+    "gas-custom-errors": "off",
     "gas-increment-by-one": "warn",
     "gas-indexed-events": "warn",
     "gas-multitoken1155": "warn",
