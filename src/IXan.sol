@@ -80,7 +80,7 @@ interface IXan {
 
     /// @notice Returns the implementation with the respective rank.
     /// @return rankedImplementation The implementation with the respective rank.
-    function implementationByRank(uint48 rank) external view returns (address rankedImplementation);
+    function implementationByRank(uint64 rank) external view returns (address rankedImplementation);
 
     /// @notice Returns the delay duration.
     /// @return duration The delay duration.

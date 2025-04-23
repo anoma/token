@@ -7,6 +7,7 @@ import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.s
 import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
 import {IXan} from "./IXan.sol";
+import {Parameters} from "./Parameters.sol";
 
 contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.
@@ -17,11 +18,11 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     /// @param _implementationByRank The rank of proposed implementation associated with this implementation.
     /// @param _implCount The count of proposed implementations.
     struct XanStorage {
-        mapping(address thisImplementation => mapping(address owner => uint256)) _lockedBalances;
-        mapping(address thisImplementation => mapping(address newImplementation => VoteData)) _voteData;
-        mapping(address thisImplementation => uint256) _lockedTotalSupply;
-        mapping(address thisImplementation => mapping(uint48 rank => address)) _implementationByRank;
-        mapping(address thisImplementation => uint48) _implCount;
+        mapping(address current => mapping(address owner => uint256)) _lockedBalances;
+        mapping(address current => mapping(address proposed => VoteData)) _voteData;
+        mapping(address current => uint256) _lockedTotalSupply;
+        mapping(address current => mapping(uint64 rank => address)) _implementationByRank;
+        mapping(address current => uint64) _implCount;
     }
 
     /// @notice The vote data.
@@ -29,8 +30,8 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     struct VoteData {
         mapping(address voter => uint256 votes) vota;
         uint256 totalVotes;
+        uint64 rank;
         uint48 delayEndTime;
-        uint48 rank;
         bool exists;
     }
 
@@ -49,7 +50,9 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     error DelayPeriodNotStarted(address newImplementation);
     error DelayPeriodNotEnded(address newImplementation);
     error QuorumNotReached(address newImplementation);
-    error ImplementationRankNotExistent(uint48 maxRank, uint48 rank);
+    error ImplementationRankNotExistent(uint64 implementationCount, uint64 rank);
+
+    // TODO rename newImpl to proposedImpl
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -57,8 +60,8 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     }
 
     // solhint-disable-next-line comprehensive-interface
-    function initialize(address owner) external initializer {
-        __Xan_init(owner);
+    function initialize(address initialOwner) external initializer {
+        __Xan_init(initialOwner);
     }
 
     /// @inheritdoc IXan
@@ -95,7 +98,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
                 _voteData.rank = $._implCount[thisImpl];
 
                 // Set the rank to the lowest number.
-                uint48 rank = $._implCount[thisImpl];
+                uint64 rank = $._implCount[thisImpl];
                 $._implementationByRank[thisImpl][rank] = newImplementation;
                 ++$._implCount[thisImpl];
             }
@@ -127,7 +130,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
 
         // Check if the implementation has a rank larger than zero.
         if (_voteData.rank > 0) {
-            uint48 nextRank = _voteData.rank - 1;
+            uint64 nextRank = _voteData.rank - 1;
             address nextImpl = $._implementationByRank[thisImpl][nextRank];
             uint256 nextVotes = $._voteData[thisImpl][nextImpl].totalVotes;
 
@@ -173,11 +176,11 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
             XanStorage storage $ = _getXanStorage();
             address thisImpl = implementation();
 
-            uint48 maxRank = $._implCount[thisImpl] - 1;
+            uint64 maxRank = $._implCount[thisImpl] - 1;
 
             // Check if the implementation has a rank lower than the highest rank.
             if (_voteData.rank < maxRank) {
-                uint48 nextRank = _voteData.rank + 1;
+                uint64 nextRank = _voteData.rank + 1;
                 address nextImpl = $._implementationByRank[thisImpl][nextRank];
                 uint256 nextVotes = $._voteData[thisImpl][nextImpl].totalVotes;
 
@@ -237,16 +240,17 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
         thisImplementation = ERC1967Utils.getImplementation();
     }
 
-    function implementationByRank(uint48 rank) public view override returns (address rankedImplementation) {
+    function implementationByRank(uint64 rank) public view override returns (address rankedImplementation) {
         XanStorage storage $ = _getXanStorage();
         address thisImpl = implementation();
-        uint48 maxRank = $._implCount[thisImpl] - 1;
 
-        if (rank > maxRank) {
-            revert ImplementationRankNotExistent({maxRank: maxRank, rank: rank});
+        uint64 implementationCount = $._implCount[thisImpl];
+
+        if (implementationCount == 0 || rank > implementationCount - 1) {
+            revert ImplementationRankNotExistent({implementationCount: implementationCount, rank: rank});
         }
 
-        rankedImplementation = _getXanStorage()._implementationByRank[thisImpl][rank];
+        rankedImplementation = $._implementationByRank[thisImpl][rank];
     }
 
     /// @notice @inheritdoc IXan
@@ -300,9 +304,9 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     /// @notice Initializes the component to be used by inheriting contracts.
     /// @dev This method is required to support [ERC-1822](https://eips.ethereum.org/EIPS/eip-1822).
     // solhint-disable-next-line func-name-mixedcase
-    function __Xan_init(address owner) internal onlyInitializing {
+    function __Xan_init(address initialOwner) internal onlyInitializing {
         __ERC20_init("Anoma", "Xan");
-        _mint(owner, 1_000_000_000);
+        _mint(initialOwner, Parameters.SUPPLY);
     }
 
     /// @inheritdoc ERC20Upgradeable
@@ -333,9 +337,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     /// @param newImplementation The new implementation to check.
     /// @return reached Whether quorum for the new implementation is reached.
     function _isQuorumReached(address newImplementation) internal view returns (bool reached) {
-        uint256 total = _getVoteData(newImplementation).totalVotes;
-
-        reached = total > totalSupply() / uint256(2);
+        reached = _getVoteData(newImplementation).totalVotes > Parameters.QUORUM;
     }
 
     /// @notice Authorizes an upgrade.
