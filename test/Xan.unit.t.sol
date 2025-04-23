@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.27;
 
-import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
+import {Upgrades, Options} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {Parameters} from "../src/Parameters.sol";
@@ -13,20 +13,28 @@ contract UnitTest is Test {
 
     address internal constant _IMPL = address(uint160(1));
 
+    Options internal _opts; // TODO! 👈 Remove ‼️
+
     function setUp() public {
         (, _defaultSender,) = vm.readCallers();
+
+        // TODO! 👇 Remove ‼️
+        _opts.unsafeSkipAllChecks = true;
+        // TODO! 👆 Remove ‼️
 
         vm.prank(_defaultSender);
         _xanProxy = Xan(
             Upgrades.deployUUPSProxy({
                 contractName: "Xan.sol:Xan",
-                initializerData: abi.encodeCall(Xan.initialize, _defaultSender)
+                initializerData: abi.encodeCall(Xan.initialize, _defaultSender),
+                opts: _opts // TODO! 👈 Remove ‼️
             })
         );
     }
 
     function test_initialize_mints_the_supply_for_the_specified_owner() public {
-        Xan uninitializedProxy = Xan(Upgrades.deployUUPSProxy({contractName: "Xan.sol:Xan", initializerData: ""}));
+        Xan uninitializedProxy =
+            Xan(Upgrades.deployUUPSProxy({contractName: "Xan.sol:Xan", initializerData: "", opts: _opts}));
 
         assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), 0);
 

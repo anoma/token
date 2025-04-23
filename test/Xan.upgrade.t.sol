@@ -12,15 +12,22 @@ contract UpgradeTest is Test {
     address internal _newImpl;
     Xan internal _xanProxy;
 
+    Options internal _opts; // TODO! 👈 Remove ‼️
+
     function setUp() public {
         (, _defaultSender,) = vm.readCallers();
+
+        // TODO! 👇 Remove ‼️
+        _opts.unsafeSkipAllChecks = true;
+        // TODO! 👆 Remove ‼️
 
         // Deploy proxy and mint tokens for the `_defaultSender`.
         vm.startPrank(_defaultSender);
         _xanProxy = Xan(
             Upgrades.deployUUPSProxy({
                 contractName: "Xan.sol:Xan",
-                initializerData: abi.encodeCall(Xan.initialize, _defaultSender)
+                initializerData: abi.encodeCall(Xan.initialize, _defaultSender),
+                opts: _opts // TODO! 👈 Remove ‼️
             })
         );
 
@@ -46,7 +53,7 @@ contract UpgradeTest is Test {
         UnsafeUpgrades.upgradeProxy({
             proxy: address(_xanProxy),
             newImpl: _newImpl,
-            data: abi.encodeCall(XanV2.initializeV2, ())
+            data: abi.encodeCall(XanV2.initializeV2, ()),
         });
     }
 

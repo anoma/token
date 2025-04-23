@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.27;
 
-import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
+import {Upgrades, Options} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {Xan} from "../src/Xan.sol";
@@ -17,13 +17,20 @@ contract VotingTest is Test, MockVoters {
     address internal _implB;
     address internal _implC;
 
+    Options internal _opts; // TODO! 👈 Remove ‼️
+
     function setUp() public {
         (, address _defaultSender,) = vm.readCallers();
+
+        // TODO! 👇 Remove ‼️
+        _opts.unsafeSkipAllChecks = true;
+        // TODO! 👆 Remove ‼️
 
         _xanProxy = Xan(
             Upgrades.deployUUPSProxy({
                 contractName: "Xan.sol:Xan",
-                initializerData: abi.encodeCall(Xan.initialize, _defaultSender)
+                initializerData: abi.encodeCall(Xan.initialize, _defaultSender),
+                opts: _opts // TODO! 👈 Remove ‼️
             })
         );
 
