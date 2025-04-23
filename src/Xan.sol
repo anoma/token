@@ -12,22 +12,22 @@ import {Parameters} from "./Parameters.sol";
 contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.
     /// @custom:storage-location erc7201:anoma.storage.Xan.v1
-    /// @param _upgradeData The upgrade data associated with an implementation to upgrade from.
+    /// @param _proposedUpgrades The upgrade proposed from a current implementation.
     struct XanStorage {
-        mapping(address current => UpgradeData) _upgradeData;
+        mapping(address current => ProposedUpgrades) _proposedUpgrades;
     }
 
-    /// @notice A struct containing data associated with a current implementation and proposed implementations to upgrade to.
+    /// @notice A struct containing data associated with a current implementation and proposed upgrades from it.
     /// @param lockedBalances The locked balances associated with the current implementation.
     /// @param lockedTotalSupply The locked total supply associated with the current implementation.
     /// @param voteData The vote data for a proposed implementations to upgrade to.
-    /// @param implementationByRank The proposed implementations ranking.
+    /// @param ranking The proposed implementations ranking.
     /// @param implCount The count of proposed implementations.
-    struct UpgradeData {
+    struct ProposedUpgrades {
         mapping(address owner => uint256) lockedBalances;
         uint256 lockedTotalSupply;
         mapping(address proposed => VoteData) voteData;
-        mapping(uint64 rank => address) implementationByRank;
+        mapping(uint64 rank => address proposed) ranking;
         uint64 implCount;
     }
 
@@ -97,7 +97,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     function castVote(address newImplementation) external override {
         address voter = msg.sender;
 
-        UpgradeData storage $ = _getUpgradeData();
+        ProposedUpgrades storage $ = _getProposedUpgrades();
         VoteData storage _voteData = $.voteData[newImplementation];
 
         // Check if this implementation is voted on for the first time.
@@ -108,7 +108,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
 
                 // Set the rank to the lowest number.
                 uint64 rank = $.implCount;
-                $.implementationByRank[rank] = newImplementation;
+                $.ranking[rank] = newImplementation;
                 ++$.implCount;
             }
         }
@@ -140,21 +140,21 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
         // Check if the implementation has a rank larger than zero.
         if (_voteData.rank > 0) {
             uint64 nextRank = _voteData.rank - 1;
-            address nextImpl = $.implementationByRank[nextRank];
+            address nextImpl = $.ranking[nextRank];
             uint256 nextVotes = $.voteData[nextImpl].totalVotes;
 
             // Check if the next better ranked implementation has less votes
             while (_voteData.totalVotes > nextVotes) {
                 // Switch the ranking
-                $.implementationByRank[nextRank] = newImplementation;
-                $.implementationByRank[_voteData.rank] = nextImpl;
+                $.ranking[nextRank] = newImplementation;
+                $.ranking[_voteData.rank] = nextImpl;
 
                 $.voteData[nextImpl].rank = _voteData.rank;
                 _voteData.rank = nextRank;
 
                 if (_voteData.rank > 0) {
                     --nextRank;
-                    nextImpl = $.implementationByRank[nextRank];
+                    nextImpl = $.ranking[nextRank];
                     nextVotes = $.voteData[nextImpl].totalVotes;
                 } else {
                     break;
@@ -170,7 +170,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     function revokeVote(address newImplementation) external override {
         address voter = msg.sender;
 
-        UpgradeData storage $ = _getUpgradeData();
+        ProposedUpgrades storage $ = _getProposedUpgrades();
         VoteData storage _voteData = $.voteData[newImplementation];
 
         // Cache the old votum of the voter.
@@ -189,21 +189,21 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
             // Check if the implementation has a rank lower than the highest rank.
             if (_voteData.rank < maxRank) {
                 uint64 nextRank = _voteData.rank + 1;
-                address nextImpl = $.implementationByRank[nextRank];
+                address nextImpl = $.ranking[nextRank];
                 uint256 nextVotes = $.voteData[nextImpl].totalVotes;
 
                 // While
                 while (_voteData.totalVotes < nextVotes + 1) {
                     // Switch ranks
-                    $.implementationByRank[nextRank] = newImplementation;
-                    $.implementationByRank[_voteData.rank] = nextImpl;
+                    $.ranking[nextRank] = newImplementation;
+                    $.ranking[_voteData.rank] = nextImpl;
 
                     $.voteData[nextImpl].rank = _voteData.rank;
                     _voteData.rank = nextRank;
 
                     if (_voteData.rank < maxRank) {
                         ++nextRank;
-                        nextImpl = $.implementationByRank[nextRank];
+                        nextImpl = $.ranking[nextRank];
                         nextVotes = $.voteData[nextImpl].totalVotes;
                     } else {
                         break;
@@ -220,7 +220,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
         // Check that all upgrade criteria are met before.
         checkUpgradeCriteria(newImplementation);
 
-        VoteData storage _voteData = _getUpgradeData().voteData[newImplementation];
+        VoteData storage _voteData = _getProposedUpgrades().voteData[newImplementation];
 
         uint48 startTime = Time.timestamp();
 
@@ -235,13 +235,13 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
 
     /// @inheritdoc IXan
     function totalVotes(address newImplementation) external view override returns (uint256 votes) {
-        votes = _getUpgradeData().voteData[newImplementation].totalVotes;
+        votes = _getProposedUpgrades().voteData[newImplementation].totalVotes;
     }
 
     /// @notice @inheritdoc IXan
     // slither-disable-next-line dead-code
     function lockedTotalSupply() external view override returns (uint256 lockedSupply) {
-        lockedSupply = _getUpgradeData().lockedTotalSupply;
+        lockedSupply = _getProposedUpgrades().lockedTotalSupply;
     }
 
     function implementation() public view override returns (address thisImplementation) {
@@ -249,14 +249,14 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     }
 
     function implementationByRank(uint64 rank) public view override returns (address rankedImplementation) {
-        UpgradeData storage $ = _getUpgradeData();
+        ProposedUpgrades storage $ = _getProposedUpgrades();
         uint64 count = $.implCount;
 
         if (count == 0 || rank > count - 1) {
             revert ImplementationRankNotExistent({implementationCount: count, rank: rank});
         }
 
-        rankedImplementation = $.implementationByRank[rank];
+        rankedImplementation = $.ranking[rank];
     }
 
     /// @notice @inheritdoc IXan
@@ -272,7 +272,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
         }
 
         // Check that the new implementation is the most voted implementation.
-        address mostVotedImplementation = _getUpgradeData().implementationByRank[0];
+        address mostVotedImplementation = _getProposedUpgrades().ranking[0];
 
         if (newImplementation != mostVotedImplementation) {
             revert ImplementationNotMostVoted({
@@ -284,7 +284,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
 
     /// @notice @inheritdoc IXan
     function checkDelayPeriod(address newImplementation) public view override {
-        uint48 delayEndTime = _getUpgradeData().voteData[newImplementation].delayEndTime;
+        uint48 delayEndTime = _getProposedUpgrades().voteData[newImplementation].delayEndTime;
 
         if (delayEndTime == 0) revert DelayPeriodNotStarted(newImplementation);
 
@@ -300,7 +300,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
 
     /// @inheritdoc IXan
     function lockedBalanceOf(address from) public view override returns (uint256 lockedBalance) {
-        lockedBalance = _getUpgradeData().lockedBalances[from];
+        lockedBalance = _getProposedUpgrades().lockedBalances[from];
     }
 
     function delayDuration() public pure override returns (uint32 duration) {
@@ -330,7 +330,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     }
 
     function _lock(address to, uint256 value) internal {
-        UpgradeData storage $ = _getUpgradeData();
+        ProposedUpgrades storage $ = _getProposedUpgrades();
 
         $.lockedTotalSupply += value;
         $.lockedBalances[to] += value;
@@ -342,7 +342,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
     /// @param newImplementation The new implementation to check.
     /// @return reached Whether quorum for the new implementation is reached.
     function _isQuorumReached(address newImplementation) internal view returns (bool reached) {
-        reached = _getUpgradeData().voteData[newImplementation].totalVotes > Parameters.QUORUM;
+        reached = _getProposedUpgrades().voteData[newImplementation].totalVotes > Parameters.QUORUM;
     }
 
     /// @notice Authorizes an upgrade.
@@ -355,7 +355,7 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
 
     /// @notice Returns the upgrade data from the contract storage location.
     /// @return upgradeData The upgrade data associated with the current implementation.
-    function _getUpgradeData() private view returns (UpgradeData storage upgradeData) {
+    function _getProposedUpgrades() private view returns (ProposedUpgrades storage upgradeData) {
         XanStorage storage $;
 
         // solhint-disable no-inline-assembly
@@ -365,6 +365,6 @@ contract Xan is IXan, UUPSUpgradeable, ERC20Upgradeable {
         }
         // solhint-enable no-inline-assembly
 
-        upgradeData = $._upgradeData[implementation()];
+        upgradeData = $._proposedUpgrades[implementation()];
     }
 }
