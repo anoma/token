@@ -40,7 +40,7 @@ contract UnitTest is Test {
         uint256 valueToLock = _xanProxy.unlockedBalanceOf(_defaultSender) / 3;
 
         vm.expectEmit(address(_xanProxy));
-        emit IXanV1.Locked({owner: _defaultSender, value: valueToLock});
+        emit IXanV1.Locked({account: _defaultSender, value: valueToLock});
 
         vm.prank(_defaultSender);
         _xanProxy.lock(valueToLock);

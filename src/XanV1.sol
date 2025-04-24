@@ -16,7 +16,7 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.
     /// @custom:storage-location erc7201:anoma.storage.XanV1.v1
     /// @param proposedUpgrades The upgrade proposed from a current implementation.
-    struct XanStorage {
+    struct XanV1Storage {
         mapping(address current => Ranking.ProposedUpgrades) proposedUpgrades;
     }
 
@@ -40,6 +40,7 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
     }
 
     /// @notice Initializes the proxy.
+    /// @param initialOwner The initial owner of the minted tokens.
     // solhint-disable-next-line comprehensive-interface
     function initialize(address initialOwner) external virtual initializer {
         __XanV1_init(initialOwner);
@@ -47,20 +48,13 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
 
     /// @inheritdoc IXanV1
     function lock(uint256 value) external virtual override {
-        address owner = msg.sender;
-        uint256 unlockedBalance = unlockedBalanceOf(owner);
-
-        if (value > unlockedBalance) {
-            revert InsufficientUnlockedBalance({sender: owner, unlockedBalance: unlockedBalance, valueToLock: value});
-        }
-
-        _lock({to: owner, value: value});
+        _lock({account: msg.sender, value: value});
     }
 
     /// @inheritdoc IXanV1
     function transferAndLock(address to, uint256 value) external virtual override {
         _transfer({from: msg.sender, to: to, value: value});
-        _lock({to: to, value: value});
+        _lock({account: to, value: value});
     }
 
     /// @inheritdoc IXanV1
@@ -146,15 +140,15 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         emit DelayStarted({implementation: proposedImpl, startTime: currentTime, endTime: ballot.delayEndTime});
     }
 
-    /// @inheritdoc IXanV1
-    function totalVotes(address proposedImpl) external view virtual override returns (uint256 votes) {
-        votes = _getProposedUpgrades().ballots[proposedImpl].totalVotes;
-    }
-
     /// @notice @inheritdoc IXanV1
     // slither-disable-next-line dead-code
     function lockedTotalSupply() external view virtual override returns (uint256 lockedSupply) {
         lockedSupply = _getProposedUpgrades().lockedTotalSupply;
+    }
+
+    /// @inheritdoc IXanV1
+    function totalVotes(address proposedImpl) public view virtual override returns (uint256 votes) {
+        votes = _getProposedUpgrades().ballots[proposedImpl].totalVotes;
     }
 
     /// @notice @inheritdoc IXanV1
@@ -220,13 +214,21 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         super._update({from: from, to: to, value: value});
     }
 
-    function _lock(address to, uint256 value) internal {
+    /// @notice Permanently locks tokens for an account for the current implementation until it gets upgraded.
+    /// @param account The account to lock  the tokens for.
+    /// @param value The value to be locked.
+    function _lock(address account, uint256 value) internal {
         Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
 
-        $.lockedTotalSupply += value;
-        $.lockedBalances[to] += value;
+        uint256 unlockedBalance = unlockedBalanceOf(account);
+        if (value > unlockedBalance) {
+            revert InsufficientUnlockedBalance({sender: account, unlockedBalance: unlockedBalance, valueToLock: value});
+        }
 
-        emit Locked({owner: to, value: value});
+        $.lockedTotalSupply += value;
+        $.lockedBalances[account] += value;
+
+        emit Locked({account: account, value: value});
     }
 
     /// @notice Authorizes an upgrade.
@@ -237,18 +239,11 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         _checkUpgradeCriteria(newImpl);
     }
 
-    /// @notice Checks if the quorum is reached for a new implementation.
-    /// @param proposedImpl The new implementation to check.
-    /// @return reached Whether quorum for the new implementation is reached.
-    function _isQuorumReached(address proposedImpl) internal view returns (bool reached) {
-        reached = _getProposedUpgrades().ballots[proposedImpl].totalVotes > Parameters.QUORUM;
-    }
-
     /// @notice Checks if the criteria to upgrade to the new implementation are met and reverts with errors if not.
     /// @param impl The implementation to check the upgrade criteria for.
     function _checkUpgradeCriteria(address impl) internal view virtual {
         // Check that the quorum for the new implementation is reached.
-        if (!_isQuorumReached(impl)) {
+        if (totalVotes(impl) < Parameters.QUORUM + 1) {
             revert QuorumNotReached(impl);
         }
 
@@ -272,11 +267,9 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         }
     }
 
-    /// @notice Returns the upgrade data from the contract storage location.
-    /// @return proposedUpgrades The data associated with proposed upgrades from current implementation.
-    function _getProposedUpgrades() private view returns (Ranking.ProposedUpgrades storage proposedUpgrades) {
-        XanStorage storage $;
-
+    /// @notice Returns the storage from the contract storage location.
+    /// @return $ The data associated with Xan token storage.
+    function _getXanV1Storage() internal pure returns (XanV1Storage storage $) {
         // solhint-disable no-inline-assembly
         {
             // slither-disable-next-line assembly
@@ -285,7 +278,11 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
             }
         }
         // solhint-enable no-inline-assembly
+    }
 
-        proposedUpgrades = $.proposedUpgrades[implementation()];
+    /// @notice Returns the proposed upgrades from the from current implementation from the contract storage location.
+    /// @return proposedUpgrades The data associated with proposed upgrades from current implementation.
+    function _getProposedUpgrades() internal view virtual returns (Ranking.ProposedUpgrades storage proposedUpgrades) {
+        proposedUpgrades = _getXanV1Storage().proposedUpgrades[implementation()];
     }
 }
