@@ -5,7 +5,7 @@ import {Upgrades, UnsafeUpgrades, Options} from "@openzeppelin/foundry-upgrades/
 import {Test} from "forge-std/Test.sol";
 
 import {XanV1} from "../src/XanV1.sol";
-import {XanV2} from "../test/mock/XanV2.sol";
+import {XanV2} from "../test/mocks/XanV2.m.sol";
 
 contract UpgradeTest is Test {
     address internal _defaultSender;
@@ -25,7 +25,7 @@ contract UpgradeTest is Test {
         );
 
         Options memory opts;
-        _newImpl = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});
+        _newImpl = Upgrades.prepareUpgrade({contractName: "XanV2.m.sol:XanV2", opts: opts});
 
         // Lock the tokens for the `_defaultSender`.
         _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));

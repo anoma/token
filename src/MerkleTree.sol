@@ -3,8 +3,6 @@ pragma solidity ^0.8.27;
 
 import {Arrays} from "@openzeppelin/contracts/utils/Arrays.sol";
 
-import {SHA256} from "./SHA.sol";
-
 /// @notice A Merkle tree implementation populating a tree of variable depth from left to right
 /// and providing on-chain Merkle proofs.
 /// @dev This is a modified version of the OpenZeppelin `MerkleTree` and `MerkleProof` implementation.
@@ -36,7 +34,7 @@ library MerkleTree {
 
         for (uint256 i = 0; i < treeDepth; ++i) {
             Arrays.unsafeAccess(self._zeros, i).value = currentZero;
-            currentZero = SHA256.hash(currentZero, currentZero);
+            currentZero = keccak256(abi.encode(currentZero, currentZero));
         }
 
         initialRoot = currentZero;
@@ -73,12 +71,12 @@ library MerkleTree {
                 // Compute the `currentLevelHash` using the right sibling.
                 // Because we fill the tree from left to right,
                 // the right child is empty and we must use the depth `i` zero hash.
-                currentLevelHash = SHA256.hash(currentLevelHash, Arrays.unsafeAccess(self._zeros, i).value);
+                currentLevelHash = keccak256(abi.encode(currentLevelHash, Arrays.unsafeAccess(self._zeros, i).value));
             } else {
                 // Compute the `currentLevelHash` using the left sibling.
                 // Because we fill the tree from left to right,
                 // the left child is the previous node at depth `i`.
-                currentLevelHash = SHA256.hash(self._nodes[i][currentIndex - 1], currentLevelHash);
+                currentLevelHash = keccak256(abi.encode(self._nodes[i][currentIndex - 1], currentLevelHash));
             }
 
             currentIndex >>= 1;
@@ -173,10 +171,10 @@ library MerkleTree {
         for (uint256 i = 0; i < treeDepth; ++i) {
             if (isLeftSibling(directionBits, i)) {
                 // Left sibling
-                computedHash = SHA256.hash(siblings[i], computedHash);
+                computedHash = keccak256(abi.encode(siblings[i], computedHash));
             } else {
                 // Right sibling
-                computedHash = SHA256.hash(computedHash, siblings[i]);
+                computedHash = keccak256(abi.encode(computedHash, siblings[i]));
             }
         }
         root = computedHash;

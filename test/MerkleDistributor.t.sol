@@ -3,25 +3,24 @@ pragma solidity ^0.8.27;
 
 import {Test} from "forge-std/Test.sol";
 
+import {Parameters} from "../src/libs/Parameters.sol";
 import {MerkleDistributor} from "../src/MerkleDistributor.sol";
+
 import {XanV1} from "../src/XanV1.sol";
+import {MockDistribution} from "./mocks/Distribution.m.sol";
 
-import {MockDistribution} from "./Distribution.m.sol";
-
-contract E2ETest is Test, MockDistribution {
+contract MerkleDistributorTest is Test, MockDistribution {
     MerkleDistributor internal _md;
     XanV1 internal _xanProxy;
 
-    string[4] internal _census;
-
     function setUp() public {
-        // solhint-disable-next-line not-rely-on-time
-        uint256 currentDate = block.timestamp;
-        _md = new MerkleDistributor({root: ROOT, startDate: currentDate, endDate: currentDate + 2 weeks});
+        _md = new MerkleDistributor({
+            root: ROOT,
+            startDate: Parameters.CLAIM_START_TIME,
+            endDate: Parameters.CLAIM_START_TIME + Parameters.CLAIM_DURATION
+        });
 
         _xanProxy = XanV1(_md.token());
-
-        _census = ["Alice", "Bob", "Carol", "Dave"];
 
         // Allocate token
         for (uint256 i = 0; i < _census.length; ++i) {
@@ -38,14 +37,20 @@ contract E2ETest is Test, MockDistribution {
                 index: i,
                 to: voterAddr,
                 value: VOTE_SHARE,
-                lockedValue: VOTE_SHARE,
+                locked: _locked[i],
                 proof: siblings,
                 directionBits: directionBits
             });
 
+            // Check if tokens were transferred locked or unlocked.
             assertEq(_xanProxy.balanceOf(voterAddr), VOTE_SHARE);
-            assertEq(_xanProxy.unlockedBalanceOf(voterAddr), 0);
-            assertEq(_xanProxy.lockedBalanceOf(voterAddr), VOTE_SHARE);
+            if (_locked[i]) {
+                assertEq(_xanProxy.unlockedBalanceOf(voterAddr), 0);
+                assertEq(_xanProxy.lockedBalanceOf(voterAddr), VOTE_SHARE);
+            } else {
+                assertEq(_xanProxy.unlockedBalanceOf(voterAddr), VOTE_SHARE);
+                assertEq(_xanProxy.lockedBalanceOf(voterAddr), 0);
+            }
         }
     }
 }

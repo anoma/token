@@ -6,7 +6,7 @@ import {Test} from "forge-std/Test.sol";
 
 import {XanV1} from "../src/XanV1.sol";
 
-import {MockVoters} from "./Voters.m.sol";
+import {MockVoters} from "./mocks/Voters.m.sol";
 
 contract VotingTest is Test, MockVoters {
     XanV1 internal _xanProxy;

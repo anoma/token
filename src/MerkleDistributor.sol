@@ -7,9 +7,9 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {MerkleTree} from "../src/MerkleTree.sol";
-import {IMerkleDistributor} from "./IMerkleDistributor.sol";
+import {IMerkleDistributor} from "./interfaces/IMerkleDistributor.sol";
 
-import {Leaf} from "./Leaf.sol";
+import {Leaf} from "./libs/Leaf.sol";
 import {XanV1} from "./XanV1.sol";
 
 /// @title MerkleDistributor
@@ -39,14 +39,15 @@ contract MerkleDistributor is IMerkleDistributor {
     error EndDateInThePast();
 
     /// @notice Thrown if tokens have been already claimed from the distributor.
-    /// @param index The index in the balance tree that was claimed.
+    /// @param index The index in the balance tree that was already claimed.
     error TokenAlreadyClaimed(uint256 index);
 
     /// @notice Thrown if a claim is invalid.
     /// @param index The index in the balance tree to be claimed.
     /// @param to The address to which the tokens should be sent.
     /// @param value The value to be claimed.
-    error TokenClaimInvalid(uint256 index, address to, uint256 value);
+    /// @param locked Whether the tokens are locked or not.
+    error TokenClaimInvalid(uint256 index, address to, uint256 value, bool locked);
 
     /// @notice Initializes the distributor.
     /// @param root The merkle root of the balance tree.
@@ -83,7 +84,7 @@ contract MerkleDistributor is IMerkleDistributor {
         uint256 index,
         address to,
         uint256 value,
-        uint256 lockedValue,
+        bool locked,
         bytes32[] calldata proof,
         uint256 directionBits
     ) external override {
@@ -101,18 +102,22 @@ contract MerkleDistributor is IMerkleDistributor {
                 index: index,
                 to: to,
                 value: value,
-                lockedValue: lockedValue,
+                locked: locked,
                 proof: proof,
                 directionBits: directionBits
             })
         ) {
-            revert TokenClaimInvalid({index: index, to: to, value: value});
+            revert TokenClaimInvalid({index: index, to: to, value: value, locked: locked});
         }
 
         _setClaimed(index);
-        emit Claimed({index: index, to: to, value: value});
+        emit Claimed({index: index, to: to, value: value, locked: locked});
 
-        _XAN.transferAndLock({to: to, value: value});
+        if (locked) {
+            _XAN.transferAndLock({to: to, value: value});
+        } else {
+            _XAN.safeTransfer({to: to, value: value});
+        }
     }
 
     /// @inheritdoc IMerkleDistributor
@@ -130,7 +135,7 @@ contract MerkleDistributor is IMerkleDistributor {
         uint256 index,
         address to,
         uint256 value,
-        uint256 lockedValue,
+        bool locked,
         bytes32[] memory proof,
         uint256 directionBits
     ) public view override returns (uint256 unclaimedValue) {
@@ -140,7 +145,7 @@ contract MerkleDistributor is IMerkleDistributor {
             index: index,
             to: to,
             value: value,
-            lockedValue: lockedValue,
+            locked: locked,
             proof: proof,
             directionBits: directionBits
         }) ? value : 0;
@@ -167,18 +172,18 @@ contract MerkleDistributor is IMerkleDistributor {
     /// @param index The index in the balance tree to be claimed.
     /// @param to The receiving address.
     /// @param value The value of tokens.
-    /// @param lockedValue The locked value of tokens.
+    /// @param locked Whether the tokens are locked or not.
     /// @param proof The merkle proof to be verified.
     /// @return valid Whether the proof is valid or not.
     function _verifyProof(
         uint256 index,
         address to,
         uint256 value,
-        uint256 lockedValue,
+        bool locked,
         bytes32[] memory proof,
         uint256 directionBits
     ) internal view returns (bool valid) {
-        bytes32 leaf = Leaf.hash({index: index, to: to, value: value, lockedValue: lockedValue});
+        bytes32 leaf = Leaf.hash({index: index, to: to, value: value, locked: locked});
 
         bytes32 computedRoot = MerkleTree.processProof({siblings: proof, directionBits: directionBits, leaf: leaf});
 

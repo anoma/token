@@ -6,8 +6,8 @@ import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/
 import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
 import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
-import {IXanV1} from "./IXanV1.sol";
-import {Parameters} from "./Parameters.sol";
+import {IXanV1} from "./interfaces/IXanV1.sol";
+import {Parameters} from "./libs/Parameters.sol";
 
 contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.

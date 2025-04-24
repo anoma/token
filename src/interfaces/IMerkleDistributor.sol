@@ -6,7 +6,8 @@ interface IMerkleDistributor {
     /// @param index The index in the balance tree that was claimed.
     /// @param to The address to which the tokens are sent.
     /// @param value The claimed value.
-    event Claimed(uint256 indexed index, address indexed to, uint256 value);
+    /// @param locked Whether the tokens are locked or not.
+    event Claimed(uint256 indexed index, address indexed to, uint256 value, bool locked);
 
     /// @notice The [ERC-20](https://eips.ethereum.org/EIPS/eip-20) token being distributed.
     /// @return addr The token address.
@@ -19,14 +20,15 @@ interface IMerkleDistributor {
     /// @notice Claims tokens from the balance tree and sends it to an address.
     /// @param index The index in the balance tree to be claimed.
     /// @param to The receiving address.
-    /// @param value The value of tokens.
-    /// @param value The locked value of tokens.
+    /// @param value The number of tokens to claim.
+    /// @param locked Whether the tokens are locked or not.
     /// @param proof The merkle proof to be verified.
+    /// @param directionBits The direction bits proof to be verified.
     function claim(
         uint256 index,
         address to,
         uint256 value,
-        uint256 lockedValue,
+        bool locked,
         bytes32[] calldata proof,
         uint256 directionBits
     ) external;
@@ -34,15 +36,15 @@ interface IMerkleDistributor {
     /// @notice Returns the value of unclaimed tokens.
     /// @param index The index in the balance tree to be claimed.
     /// @param to The receiving address.
-    /// @param value The value of tokens.
-    /// @param value The locked value of tokens.
+    /// @param value The number of unclaimed tokens.
+    /// @param locked Whether the tokens are locked or not.
     /// @param proof The merkle proof to be verified.
     /// @return unclaimedValue The unclaimed value.
     function unclaimedBalance(
         uint256 index,
         address to,
         uint256 value,
-        uint256 lockedValue,
+        bool locked,
         bytes32[] memory proof,
         uint256 directionBits
     ) external returns (uint256 unclaimedValue);

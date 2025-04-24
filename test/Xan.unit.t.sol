@@ -4,7 +4,7 @@ pragma solidity ^0.8.27;
 import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {Parameters} from "../src/Parameters.sol";
+import {Parameters} from "../src/libs/Parameters.sol";
 import {IXanV1, XanV1} from "../src/XanV1.sol";
 
 contract UnitTest is Test {

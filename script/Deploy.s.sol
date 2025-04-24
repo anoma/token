@@ -3,12 +3,12 @@
 pragma solidity ^0.8.27;
 
 import {Script} from "forge-std/Script.sol";
+
+import {Parameters} from "../src/libs/Parameters.sol";
 import {MerkleDistributor} from "../src/MerkleDistributor.sol";
 
-import {Parameters} from "../src/Parameters.sol";
-
 contract Deploy is Script {
-    bytes32 internal constant _ROOT = keccak256("TODO"); // TODO replacce
+    bytes32 internal constant _ROOT = keccak256("TODO"); // TODO replace
 
     function run() public {
         vm.startBroadcast();
@@ -17,7 +17,7 @@ contract Deploy is Script {
         if (_ROOT == keccak256("TODO")) revert("TODO");
 
         // solhint-disable-next-line not-rely-on-time
-        uint256 startDate = block.timestamp + 5 minutes;
+        uint256 startDate = Parameters.CLAIM_START_TIME;
 
         new MerkleDistributor({root: _ROOT, startDate: startDate, endDate: startDate + Parameters.CLAIM_DURATION});
 
