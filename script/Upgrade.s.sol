@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+pragma solidity ^0.8.27;
+
+import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
+
+import {Script} from "forge-std/Script.sol";
+
+import {XanV2} from "../test/mock/XanV2.sol";
+
+contract Deploy is Script {
+    address internal constant _XAN_PROXY = address(0); // TODO replacce
+
+    function run() public {
+        vm.startBroadcast();
+
+        // solhint-disable-next-line gas-custom-errors;
+        if (_XAN_PROXY == address(0)) revert("TODO");
+
+        Upgrades.upgradeProxy({
+            proxy: _XAN_PROXY,
+            contractName: "XanV2.sol:XanV2",
+            data: abi.encodeCall(XanV2.initializeV2, ())
+        });
+
+        vm.stopBroadcast();
+    }
+}

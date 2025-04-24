@@ -64,6 +64,10 @@ jobs:
         run: bunx --bun solhint --config .solhint.other.json 'script/**/*.sol'
         id: solhint-script
 
+      - name: Run Forge clean
+        run: forge clean
+        id: clean
+
       - name: Run Forge build
         run: forge build --sizes --ast
         id: build

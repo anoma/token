@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma solidity ^0.8.27;
+
+import {XanV1} from "../../src/XanV1.sol";
+
+/// @custom:oz-upgrades-from XanV1
+contract XanV2 is XanV1 {
+    event Reinitialized();
+
+    function initialize(address initialOwner) external override initializer {
+        __XanV1_init(initialOwner);
+        __XanV2_init();
+    }
+
+    /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
+    /// @custom:oz-upgrades-validate-as-initializer
+    function initializeV2() external reinitializer(2) {
+        __XanV2_init();
+    }
+
+    /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
+    function __XanV2_init() internal onlyInitializing {
+        __XanV2_init_unchained();
+    }
+
+    /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
+    function __XanV2_init_unchained() internal onlyInitializing 
+    // solhint-disable-next-line no-empty-blocks
+    {
+        emit Reinitialized();
+    }
+}

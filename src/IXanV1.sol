@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.27;
 
-interface IXan {
+interface IXanV1 {
     /// @notice Emitted when tokens are locked.
     /// @param owner The owning account.
     /// @param value The number of tokens being locked.
@@ -37,28 +37,28 @@ interface IXan {
     /// @notice Casts the vote with the currently locked balance for a new implementation.
     /// An old votum will only get updated if the new locked balance is larger than the old votum.
     /// Otherwise, the function will revert with an error.
-    /// @param newImplementation The new implementation to cast the vote for.
-    function castVote(address newImplementation) external;
+    /// @param proposedImpl The proposed implementation to cast the vote for.
+    function castVote(address proposedImpl) external;
 
     /// @notice Revokes the vote from a new implementation.
-    /// @param newImplementation The new implementation to revoke the vote for.
-    function revokeVote(address newImplementation) external;
+    /// @param proposedImpl The proposed implementation to revoke the vote for.
+    function revokeVote(address proposedImpl) external;
 
     /// @notice Starts the delay period if the
-    /// @param newImplementation The new implementation to start the delay period for.
-    function startDelayPeriod(address newImplementation) external;
+    /// @param proposedImpl The proposed implementation to start the delay period for.
+    function startDelayPeriod(address proposedImpl) external;
 
     /// @notice Returns the total votes for a new implementation.
     /// @return votes The total votes implementation.
-    function totalVotes(address newImplementation) external view returns (uint256 votes);
+    function totalVotes(address proposedImpl) external view returns (uint256 votes);
 
     /// @notice Checks if the delay period has ended and reverts with errors if not.
-    /// @param newImplementation The new implementation to check the delay period for.
-    function checkDelayPeriod(address newImplementation) external view;
+    /// @param proposedImpl The proposed implementation to check the delay period for.
+    function checkDelayPeriod(address proposedImpl) external view;
 
     /// @notice Checks if the criteria to upgrade to the new implementation are met and reverts with errors if not.
-    /// @param newImplementation The new implementation to check the upgrade criteria for.
-    function checkUpgradeCriteria(address newImplementation) external view;
+    /// @param proposedImpl The proposed implementation to check the upgrade criteria for.
+    function checkUpgradeCriteria(address proposedImpl) external view;
 
     /// @notice Returns the unlocked token balance of an account.
     /// @param from The account to query.
@@ -75,12 +75,12 @@ interface IXan {
     function lockedTotalSupply() external view returns (uint256 lockedSupply);
 
     /// @notice Returns the current implementation
-    /// @return currentImplementation The current implementation.
-    function implementation() external view returns (address currentImplementation);
+    /// @return current The current implementation.
+    function implementation() external view returns (address current);
 
-    /// @notice Returns the implementation with the respective rank.
+    /// @notice Returns the proposed implementation with the respective rank.
     /// @return rankedImplementation The implementation with the respective rank.
-    function implementationByRank(uint48 rank) external view returns (address rankedImplementation);
+    function implementationRank(uint64 rank) external view returns (address rankedImplementation);
 
     /// @notice Returns the delay duration.
     /// @return duration The delay duration.
