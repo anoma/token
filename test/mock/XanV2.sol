@@ -12,15 +12,21 @@ contract XanV2 is Xan {
         __XanV2_init();
     }
 
+    /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
     /// @custom:oz-upgrades-validate-as-initializer
-    function initializeV2() external reinitializer(2) 
-    // solhint-disable-next-line no-empty-blocks
-    {
+    function initializeV2() external reinitializer(2) {
         __XanV2_init();
-        emit Reinitialized();
     }
 
-    function __XanV2_init() internal onlyInitializing 
+    /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
+    function __XanV2_init() internal onlyInitializing {
+        __XanV2_init_unchained();
+    }
+
+    /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
+    function __XanV2_init_unchained() internal onlyInitializing 
     // solhint-disable-next-line no-empty-blocks
-    {}
+    {
+        emit Reinitialized();
+    }
 }

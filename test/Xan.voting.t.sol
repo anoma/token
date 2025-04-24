@@ -17,20 +17,13 @@ contract VotingTest is Test, MockVoters {
     address internal _implB;
     address internal _implC;
 
-    Options internal _opts; // TODO! 👈 Remove ‼️
-
     function setUp() public {
         (, address _defaultSender,) = vm.readCallers();
-
-        // TODO! 👇 Remove ‼️
-        _opts.unsafeSkipAllChecks = true;
-        // TODO! 👆 Remove ‼️
 
         _xanProxy = Xan(
             Upgrades.deployUUPSProxy({
                 contractName: "Xan.sol:Xan",
-                initializerData: abi.encodeCall(Xan.initialize, _defaultSender),
-                opts: _opts // TODO! 👈 Remove ‼️
+                initializerData: abi.encodeCall(Xan.initialize, _defaultSender)
             })
         );
 

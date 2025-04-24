@@ -68,7 +68,6 @@ contract Xan is IXan, ERC20Upgradeable, UUPSUpgradeable {
     // solhint-disable-next-line comprehensive-interface
     function initialize(address initialOwner) external virtual initializer {
         __Xan_init(initialOwner);
-        _mint(initialOwner, Parameters.SUPPLY);
     }
 
     /// @inheritdoc IXan
@@ -311,7 +310,10 @@ contract Xan is IXan, ERC20Upgradeable, UUPSUpgradeable {
         __Xan_init_unchained(initialOwner);
     }
 
-    function __Xan_init_unchained(address initialOwner) internal onlyInitializing {}
+    /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
+    function __Xan_init_unchained(address initialOwner) internal onlyInitializing {
+        _mint(initialOwner, Parameters.SUPPLY);
+    }
 
     /// @inheritdoc ERC20Upgradeable
     function _update(address from, address to, uint256 value) internal override {

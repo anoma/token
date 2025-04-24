@@ -13,28 +13,20 @@ contract UnitTest is Test {
 
     address internal constant _IMPL = address(uint160(1));
 
-    Options internal _opts; // TODO! 👈 Remove ‼️
-
     function setUp() public {
         (, _defaultSender,) = vm.readCallers();
-
-        // TODO! 👇 Remove ‼️
-        _opts.unsafeSkipAllChecks = true;
-        // TODO! 👆 Remove ‼️
 
         vm.prank(_defaultSender);
         _xanProxy = Xan(
             Upgrades.deployUUPSProxy({
                 contractName: "Xan.sol:Xan",
-                initializerData: abi.encodeCall(Xan.initialize, _defaultSender),
-                opts: _opts // TODO! 👈 Remove ‼️
+                initializerData: abi.encodeCall(Xan.initialize, _defaultSender)
             })
         );
     }
 
     function test_initialize_mints_the_supply_for_the_specified_owner() public {
-        Xan uninitializedProxy =
-            Xan(Upgrades.deployUUPSProxy({contractName: "Xan.sol:Xan", initializerData: "", opts: _opts}));
+        Xan uninitializedProxy = Xan(Upgrades.deployUUPSProxy({contractName: "Xan.sol:Xan", initializerData: ""}));
 
         assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), 0);
 
