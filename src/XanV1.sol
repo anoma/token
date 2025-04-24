@@ -25,13 +25,13 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
     // solhint-disable-next-line max-line-length
     bytes32 internal constant _XAN_STORAGE_LOCATION = 0x52f7d5fb153315ca313a5634db151fa7e0b41cd83fe6719e93ed3cd02b69d200;
 
-    error InsufficientUnlockedBalance(address sender, uint256 unlockedBalance, uint256 needed);
+    error InsufficientUnlockedBalance(address sender, uint256 unlockedBalance, uint256 valueToLock);
     error InsufficientLockedBalance(address sender, uint256 lockedBalance);
-    error ImplementationNotMostVoted(address newImpl, address mostVotedImpl);
+    error ImplementationNotWinning(address proposedImpl, address winningImpl);
     error ImplementationZeroAddress(address invalidImpl);
-    error DelayPeriodNotStarted(address newImpl);
-    error DelayPeriodNotEnded(address newImpl);
-    error QuorumNotReached(address newImpl);
+    error DelayPeriodNotStarted(address proposedImpl);
+    error DelayPeriodNotEnded(address proposedImpl);
+    error QuorumNotReached(address proposedImpl);
     error ImplementationRankNonExistent(uint64 implCount, uint64 rank);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -51,7 +51,7 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         uint256 unlockedBalance = unlockedBalanceOf(owner);
 
         if (value > unlockedBalance) {
-            revert InsufficientUnlockedBalance({sender: owner, unlockedBalance: unlockedBalance, needed: value});
+            revert InsufficientUnlockedBalance({sender: owner, unlockedBalance: unlockedBalance, valueToLock: value});
         }
 
         _lock({to: owner, value: value});
@@ -185,10 +185,10 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         }
 
         // Check that the new implementation is the most voted implementation.
-        address mostVotedImpl = _getProposedUpgrades().ranking[0];
+        address winningImpl = _getProposedUpgrades().ranking[0];
 
-        if (proposedImpl != mostVotedImpl) {
-            revert ImplementationNotMostVoted({newImpl: proposedImpl, mostVotedImpl: mostVotedImpl});
+        if (proposedImpl != winningImpl) {
+            revert ImplementationNotWinning({proposedImpl: proposedImpl, winningImpl: winningImpl});
         }
     }
 
@@ -239,7 +239,8 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
             uint256 unlockedBalance = unlockedBalanceOf(from);
 
             if (value > unlockedBalance) {
-                revert InsufficientUnlockedBalance({sender: from, unlockedBalance: unlockedBalance, needed: value});
+                // solhint-disable-next-line max-line-length
+                revert InsufficientUnlockedBalance({sender: from, unlockedBalance: unlockedBalance, valueToLock: value});
             }
         }
 
