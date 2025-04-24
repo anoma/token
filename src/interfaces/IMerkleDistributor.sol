@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.27;
 
+import {MerkleTree} from "../MerkleTree.sol";
+
 interface IMerkleDistributor {
     /// @notice Emitted when tokens are claimed from the distributor.
     /// @param index The index in the balance tree that was claimed.
@@ -23,15 +25,7 @@ interface IMerkleDistributor {
     /// @param value The number of tokens to claim.
     /// @param locked Whether the tokens are locked or not.
     /// @param proof The merkle proof to be verified.
-    /// @param directionBits The direction bits proof to be verified.
-    function claim(
-        uint256 index,
-        address to,
-        uint256 value,
-        bool locked,
-        bytes32[] calldata proof,
-        uint256 directionBits
-    ) external;
+    function claim(uint256 index, address to, uint256 value, bool locked, MerkleTree.Proof calldata proof) external;
 
     /// @notice Returns the value of unclaimed tokens.
     /// @param index The index in the balance tree to be claimed.
@@ -39,15 +33,9 @@ interface IMerkleDistributor {
     /// @param value The number of unclaimed tokens.
     /// @param locked Whether the tokens are locked or not.
     /// @param proof The merkle proof to be verified.
-    /// @return unclaimedValue The unclaimed value.
-    function unclaimedBalance(
-        uint256 index,
-        address to,
-        uint256 value,
-        bool locked,
-        bytes32[] memory proof,
-        uint256 directionBits
-    ) external returns (uint256 unclaimedValue);
+    function unclaimedBalance(uint256 index, address to, uint256 value, bool locked, MerkleTree.Proof calldata proof)
+        external
+        returns (uint256 unclaimedValue);
 
     /// @notice Checks if an index on the merkle tree is claimed.
     /// @param index The index in the balance tree to be claimed.

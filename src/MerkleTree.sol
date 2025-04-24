@@ -15,6 +15,14 @@ library MerkleTree {
         bytes32[] _zeros;
     }
 
+    /// @notice A proof struct consisting of siblings and direction bits proving inclusion of a leaf in the tree.
+    /// @param siblings The siblings of the leaf to proof inclusion for.
+    /// @param directionBits The direction bits indicating whether the siblings are left of right.
+    struct Proof {
+        bytes32[] siblings;
+        uint256 directionBits;
+    }
+
     /// @notice The hash representing the empty leaf that is not expected to be part of the tree.
     /// @dev Obtained from `sha256("EMPTY_LEAF")`.
     bytes32 internal constant _EMPTY_LEAF_HASH = 0x283d1bb3a401a7e0302d0ffb9102c8fc1f4730c2715a2bfd46a9d9209d5965e0;
@@ -88,19 +96,14 @@ library MerkleTree {
     /// indicating whether the sibling is left (0) or right (1) at the respective depth.
     /// @param self The tree data structure.
     /// @param index The index of the leaf.
-    /// @return siblings The siblings of the leaf to proof inclusion for.
-    /// @return directionBits The direction bits indicating whether the siblings are left of right.
-    function merkleProof(Tree storage self, uint256 index)
-        internal
-        view
-        returns (bytes32[] memory siblings, uint256 directionBits)
-    {
+    /// @return proof The proof.
+    function merkleProof(Tree storage self, uint256 index) internal view returns (Proof memory proof) {
         uint256 treeDepth = depth(self);
 
         // Check whether the index exists or not.
         if (index + 1 > self._nextLeafIndex) revert NonExistentLeafIndex(index);
 
-        siblings = new bytes32[](treeDepth);
+        proof.siblings = new bytes32[](treeDepth);
         uint256 currentIndex = index;
         bytes32 currentSibling;
 
@@ -112,7 +115,7 @@ library MerkleTree {
                 currentSibling = self._nodes[i][currentIndex + 1];
 
                 // Set the direction bit at position `i` to 1.
-                directionBits |= (1 << i);
+                proof.directionBits |= (1 << i);
             } else {
                 // Sibling is left.
                 currentSibling = self._nodes[i][currentIndex - 1];
@@ -123,10 +126,10 @@ library MerkleTree {
             // Check if the sibling is an empty subtree.
             if (currentSibling == bytes32(0)) {
                 // The subtree node doesn't exist, so we store the zero hash instead.
-                siblings[i] = Arrays.unsafeAccess(self._zeros, i).value;
+                proof.siblings[i] = Arrays.unsafeAccess(self._zeros, i).value;
             } else {
                 // The subtree node exists, so we store it.
-                siblings[i] = currentSibling;
+                proof.siblings[i] = currentSibling;
             }
 
             // Shift the number one bit to the right to drop the last binary digit.
@@ -156,25 +159,20 @@ library MerkleTree {
     }
 
     /// @notice Processes a Merkle proof consisting of siblings and direction bits and returns the resulting root.
-    /// @param siblings The siblings.
-    /// @param directionBits The direction bits indicating whether the siblings are left of right.
+    /// @param proof The proof.
     /// @param leaf The leaf.
     /// @return root The resulting root obtained by processing the leaf, siblings, and direction bits.
-    function processProof(bytes32[] memory siblings, uint256 directionBits, bytes32 leaf)
-        internal
-        pure
-        returns (bytes32 root)
-    {
+    function processProof(Proof memory proof, bytes32 leaf) internal pure returns (bytes32 root) {
         bytes32 computedHash = leaf;
 
-        uint256 treeDepth = siblings.length;
+        uint256 treeDepth = proof.siblings.length;
         for (uint256 i = 0; i < treeDepth; ++i) {
-            if (isLeftSibling(directionBits, i)) {
+            if (isLeftSibling(proof.directionBits, i)) {
                 // Left sibling
-                computedHash = keccak256(abi.encode(siblings[i], computedHash));
+                computedHash = keccak256(abi.encode(proof.siblings[i], computedHash));
             } else {
                 // Right sibling
-                computedHash = keccak256(abi.encode(computedHash, siblings[i]));
+                computedHash = keccak256(abi.encode(computedHash, proof.siblings[i]));
             }
         }
         root = computedHash;

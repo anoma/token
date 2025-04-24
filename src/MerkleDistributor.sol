@@ -27,16 +27,16 @@ contract MerkleDistributor is IMerkleDistributor {
     /// @notice The start data of the claim.
     uint256 internal immutable _START_DATE;
 
-    /// @notice The end date of the claim.
+    /// @notice The end time of the claim.
     uint256 internal immutable _END_DATE;
 
     /// @notice A packed array of booleans containing the information who claimed.
     mapping(uint256 claimedWordIndex => uint256 claimedWord) internal _claimedBitMap;
 
-    error StartDateAfterEndDate();
-    error StartDateInTheFuture();
-    error StartDateInThePast();
-    error EndDateInThePast();
+    error StartTimeAfterEndTime();
+    error StartTimeInTheFuture();
+    error StartTimeInThePast();
+    error EndTimeInThePast();
 
     /// @notice Thrown if tokens have been already claimed from the distributor.
     /// @param index The index in the balance tree that was already claimed.
@@ -51,20 +51,22 @@ contract MerkleDistributor is IMerkleDistributor {
 
     /// @notice Initializes the distributor.
     /// @param root The merkle root of the balance tree.
-    /// @param startDate The start date of the claim period.
-    /// @param endDate The end date of the claim period.
-    constructor(bytes32 root, uint256 startDate, uint256 endDate) {
+    /// @param startTime The start time of the claim period.
+    /// @param endTime The end time of the claim period.
+    constructor(bytes32 root, uint256 startTime, uint256 endTime) {
+        // Validate dates
         // solhint-disable not-rely-on-time, gas-strict-inequalities
-        if (startDate >= endDate) revert StartDateAfterEndDate();
+        {
+            if (startTime >= endTime) revert StartTimeAfterEndTime();
 
-        // slither-disable-next-line timestamp
-        if (startDate < block.timestamp) revert StartDateInThePast();
-        _START_DATE = startDate;
+            // slither-disable-next-line timestamp
+            if (startTime < block.timestamp) revert StartTimeInThePast();
+            _START_DATE = startTime;
 
-        // slither-disable-next-line timestamp
-        if (endDate <= block.timestamp) revert EndDateInThePast();
-        _END_DATE = endDate;
-
+            // slither-disable-next-line timestamp
+            if (endTime <= block.timestamp) revert EndTimeInThePast();
+            _END_DATE = endTime;
+        }
         // solhint-enable not-rely-on-time, gas-strict-inequalities
 
         _XAN = XanV1(
@@ -80,33 +82,20 @@ contract MerkleDistributor is IMerkleDistributor {
     }
 
     /// @inheritdoc IMerkleDistributor
-    function claim(
-        uint256 index,
-        address to,
-        uint256 value,
-        bool locked,
-        bytes32[] calldata proof,
-        uint256 directionBits
-    ) external override {
+    function claim(uint256 index, address to, uint256 value, bool locked, MerkleTree.Proof calldata proof)
+        external
+        override
+    {
         // solhint-disable not-rely-on-time
         // slither-disable-next-line timestamp
-        if (block.timestamp < _START_DATE) revert StartDateInTheFuture();
+        if (block.timestamp < _START_DATE) revert StartTimeInTheFuture();
 
         // slither-disable-next-line timestamp
-        if (_END_DATE < block.timestamp) revert EndDateInThePast();
+        if (_END_DATE < block.timestamp) revert EndTimeInThePast();
         // solhint-enable not-rely-on-time
 
         if (isClaimed(index)) revert TokenAlreadyClaimed(index);
-        if (
-            !_verifyProof({
-                index: index,
-                to: to,
-                value: value,
-                locked: locked,
-                proof: proof,
-                directionBits: directionBits
-            })
-        ) {
+        if (!_verifyProof({index: index, to: to, value: value, locked: locked, proof: proof})) {
             revert TokenClaimInvalid({index: index, to: to, value: value, locked: locked});
         }
 
@@ -131,24 +120,16 @@ contract MerkleDistributor is IMerkleDistributor {
     }
 
     /// @inheritdoc IMerkleDistributor
-    function unclaimedBalance(
-        uint256 index,
-        address to,
-        uint256 value,
-        bool locked,
-        bytes32[] memory proof,
-        uint256 directionBits
-    ) public view override returns (uint256 unclaimedValue) {
+    function unclaimedBalance(uint256 index, address to, uint256 value, bool locked, MerkleTree.Proof calldata proof)
+        public
+        view
+        override
+        returns (uint256 unclaimedValue)
+    {
         if (isClaimed(index)) return 0;
 
-        return unclaimedValue = _verifyProof({
-            index: index,
-            to: to,
-            value: value,
-            locked: locked,
-            proof: proof,
-            directionBits: directionBits
-        }) ? value : 0;
+        return unclaimedValue =
+            _verifyProof({index: index, to: to, value: value, locked: locked, proof: proof}) ? value : 0;
     }
 
     /// @inheritdoc IMerkleDistributor
@@ -175,17 +156,14 @@ contract MerkleDistributor is IMerkleDistributor {
     /// @param locked Whether the tokens are locked or not.
     /// @param proof The merkle proof to be verified.
     /// @return valid Whether the proof is valid or not.
-    function _verifyProof(
-        uint256 index,
-        address to,
-        uint256 value,
-        bool locked,
-        bytes32[] memory proof,
-        uint256 directionBits
-    ) internal view returns (bool valid) {
+    function _verifyProof(uint256 index, address to, uint256 value, bool locked, MerkleTree.Proof calldata proof)
+        internal
+        view
+        returns (bool valid)
+    {
         bytes32 leaf = Leaf.hash({index: index, to: to, value: value, locked: locked});
 
-        bytes32 computedRoot = MerkleTree.processProof({siblings: proof, directionBits: directionBits, leaf: leaf});
+        bytes32 computedRoot = MerkleTree.processProof({proof: proof, leaf: leaf});
 
         valid = computedRoot == _ROOT;
     }

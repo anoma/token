@@ -12,8 +12,8 @@ library Parameters {
     uint32 internal constant DELAY_DURATION = 2 weeks;
 
     /// @notice The claim start time (Sun Jun 01 2025 12:00:00 UTC).
-    uint48 internal constant CLAIM_START_TIME = 1748779200;
+    uint48 internal constant CLAIM_START_TIME = 1748779200; // TODO replace by real time
 
     /// @notice The claim duration.
-    uint32 internal constant CLAIM_DURATION = 365 days;
+    uint32 internal constant CLAIM_DURATION = 365 days; // TODO replace by real duration
 }

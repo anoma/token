@@ -17,9 +17,9 @@ contract Deploy is Script {
         if (_ROOT == keccak256("TODO")) revert("TODO");
 
         // solhint-disable-next-line not-rely-on-time
-        uint256 startDate = Parameters.CLAIM_START_TIME;
+        uint256 startTime = Parameters.CLAIM_START_TIME;
 
-        new MerkleDistributor({root: _ROOT, startDate: startDate, endDate: startDate + Parameters.CLAIM_DURATION});
+        new MerkleDistributor({root: _ROOT, startTime: startTime, endTime: startTime + Parameters.CLAIM_DURATION});
 
         vm.stopBroadcast();
     }

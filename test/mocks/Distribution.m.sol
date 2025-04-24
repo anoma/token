@@ -35,7 +35,7 @@ contract MockDistribution is MockVoters {
         ROOT = newRoot;
     }
 
-    function _merkleProof(uint256 index) internal view returns (bytes32[] memory siblings, uint256 directionBits) {
-        (siblings, directionBits) = _tree.merkleProof(index);
+    function _merkleProof(uint256 index) internal view returns (MerkleTree.Proof memory proof) {
+        proof = _tree.merkleProof(index);
     }
 }

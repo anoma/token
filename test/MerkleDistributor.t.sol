@@ -16,8 +16,8 @@ contract MerkleDistributorTest is Test, MockDistribution {
     function setUp() public {
         _md = new MerkleDistributor({
             root: ROOT,
-            startDate: Parameters.CLAIM_START_TIME,
-            endDate: Parameters.CLAIM_START_TIME + Parameters.CLAIM_DURATION
+            startTime: Parameters.CLAIM_START_TIME,
+            endTime: Parameters.CLAIM_START_TIME + Parameters.CLAIM_DURATION
         });
 
         _xanProxy = XanV1(_md.token());
@@ -29,8 +29,6 @@ contract MerkleDistributorTest is Test, MockDistribution {
             assertEq(_xanProxy.balanceOf(voterAddr), 0);
             assertEq(_xanProxy.lockedBalanceOf(voterAddr), 0);
 
-            (bytes32[] memory siblings, uint256 directionBits) = _merkleProof({index: voterId(_census[i])});
-
             // Call as voter.
             vm.prank(voterAddr);
             _md.claim({
@@ -38,8 +36,7 @@ contract MerkleDistributorTest is Test, MockDistribution {
                 to: voterAddr,
                 value: VOTE_SHARE,
                 locked: _locked[i],
-                proof: siblings,
-                directionBits: directionBits
+                proof: _merkleProof({index: voterId(_census[i])})
             });
 
             // Check if tokens were transferred locked or unlocked.
