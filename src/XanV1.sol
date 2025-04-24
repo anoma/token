@@ -22,8 +22,8 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
 
     /// @notice The ERC-7201 storage location of the contract (see https://eips.ethereum.org/EIPS/eip-7201).
     /// @dev `keccak256(abi.encode(uint256(keccak256("anoma.storage.Xan.v1")) - 1)) & ~bytes32(uint256(0xff))`
-    // solhint-disable-next-line max-line-length
-    bytes32 internal constant _XAN_STORAGE_LOCATION = 0x52f7d5fb153315ca313a5634db151fa7e0b41cd83fe6719e93ed3cd02b69d200;
+    bytes32 internal constant _XAN_V1_STORAGE_LOCATION =
+        0x52f7d5fb153315ca313a5634db151fa7e0b41cd83fe6719e93ed3cd02b69d200;
 
     error InsufficientUnlockedBalance(address sender, uint256 unlockedBalance, uint256 valueToLock);
     error InsufficientLockedBalance(address sender, uint256 lockedBalance);
@@ -267,6 +267,12 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         }
     }
 
+    /// @notice Returns the proposed upgrades from the from current implementation from the contract storage location.
+    /// @return proposedUpgrades The data associated with proposed upgrades from current implementation.
+    function _getProposedUpgrades() internal view virtual returns (Ranking.ProposedUpgrades storage proposedUpgrades) {
+        proposedUpgrades = _getXanV1Storage().proposedUpgrades[implementation()];
+    }
+
     /// @notice Returns the storage from the contract storage location.
     /// @return $ The data associated with Xan token storage.
     function _getXanV1Storage() internal pure returns (XanV1Storage storage $) {
@@ -274,15 +280,9 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         {
             // slither-disable-next-line assembly
             assembly {
-                $.slot := _XAN_STORAGE_LOCATION
+                $.slot := _XAN_V1_STORAGE_LOCATION
             }
         }
         // solhint-enable no-inline-assembly
-    }
-
-    /// @notice Returns the proposed upgrades from the from current implementation from the contract storage location.
-    /// @return proposedUpgrades The data associated with proposed upgrades from current implementation.
-    function _getProposedUpgrades() internal view virtual returns (Ranking.ProposedUpgrades storage proposedUpgrades) {
-        proposedUpgrades = _getXanV1Storage().proposedUpgrades[implementation()];
     }
 }
