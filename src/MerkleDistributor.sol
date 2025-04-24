@@ -94,6 +94,7 @@ contract MerkleDistributor is IMerkleDistributor {
         if (_END_DATE < currentTime) revert EndTimeInThePast();
 
         if (isClaimed(index)) revert TokenAlreadyClaimed(index);
+
         if (!_verifyProof({index: index, to: to, value: value, locked: locked, proof: proof})) {
             revert TokenClaimInvalid({index: index, to: to, value: value, locked: locked});
         }
