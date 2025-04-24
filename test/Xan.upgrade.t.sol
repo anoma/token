@@ -4,6 +4,7 @@ pragma solidity ^0.8.27;
 import {Upgrades, UnsafeUpgrades, Options} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
+import {Parameters} from "../src/libs/Parameters.sol";
 import {XanV1} from "../src/XanV1.sol";
 import {XanV2} from "../test/mocks/XanV2.m.sol";
 
@@ -38,7 +39,7 @@ contract UpgradeTest is Test {
         _xanProxy.castVote(_newImpl);
         _xanProxy.startDelayPeriod(_newImpl);
 
-        skip(_xanProxy.delayDuration());
+        skip(Parameters.DELAY_DURATION);
 
         vm.expectEmit(address(_xanProxy));
         emit XanV2.Reinitialized();
@@ -71,7 +72,7 @@ contract UpgradeTest is Test {
             _xanProxy.checkDelayPeriod(_newImpl);
 
             // Advance to the end of the delay period
-            skip(_xanProxy.delayDuration());
+            skip(Parameters.DELAY_DURATION);
 
             // Check that the delay has passed
             _xanProxy.checkDelayPeriod(_newImpl);

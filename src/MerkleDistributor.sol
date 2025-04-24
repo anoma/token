@@ -5,6 +5,7 @@ pragma solidity ^0.8.27;
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
 import {MerkleTree} from "../src/MerkleTree.sol";
 import {IMerkleDistributor} from "./interfaces/IMerkleDistributor.sol";
@@ -55,19 +56,19 @@ contract MerkleDistributor is IMerkleDistributor {
     /// @param endTime The end time of the claim period.
     constructor(bytes32 root, uint256 startTime, uint256 endTime) {
         // Validate dates
-        // solhint-disable not-rely-on-time, gas-strict-inequalities
+        // solhint-disable gas-strict-inequalities
         {
             if (startTime >= endTime) revert StartTimeAfterEndTime();
 
-            // slither-disable-next-line timestamp
-            if (startTime < block.timestamp) revert StartTimeInThePast();
+            uint64 currentTime = Time.timestamp();
+
+            if (startTime < currentTime) revert StartTimeInThePast();
             _START_DATE = startTime;
 
-            // slither-disable-next-line timestamp
-            if (endTime <= block.timestamp) revert EndTimeInThePast();
+            if (endTime <= currentTime) revert EndTimeInThePast();
             _END_DATE = endTime;
         }
-        // solhint-enable not-rely-on-time, gas-strict-inequalities
+        // solhint-enable  gas-strict-inequalities
 
         _XAN = XanV1(
             address(

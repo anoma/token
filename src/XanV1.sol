@@ -139,7 +139,7 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
             revert DelayPeriodNotStarted(proposedImpl);
         }
 
-        ballot.delayEndTime = startTime + delayDuration(); // TODO remove
+        ballot.delayEndTime = startTime + Parameters.DELAY_DURATION;
 
         emit DelayStarted({implementation: proposedImpl, startTime: startTime, endTime: ballot.delayEndTime});
     }
@@ -149,18 +149,18 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         votes = _getProposedUpgrades().ballots[proposedImpl].totalVotes;
     }
 
-    /// @notice @inheritdoc IXan
+    /// @notice @inheritdoc IXanV1
     // slither-disable-next-line dead-code
     function lockedTotalSupply() external view virtual override returns (uint256 lockedSupply) {
         lockedSupply = _getProposedUpgrades().lockedTotalSupply;
     }
 
-    /// @notice @inheritdoc IXan
+    /// @notice @inheritdoc IXanV1
     function implementation() public view virtual override returns (address thisImplementation) {
         thisImplementation = ERC1967Utils.getImplementation();
     }
 
-    /// @notice @inheritdoc IXan
+    /// @notice @inheritdoc IXanV1
     function implementationRank(uint64 rank) public view virtual override returns (address rankedImplementation) {
         Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
         uint64 implCount = $.implCount;
@@ -172,7 +172,7 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         rankedImplementation = $.ranking[rank];
     }
 
-    /// @notice @inheritdoc IXan
+    /// @notice @inheritdoc IXanV1
     function checkUpgradeCriteria(address proposedImpl) public view virtual override {
         // TODO remove?
         if (proposedImpl == address(0)) {
@@ -192,7 +192,7 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         }
     }
 
-    /// @notice @inheritdoc IXan
+    /// @notice @inheritdoc IXanV1
     function checkDelayPeriod(address newImpl) public view virtual override {
         uint48 delayEndTime = _getProposedUpgrades().ballots[newImpl].delayEndTime;
 
@@ -211,10 +211,6 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
     /// @inheritdoc IXanV1
     function lockedBalanceOf(address from) public view override returns (uint256 lockedBalance) {
         lockedBalance = _getProposedUpgrades().lockedBalances[from];
-    }
-
-    function delayDuration() public pure override returns (uint32 duration) {
-        duration = Parameters.DELAY_DURATION;
     }
 
     // solhint-disable-next-line func-name-mixedcase
@@ -277,9 +273,11 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         XanStorage storage $;
 
         // solhint-disable no-inline-assembly
-        // slither-disable-next-line assembly
-        assembly {
-            $.slot := _XAN_STORAGE_LOCATION
+        {
+            // slither-disable-next-line assembly
+            assembly {
+                $.slot := _XAN_STORAGE_LOCATION
+            }
         }
         // solhint-enable no-inline-assembly
 
