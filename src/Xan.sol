@@ -52,7 +52,7 @@ contract Xan is IXan, ERC20Upgradeable, UUPSUpgradeable {
 
     error InsufficientUnlockedBalance(address sender, uint256 unlockedBalance, uint256 needed);
     error InsufficientLockedBalance(address sender, uint256 lockedBalance);
-    error ImplementationNotMostVoted(address newImpl, address mostVotedImplementation);
+    error ImplementationNotMostVoted(address newImpl, address mostVotedImpl);
     error ImplementationZeroAddress(address invalidImpl);
     error DelayPeriodNotStarted(address newImpl);
     error DelayPeriodNotEnded(address newImpl);
@@ -270,10 +270,10 @@ contract Xan is IXan, ERC20Upgradeable, UUPSUpgradeable {
         }
 
         // Check that the new implementation is the most voted implementation.
-        address mostVotedImplementation = _getProposedUpgrades().ranking[0];
+        address mostVotedImpl = _getProposedUpgrades().ranking[0];
 
-        if (proposedImpl != mostVotedImplementation) {
-            revert ImplementationNotMostVoted({newImpl: proposedImpl, mostVotedImplementation: mostVotedImplementation});
+        if (proposedImpl != mostVotedImpl) {
+            revert ImplementationNotMostVoted({newImpl: proposedImpl, mostVotedImpl: mostVotedImpl});
         }
     }
 
@@ -302,6 +302,7 @@ contract Xan is IXan, ERC20Upgradeable, UUPSUpgradeable {
         duration = Parameters.DELAY_DURATION;
     }
 
+    // solhint-disable-next-line func-name-mixedcase
     function __Xan_init(address initialOwner) internal onlyInitializing {
         __Context_init_unchained();
         __ERC20_init_unchained("Anoma Token", "Xan");
@@ -311,6 +312,7 @@ contract Xan is IXan, ERC20Upgradeable, UUPSUpgradeable {
     }
 
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
+    // solhint-disable-next-line func-name-mixedcase
     function __Xan_init_unchained(address initialOwner) internal onlyInitializing {
         _mint(initialOwner, Parameters.SUPPLY);
     }
