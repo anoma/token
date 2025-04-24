@@ -8,16 +8,17 @@ import {Parameters} from "../src/libs/Parameters.sol";
 import {MerkleDistributor} from "../src/MerkleDistributor.sol";
 
 contract Deploy is Script {
-    bytes32 internal constant _ROOT = keccak256("TODO");
+    bytes32 internal constant _ROOT = keccak256("MISSING");
 
     function run() public {
         vm.startBroadcast();
 
-        if (_ROOT == keccak256("TODO")) revert("TODO");
+        if (_ROOT == keccak256("MISSING")) revert("TODO");
 
         uint48 startTime = Parameters.CLAIM_START_TIME;
+        uint48 endTime = startTime + Parameters.CLAIM_DURATION;
 
-        new MerkleDistributor({root: _ROOT, startTime: startTime, endTime: startTime + Parameters.CLAIM_DURATION});
+        new MerkleDistributor({root: _ROOT, startTime: startTime, endTime: endTime});
 
         vm.stopBroadcast();
     }
