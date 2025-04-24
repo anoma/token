@@ -72,7 +72,7 @@ contract UnitTest is Test {
         // Check that no implementation has rank 0.
         uint64 rank = 0;
         vm.expectRevert(
-            abi.encodeWithSelector(XanV1.ImplementationRankNotExistent.selector, 0, rank), address(_xanProxy)
+            abi.encodeWithSelector(XanV1.ImplementationRankNonExistent.selector, 0, rank), address(_xanProxy)
         );
         _xanProxy.implementationRank(rank);
 
@@ -86,7 +86,7 @@ contract UnitTest is Test {
         // Check that no implementation has rank 1.
         rank = 1;
         vm.expectRevert(
-            abi.encodeWithSelector(XanV1.ImplementationRankNotExistent.selector, 1, rank), address(_xanProxy)
+            abi.encodeWithSelector(XanV1.ImplementationRankNonExistent.selector, 1, rank), address(_xanProxy)
         );
         _xanProxy.implementationRank(rank);
     }
