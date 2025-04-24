@@ -10,16 +10,16 @@ import {MerkleTree} from "../src/MerkleTree.sol";
 import {IMerkleDistributor} from "./IMerkleDistributor.sol";
 
 import {Leaf} from "./Leaf.sol";
-import {Xan} from "./Xan.sol";
+import {XanV1} from "./XanV1.sol";
 
 /// @title MerkleDistributor
 /// @author Uniswap 2020, Modified by Anoma Foundation
 /// @notice A component distributing claimable [ERC-20](https://eips.ethereum.org/EIPS/eip-20) tokens via a merkle tree.
 contract MerkleDistributor is IMerkleDistributor {
-    using SafeERC20 for Xan;
+    using SafeERC20 for XanV1;
 
     /// @notice The token to distribute.
-    Xan internal immutable _XAN;
+    XanV1 internal immutable _XAN;
 
     /// @notice The root of the merkle tree containing the claimable balances.
     bytes32 internal immutable _ROOT;
@@ -66,11 +66,11 @@ contract MerkleDistributor is IMerkleDistributor {
 
         // solhint-enable not-rely-on-time, gas-strict-inequalities
 
-        _XAN = Xan(
+        _XAN = XanV1(
             address(
                 new ERC1967Proxy({
-                    implementation: address(new Xan()),
-                    _data: abi.encodeCall(Xan.initialize, (address(this)))
+                    implementation: address(new XanV1()),
+                    _data: abi.encodeCall(XanV1.initialize, (address(this)))
                 })
             )
         );

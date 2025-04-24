@@ -5,11 +5,11 @@ import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {Parameters} from "../src/Parameters.sol";
-import {IXan, Xan} from "../src/Xan.sol";
+import {IXanV1, XanV1} from "../src/XanV1.sol";
 
 contract UnitTest is Test {
     address internal _defaultSender;
-    Xan internal _xanProxy;
+    XanV1 internal _xanProxy;
 
     address internal constant _IMPL = address(uint160(1));
 
@@ -17,16 +17,17 @@ contract UnitTest is Test {
         (, _defaultSender,) = vm.readCallers();
 
         vm.prank(_defaultSender);
-        _xanProxy = Xan(
+        _xanProxy = XanV1(
             Upgrades.deployUUPSProxy({
-                contractName: "Xan.sol:Xan",
-                initializerData: abi.encodeCall(Xan.initialize, _defaultSender)
+                contractName: "XanV1.sol:XanV1",
+                initializerData: abi.encodeCall(XanV1.initialize, _defaultSender)
             })
         );
     }
 
     function test_initialize_mints_the_supply_for_the_specified_owner() public {
-        Xan uninitializedProxy = Xan(Upgrades.deployUUPSProxy({contractName: "Xan.sol:Xan", initializerData: ""}));
+        XanV1 uninitializedProxy =
+            XanV1(Upgrades.deployUUPSProxy({contractName: "XanV1.sol:XanV1", initializerData: ""}));
 
         assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), 0);
 
@@ -39,7 +40,7 @@ contract UnitTest is Test {
         uint256 valueToLock = _xanProxy.unlockedBalanceOf(_defaultSender) / 3;
 
         vm.expectEmit(address(_xanProxy));
-        emit IXan.Locked({owner: _defaultSender, value: valueToLock});
+        emit IXanV1.Locked({owner: _defaultSender, value: valueToLock});
 
         vm.prank(_defaultSender);
         _xanProxy.lock(valueToLock);
@@ -52,7 +53,7 @@ contract UnitTest is Test {
         _xanProxy.lock(valueToLock);
 
         vm.expectEmit(address(_xanProxy));
-        emit IXan.VoteCast({voter: _defaultSender, implementation: _IMPL, value: valueToLock});
+        emit IXanV1.VoteCast({voter: _defaultSender, implementation: _IMPL, value: valueToLock});
 
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
@@ -62,7 +63,7 @@ contract UnitTest is Test {
         vm.prank(_defaultSender);
 
         vm.expectRevert(
-            abi.encodeWithSelector(Xan.InsufficientLockedBalance.selector, _defaultSender, 0), address(_xanProxy)
+            abi.encodeWithSelector(XanV1.InsufficientLockedBalance.selector, _defaultSender, 0), address(_xanProxy)
         );
         _xanProxy.castVote(_IMPL);
     }
@@ -70,7 +71,9 @@ contract UnitTest is Test {
     function test_castVote_ranks_an_implementation_on_first_vote() public {
         // Check that no implementation has rank 0.
         uint64 rank = 0;
-        vm.expectRevert(abi.encodeWithSelector(Xan.ImplementationRankNotExistent.selector, 0, rank), address(_xanProxy));
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV1.ImplementationRankNotExistent.selector, 0, rank), address(_xanProxy)
+        );
         _xanProxy.implementationRank(rank);
 
         // Lock, vote, and check that there is an implementation with rank 0.
@@ -82,7 +85,9 @@ contract UnitTest is Test {
 
         // Check that no implementation has rank 1.
         rank = 1;
-        vm.expectRevert(abi.encodeWithSelector(Xan.ImplementationRankNotExistent.selector, 1, rank), address(_xanProxy));
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV1.ImplementationRankNotExistent.selector, 1, rank), address(_xanProxy)
+        );
         _xanProxy.implementationRank(rank);
     }
 
@@ -94,7 +99,7 @@ contract UnitTest is Test {
         _xanProxy.castVote(_IMPL);
 
         vm.expectRevert(
-            abi.encodeWithSelector(Xan.InsufficientLockedBalance.selector, _defaultSender, valueToLock),
+            abi.encodeWithSelector(XanV1.InsufficientLockedBalance.selector, _defaultSender, valueToLock),
             address(_xanProxy)
         );
         _xanProxy.castVote(_IMPL);
@@ -127,7 +132,7 @@ contract UnitTest is Test {
         _xanProxy.castVote(_IMPL);
 
         vm.expectEmit(address(_xanProxy));
-        emit IXan.VoteRevoked({voter: _defaultSender, implementation: _IMPL, value: valueToLock});
+        emit IXanV1.VoteRevoked({voter: _defaultSender, implementation: _IMPL, value: valueToLock});
 
         _xanProxy.revokeVote(_IMPL);
         vm.stopPrank();

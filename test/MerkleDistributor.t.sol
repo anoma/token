@@ -4,13 +4,13 @@ pragma solidity ^0.8.27;
 import {Test} from "forge-std/Test.sol";
 
 import {MerkleDistributor} from "../src/MerkleDistributor.sol";
-import {Xan} from "../src/Xan.sol";
+import {XanV1} from "../src/XanV1.sol";
 
 import {MockDistribution} from "./Distribution.m.sol";
 
 contract E2ETest is Test, MockDistribution {
     MerkleDistributor internal _md;
-    Xan internal _xanProxy;
+    XanV1 internal _xanProxy;
 
     string[4] internal _census;
 
@@ -19,7 +19,7 @@ contract E2ETest is Test, MockDistribution {
         uint256 currentDate = block.timestamp;
         _md = new MerkleDistributor({root: ROOT, startDate: currentDate, endDate: currentDate + 2 weeks});
 
-        _xanProxy = Xan(_md.token());
+        _xanProxy = XanV1(_md.token());
 
         _census = ["Alice", "Bob", "Carol", "Dave"];
 

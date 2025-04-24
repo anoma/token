@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.27;
 
-import {Xan} from "../../src/Xan.sol";
+import {XanV1} from "../../src/XanV1.sol";
 
-/// @custom:oz-upgrades-from Xan
-contract XanV2 is Xan {
+/// @custom:oz-upgrades-from XanV1
+contract XanV2 is XanV1 {
     event Reinitialized();
 
     function initialize(address initialOwner) external override initializer {
-        __Xan_init(initialOwner);
+        __XanV1_init(initialOwner);
         __XanV2_init();
     }
 

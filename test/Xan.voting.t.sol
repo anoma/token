@@ -4,12 +4,12 @@ pragma solidity ^0.8.27;
 import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {Xan} from "../src/Xan.sol";
+import {XanV1} from "../src/XanV1.sol";
 
 import {MockVoters} from "./Voters.m.sol";
 
 contract VotingTest is Test, MockVoters {
-    Xan internal _xanProxy;
+    XanV1 internal _xanProxy;
 
     string[4] internal _census;
 
@@ -20,10 +20,10 @@ contract VotingTest is Test, MockVoters {
     function setUp() public {
         (, address _defaultSender,) = vm.readCallers();
 
-        _xanProxy = Xan(
+        _xanProxy = XanV1(
             Upgrades.deployUUPSProxy({
-                contractName: "Xan.sol:Xan",
-                initializerData: abi.encodeCall(Xan.initialize, _defaultSender)
+                contractName: "XanV1.sol:XanV1",
+                initializerData: abi.encodeCall(XanV1.initialize, _defaultSender)
             })
         );
 
@@ -31,9 +31,9 @@ contract VotingTest is Test, MockVoters {
 
         uint256 share = _xanProxy.totalSupply() / _census.length;
 
-        _implA = address(new Xan());
-        _implB = address(new Xan());
-        _implC = address(new Xan());
+        _implA = address(new XanV1());
+        _implB = address(new XanV1());
+        _implC = address(new XanV1());
 
         // Allocate tokens
         for (uint256 i = 0; i < _census.length; ++i) {

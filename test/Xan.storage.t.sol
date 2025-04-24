@@ -3,9 +3,9 @@ pragma solidity ^0.8.27;
 
 import {Test} from "forge-std/Test.sol";
 
-import {Xan} from "../src/Xan.sol";
+import {XanV1} from "../src/XanV1.sol";
 
-contract StorageTest is Test, Xan {
+contract StorageTest is Test, XanV1 {
     function test_storageLocation() external pure {
         bytes32 expected =
             keccak256(abi.encode(uint256(keccak256("anoma.storage.Xan.v1")) - 1)) & ~bytes32(uint256(0xff));

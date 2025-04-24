@@ -6,12 +6,12 @@ import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/
 import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
 import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
-import {IXan} from "./IXan.sol";
+import {IXanV1} from "./IXanV1.sol";
 import {Parameters} from "./Parameters.sol";
 
-contract Xan is IXan, ERC20Upgradeable, UUPSUpgradeable {
+contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.
-    /// @custom:storage-location erc7201:anoma.storage.Xan.v1
+    /// @custom:storage-location erc7201:anoma.storage.XanV1.v1
     /// @param _proposedUpgrades The upgrade proposed from a current implementation.
     struct XanStorage {
         mapping(address current => ProposedUpgrades) _proposedUpgrades;
@@ -67,10 +67,10 @@ contract Xan is IXan, ERC20Upgradeable, UUPSUpgradeable {
     /// @notice Initializes the proxy.
     // solhint-disable-next-line comprehensive-interface
     function initialize(address initialOwner) external virtual initializer {
-        __Xan_init(initialOwner);
+        __XanV1_init(initialOwner);
     }
 
-    /// @inheritdoc IXan
+    /// @inheritdoc IXanV1
     function lock(uint256 value) external override {
         address owner = msg.sender;
         uint256 unlockedBalance = unlockedBalanceOf(owner);
@@ -82,13 +82,13 @@ contract Xan is IXan, ERC20Upgradeable, UUPSUpgradeable {
         _lock({to: owner, value: value});
     }
 
-    /// @inheritdoc IXan
+    /// @inheritdoc IXanV1
     function transferAndLock(address to, uint256 value) external override {
         _transfer({from: msg.sender, to: to, value: value});
         _lock({to: to, value: value});
     }
 
-    /// @inheritdoc IXan
+    /// @inheritdoc IXanV1
     // solhint-disable-next-line function-max-lines
     function castVote(address proposedImpl) external override {
         address voter = msg.sender;
@@ -161,7 +161,7 @@ contract Xan is IXan, ERC20Upgradeable, UUPSUpgradeable {
         emit VoteCast({voter: voter, implementation: proposedImpl, value: delta});
     }
 
-    /// @inheritdoc IXan
+    /// @inheritdoc IXanV1
     // solhint-disable-next-line function-max-lines
     function revokeVote(address proposedImpl) external override {
         address voter = msg.sender;
@@ -211,7 +211,7 @@ contract Xan is IXan, ERC20Upgradeable, UUPSUpgradeable {
         emit VoteRevoked({voter: voter, implementation: proposedImpl, value: oldVotum});
     }
 
-    /// @inheritdoc IXan
+    /// @inheritdoc IXanV1
     function startDelayPeriod(address proposedImpl) external override {
         // Check that all upgrade criteria are met before.
         checkUpgradeCriteria(proposedImpl);
@@ -229,7 +229,7 @@ contract Xan is IXan, ERC20Upgradeable, UUPSUpgradeable {
         emit DelayStarted({implementation: proposedImpl, startTime: startTime, endTime: ballot.delayEndTime});
     }
 
-    /// @inheritdoc IXan
+    /// @inheritdoc IXanV1
     function totalVotes(address proposedImpl) external view override returns (uint256 votes) {
         votes = _getProposedUpgrades().ballots[proposedImpl].totalVotes;
     }
@@ -288,12 +288,12 @@ contract Xan is IXan, ERC20Upgradeable, UUPSUpgradeable {
         }
     }
 
-    /// @inheritdoc IXan
+    /// @inheritdoc IXanV1
     function unlockedBalanceOf(address from) public view override returns (uint256 unlockedBalance) {
         unlockedBalance = balanceOf(from) - lockedBalanceOf(from);
     }
 
-    /// @inheritdoc IXan
+    /// @inheritdoc IXanV1
     function lockedBalanceOf(address from) public view override returns (uint256 lockedBalance) {
         lockedBalance = _getProposedUpgrades().lockedBalances[from];
     }
@@ -303,17 +303,17 @@ contract Xan is IXan, ERC20Upgradeable, UUPSUpgradeable {
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function __Xan_init(address initialOwner) internal onlyInitializing {
+    function __XanV1_init(address initialOwner) internal onlyInitializing {
         __Context_init_unchained();
         __ERC20_init_unchained("Anoma Token", "Xan");
         __UUPSUpgradeable_init_unchained();
 
-        __Xan_init_unchained(initialOwner);
+        __XanV1_init_unchained(initialOwner);
     }
 
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
     // solhint-disable-next-line func-name-mixedcase
-    function __Xan_init_unchained(address initialOwner) internal onlyInitializing {
+    function __XanV1_init_unchained(address initialOwner) internal onlyInitializing {
         _mint(initialOwner, Parameters.SUPPLY);
     }
 
