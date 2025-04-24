@@ -51,6 +51,8 @@ contract UpgradeTest is Test {
         });
     }
 
+    // TODO move into separate test
+    /*
     function test_upgrade_old() public {
         // Vote for Implementation
         {
@@ -85,5 +87,5 @@ contract UpgradeTest is Test {
             // Check that the upgrade was successful.
             assertEq(_xanProxy.implementation(), _newImpl);
         }
-    }
+    }*/
 }

@@ -27,9 +27,9 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
 
     error InsufficientUnlockedBalance(address sender, uint256 unlockedBalance, uint256 valueToLock);
     error InsufficientLockedBalance(address sender, uint256 lockedBalance);
-    error ImplementationNotWinning(address proposedImpl, address winningImpl);
-    error ImplementationZeroAddress(address invalidImpl);
+    error ImplementationNotWinning(address impl, address winningImpl);
     error DelayPeriodNotStarted(address proposedImpl);
+    error DelayPeriodAlreadyStarted(address proposedImpl);
     error DelayPeriodNotEnded(address proposedImpl);
     error QuorumNotReached(address proposedImpl);
     error ImplementationRankNonExistent(uint64 implCount, uint64 rank);
@@ -128,20 +128,22 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
 
     /// @inheritdoc IXanV1
     function startDelayPeriod(address proposedImpl) external virtual override {
-        // Check that all upgrade criteria are met before.
-        checkUpgradeCriteria(proposedImpl);
+        // Check that all upgrade criteria are met before starting the delay.
+        _checkUpgradeCriteria(proposedImpl);
 
         Ranking.Ballot storage ballot = _getProposedUpgrades().ballots[proposedImpl];
 
-        uint48 startTime = Time.timestamp();
+        uint48 currentTime = Time.timestamp();
 
+        // Check that the delay period hasn't been started yet by ensuring that no end time has been set.
         if (ballot.delayEndTime != 0) {
-            revert DelayPeriodNotStarted(proposedImpl);
+            revert DelayPeriodAlreadyStarted(proposedImpl);
         }
 
-        ballot.delayEndTime = startTime + Parameters.DELAY_DURATION;
+        // Set the end time and emit the associated event.
+        ballot.delayEndTime = currentTime + Parameters.DELAY_DURATION;
 
-        emit DelayStarted({implementation: proposedImpl, startTime: startTime, endTime: ballot.delayEndTime});
+        emit DelayStarted({implementation: proposedImpl, startTime: currentTime, endTime: ballot.delayEndTime});
     }
 
     /// @inheritdoc IXanV1
@@ -161,7 +163,7 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
     }
 
     /// @notice @inheritdoc IXanV1
-    function implementationRank(uint64 rank) public view virtual override returns (address rankedImplementation) {
+    function implementationByRank(uint64 rank) public view virtual override returns (address rankedImplementation) {
         Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
         uint64 implCount = $.implCount;
 
@@ -170,37 +172,6 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         }
 
         rankedImplementation = $.ranking[rank];
-    }
-
-    /// @notice @inheritdoc IXanV1
-    function checkUpgradeCriteria(address proposedImpl) public view virtual override {
-        // TODO remove?
-        if (proposedImpl == address(0)) {
-            revert ImplementationZeroAddress(address(0));
-        }
-
-        // Check that the quorum for the new implementation is reached.
-        if (!_isQuorumReached(proposedImpl)) {
-            revert QuorumNotReached(proposedImpl);
-        }
-
-        // Check that the new implementation is the most voted implementation.
-        address winningImpl = _getProposedUpgrades().ranking[0];
-
-        if (proposedImpl != winningImpl) {
-            revert ImplementationNotWinning({proposedImpl: proposedImpl, winningImpl: winningImpl});
-        }
-    }
-
-    /// @notice @inheritdoc IXanV1
-    function checkDelayPeriod(address newImpl) public view virtual override {
-        uint48 delayEndTime = _getProposedUpgrades().ballots[newImpl].delayEndTime;
-
-        if (delayEndTime == 0) revert DelayPeriodNotStarted(newImpl);
-
-        if (Time.timestamp() < delayEndTime) {
-            revert DelayPeriodNotEnded(newImpl);
-        }
     }
 
     /// @inheritdoc IXanV1
@@ -252,6 +223,14 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         emit Locked({owner: to, value: value});
     }
 
+    /// @notice Authorizes an upgrade.
+    /// @param newImpl The new implementation to authorize the upgrade to.
+    function _authorizeUpgrade(address newImpl) internal view virtual override {
+        _checkDelayPeriod(newImpl);
+
+        _checkUpgradeCriteria(newImpl);
+    }
+
     /// @notice Checks if the quorum is reached for a new implementation.
     /// @param proposedImpl The new implementation to check.
     /// @return reached Whether quorum for the new implementation is reached.
@@ -259,12 +238,32 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         reached = _getProposedUpgrades().ballots[proposedImpl].totalVotes > Parameters.QUORUM;
     }
 
-    /// @notice Authorizes an upgrade.
-    /// @param newImpl The new implementation to authorize the upgrade to.
-    function _authorizeUpgrade(address newImpl) internal view virtual override {
-        checkDelayPeriod(newImpl);
+    /// @notice Checks if the criteria to upgrade to the new implementation are met and reverts with errors if not.
+    /// @param impl The implementation to check the upgrade criteria for.
+    function _checkUpgradeCriteria(address impl) internal view virtual {
+        // Check that the quorum for the new implementation is reached.
+        if (!_isQuorumReached(impl)) {
+            revert QuorumNotReached(impl);
+        }
 
-        checkUpgradeCriteria(newImpl);
+        // Check that the new implementation is the most voted implementation.
+        address winningImpl = _getProposedUpgrades().ranking[0];
+
+        if (impl != winningImpl) {
+            revert ImplementationNotWinning({impl: impl, winningImpl: winningImpl});
+        }
+    }
+
+    /// @notice Checks if the delay period has ended and reverts with errors if not.
+    /// @param impl The implementation to check the delay period for.
+    function _checkDelayPeriod(address impl) internal view virtual {
+        uint48 delayEndTime = _getProposedUpgrades().ballots[impl].delayEndTime;
+
+        if (delayEndTime == 0) revert DelayPeriodNotStarted(impl);
+
+        if (Time.timestamp() < delayEndTime) {
+            revert DelayPeriodNotEnded(impl);
+        }
     }
 
     /// @notice Returns the upgrade data from the contract storage location.

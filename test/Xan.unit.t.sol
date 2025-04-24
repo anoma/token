@@ -74,21 +74,21 @@ contract UnitTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(XanV1.ImplementationRankNonExistent.selector, 0, rank), address(_xanProxy)
         );
-        _xanProxy.implementationRank(rank);
+        _xanProxy.implementationByRank(rank);
 
         // Lock, vote, and check that there is an implementation with rank 0.
         vm.startPrank(_defaultSender);
         _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
-        assertEq(_IMPL, _xanProxy.implementationRank(rank));
+        assertEq(_IMPL, _xanProxy.implementationByRank(rank));
 
         // Check that no implementation has rank 1.
         rank = 1;
         vm.expectRevert(
             abi.encodeWithSelector(XanV1.ImplementationRankNonExistent.selector, 1, rank), address(_xanProxy)
         );
-        _xanProxy.implementationRank(rank);
+        _xanProxy.implementationByRank(rank);
     }
 
     function test_castVote_reverts_if_the_votum_has_already_been_casted() public {
