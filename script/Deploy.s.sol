@@ -8,16 +8,14 @@ import {Parameters} from "../src/libs/Parameters.sol";
 import {MerkleDistributor} from "../src/MerkleDistributor.sol";
 
 contract Deploy is Script {
-    bytes32 internal constant _ROOT = keccak256("TODO"); // TODO replace
+    bytes32 internal constant _ROOT = keccak256("TODO");
 
     function run() public {
         vm.startBroadcast();
 
-        // solhint-disable-next-line gas-custom-errors;
         if (_ROOT == keccak256("TODO")) revert("TODO");
 
-        // solhint-disable-next-line not-rely-on-time
-        uint256 startTime = Parameters.CLAIM_START_TIME;
+        uint48 startTime = Parameters.CLAIM_START_TIME;
 
         new MerkleDistributor({root: _ROOT, startTime: startTime, endTime: startTime + Parameters.CLAIM_DURATION});
 

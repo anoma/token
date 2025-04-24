@@ -54,13 +54,13 @@ contract MerkleDistributor is IMerkleDistributor {
     /// @param root The merkle root of the balance tree.
     /// @param startTime The start time of the claim period.
     /// @param endTime The end time of the claim period.
-    constructor(bytes32 root, uint256 startTime, uint256 endTime) {
+    constructor(bytes32 root, uint48 startTime, uint48 endTime) {
         // Validate dates
         // solhint-disable gas-strict-inequalities
         {
             if (startTime >= endTime) revert StartTimeAfterEndTime();
 
-            uint64 currentTime = Time.timestamp();
+            uint48 currentTime = Time.timestamp();
 
             if (startTime < currentTime) revert StartTimeInThePast();
             _START_DATE = startTime;
@@ -87,13 +87,11 @@ contract MerkleDistributor is IMerkleDistributor {
         external
         override
     {
-        // solhint-disable not-rely-on-time
-        // slither-disable-next-line timestamp
-        if (block.timestamp < _START_DATE) revert StartTimeInTheFuture();
+        uint48 currentTime = Time.timestamp();
 
-        // slither-disable-next-line timestamp
-        if (_END_DATE < block.timestamp) revert EndTimeInThePast();
-        // solhint-enable not-rely-on-time
+        if (currentTime < _START_DATE) revert StartTimeInTheFuture();
+
+        if (_END_DATE < currentTime) revert EndTimeInThePast();
 
         if (isClaimed(index)) revert TokenAlreadyClaimed(index);
         if (!_verifyProof({index: index, to: to, value: value, locked: locked, proof: proof})) {
