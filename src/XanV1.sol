@@ -163,7 +163,13 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
     }
 
     /// @notice @inheritdoc IXanV1
-    function implementationByRank(uint64 rank) public view virtual override returns (address rankedImplementation) {
+    function proposedImplementationByRank(uint64 rank)
+        public
+        view
+        virtual
+        override
+        returns (address rankedImplementation)
+    {
         Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
         uint64 implCount = $.implCount;
 

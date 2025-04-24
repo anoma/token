@@ -71,6 +71,6 @@ interface IXanV1 {
     function implementation() external view returns (address current);
 
     /// @notice Returns the proposed implementation with the respective rank.
-    /// @return rankedImplementation The implementation with the respective rank.
-    function implementationByRank(uint64 rank) external view returns (address rankedImplementation);
+    /// @return rankedImplementation The proposed implementation with the respective rank.
+    function proposedImplementationByRank(uint64 rank) external view returns (address rankedImplementation);
 }
