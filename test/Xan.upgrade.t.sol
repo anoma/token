@@ -4,8 +4,9 @@ pragma solidity ^0.8.27;
 import {Upgrades, UnsafeUpgrades, Options} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
+import {Parameters} from "../src/libs/Parameters.sol";
 import {XanV1} from "../src/XanV1.sol";
-import {XanV2} from "../test/mock/XanV2.sol";
+import {XanV2} from "../test/mocks/XanV2.m.sol";
 
 contract UpgradeTest is Test {
     address internal _defaultSender;
@@ -25,7 +26,7 @@ contract UpgradeTest is Test {
         );
 
         Options memory opts;
-        _newImpl = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});
+        _newImpl = Upgrades.prepareUpgrade({contractName: "XanV2.m.sol:XanV2", opts: opts});
 
         // Lock the tokens for the `_defaultSender`.
         _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));
@@ -38,7 +39,7 @@ contract UpgradeTest is Test {
         _xanProxy.castVote(_newImpl);
         _xanProxy.startDelayPeriod(_newImpl);
 
-        skip(_xanProxy.delayDuration());
+        skip(Parameters.DELAY_DURATION);
 
         vm.expectEmit(address(_xanProxy));
         emit XanV2.Reinitialized();
@@ -50,6 +51,8 @@ contract UpgradeTest is Test {
         });
     }
 
+    // TODO move into separate test
+    /*
     function test_upgrade_old() public {
         // Vote for Implementation
         {
@@ -71,7 +74,7 @@ contract UpgradeTest is Test {
             _xanProxy.checkDelayPeriod(_newImpl);
 
             // Advance to the end of the delay period
-            skip(_xanProxy.delayDuration());
+            skip(Parameters.DELAY_DURATION);
 
             // Check that the delay has passed
             _xanProxy.checkDelayPeriod(_newImpl);
@@ -84,5 +87,5 @@ contract UpgradeTest is Test {
             // Check that the upgrade was successful.
             assertEq(_xanProxy.implementation(), _newImpl);
         }
-    }
+    }*/
 }

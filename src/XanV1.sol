@@ -6,43 +6,18 @@ import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/
 import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
 import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
-import {IXanV1} from "./IXanV1.sol";
-import {Parameters} from "./Parameters.sol";
+import {IXanV1} from "./interfaces/IXanV1.sol";
+import {Parameters} from "./libs/Parameters.sol";
+import {Ranking} from "./libs/Ranking.sol";
 
 contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
+    using Ranking for Ranking.ProposedUpgrades;
+
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.
     /// @custom:storage-location erc7201:anoma.storage.XanV1.v1
-    /// @param _proposedUpgrades The upgrade proposed from a current implementation.
+    /// @param proposedUpgrades The upgrade proposed from a current implementation.
     struct XanStorage {
-        mapping(address current => ProposedUpgrades) _proposedUpgrades;
-    }
-
-    /// @notice A struct containing data associated with a current implementation and proposed upgrades from it.
-    /// @param lockedBalances The locked balances associated with the current implementation.
-    /// @param lockedTotalSupply The locked total supply associated with the current implementation.
-    /// @param ballots The ballots of proposed implementations to upgrade to.
-    /// @param ranking The proposed implementations ranking.
-    /// @param implCount The count of proposed implementations.
-    struct ProposedUpgrades {
-        mapping(address owner => uint256) lockedBalances;
-        uint256 lockedTotalSupply;
-        mapping(address proposedImpl => Ballot) ballots;
-        mapping(uint64 rank => address proposedImpl) ranking;
-        uint64 implCount;
-    }
-
-    /// @notice The vote data of a proposed implementation.
-    /// @param vota The vota of the individual voters.
-    /// @param totalVotes The total votes casted.
-    /// @param rank The voting rank of the implementation
-    /// @param  delayEndTime The end time of the delay period.
-    /// @param exists Whether the implementation was proposed or not.
-    struct Ballot {
-        mapping(address voter => uint256 votes) vota;
-        uint256 totalVotes;
-        uint64 rank;
-        uint48 delayEndTime;
-        bool exists;
+        mapping(address current => Ranking.ProposedUpgrades) proposedUpgrades;
     }
 
     /// @notice The ERC-7201 storage location of the contract (see https://eips.ethereum.org/EIPS/eip-7201).
@@ -50,14 +25,14 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
     // solhint-disable-next-line max-line-length
     bytes32 internal constant _XAN_STORAGE_LOCATION = 0x52f7d5fb153315ca313a5634db151fa7e0b41cd83fe6719e93ed3cd02b69d200;
 
-    error InsufficientUnlockedBalance(address sender, uint256 unlockedBalance, uint256 needed);
+    error InsufficientUnlockedBalance(address sender, uint256 unlockedBalance, uint256 valueToLock);
     error InsufficientLockedBalance(address sender, uint256 lockedBalance);
-    error ImplementationNotMostVoted(address newImpl, address mostVotedImpl);
-    error ImplementationZeroAddress(address invalidImpl);
-    error DelayPeriodNotStarted(address newImpl);
-    error DelayPeriodNotEnded(address newImpl);
-    error QuorumNotReached(address newImpl);
-    error ImplementationRankNotExistent(uint64 implCount, uint64 rank);
+    error ImplementationNotWinning(address impl, address winningImpl);
+    error DelayPeriodNotStarted(address proposedImpl);
+    error DelayPeriodAlreadyStarted(address proposedImpl);
+    error DelayPeriodNotEnded(address proposedImpl);
+    error QuorumNotReached(address proposedImpl);
+    error ImplementationRankNonExistent(uint64 implCount, uint64 rank);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -71,42 +46,32 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
     }
 
     /// @inheritdoc IXanV1
-    function lock(uint256 value) external override {
+    function lock(uint256 value) external virtual override {
         address owner = msg.sender;
         uint256 unlockedBalance = unlockedBalanceOf(owner);
 
         if (value > unlockedBalance) {
-            revert InsufficientUnlockedBalance({sender: owner, unlockedBalance: unlockedBalance, needed: value});
+            revert InsufficientUnlockedBalance({sender: owner, unlockedBalance: unlockedBalance, valueToLock: value});
         }
 
         _lock({to: owner, value: value});
     }
 
     /// @inheritdoc IXanV1
-    function transferAndLock(address to, uint256 value) external override {
+    function transferAndLock(address to, uint256 value) external virtual override {
         _transfer({from: msg.sender, to: to, value: value});
         _lock({to: to, value: value});
     }
 
     /// @inheritdoc IXanV1
-    // solhint-disable-next-line function-max-lines
-    function castVote(address proposedImpl) external override {
+    function castVote(address proposedImpl) external virtual override {
         address voter = msg.sender;
 
-        ProposedUpgrades storage $ = _getProposedUpgrades();
-        Ballot storage ballot = $.ballots[proposedImpl];
+        Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
+        Ranking.Ballot storage ballot = $.ballots[proposedImpl];
 
-        // Check if this implementation is voted on for the first time.
-        {
-            if (!ballot.exists) {
-                ballot.exists = true;
-                ballot.rank = $.implCount;
-
-                // Set the rank to the lowest number.
-                uint64 rank = $.implCount;
-                $.ranking[rank] = proposedImpl;
-                ++$.implCount;
-            }
+        if (!ballot.exists) {
+            $.assignHighestRank(proposedImpl);
         }
 
         // Cache the old votum of the voter.
@@ -133,41 +98,18 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         // Update the total votes.
         ballot.totalVotes += delta;
 
-        // Check if the implementation has a rank larger than zero.
-        if (ballot.rank > 0) {
-            uint64 nextRank = ballot.rank - 1;
-            address nextImpl = $.ranking[nextRank];
-            uint256 nextVotes = $.ballots[nextImpl].totalVotes;
-
-            // Check if the next better ranked implementation has less votes
-            while (ballot.totalVotes > nextVotes) {
-                // Switch the ranking
-                $.ranking[nextRank] = proposedImpl;
-                $.ranking[ballot.rank] = nextImpl;
-
-                $.ballots[nextImpl].rank = ballot.rank;
-                ballot.rank = nextRank;
-
-                if (ballot.rank > 0) {
-                    --nextRank;
-                    nextImpl = $.ranking[nextRank];
-                    nextVotes = $.ballots[nextImpl].totalVotes;
-                } else {
-                    break;
-                }
-            }
-        }
+        // Update the ranking. Check if lower ranked implementation should ranked higher.
+        $.updateRanking(proposedImpl, Ranking.SearchDirection.Lower);
 
         emit VoteCast({voter: voter, implementation: proposedImpl, value: delta});
     }
 
     /// @inheritdoc IXanV1
-    // solhint-disable-next-line function-max-lines
-    function revokeVote(address proposedImpl) external override {
+    function revokeVote(address proposedImpl) external virtual override {
         address voter = msg.sender;
 
-        ProposedUpgrades storage $ = _getProposedUpgrades();
-        Ballot storage ballot = $.ballots[proposedImpl];
+        Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
+        Ranking.Ballot storage ballot = $.ballots[proposedImpl];
 
         // Cache the old votum of the voter.
         uint256 oldVotum = ballot.vota[voter];
@@ -178,114 +120,64 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         // Revoke the old votum by subtracting it from the total votes.
         ballot.totalVotes -= oldVotum;
 
-        // Eventually update the ranking
-        {
-            uint64 maxRank = $.implCount - 1;
-
-            // Check if the implementation has a rank lower than the highest rank.
-            if (ballot.rank < maxRank) {
-                uint64 nextRank = ballot.rank + 1;
-                address nextImpl = $.ranking[nextRank];
-                uint256 nextVotes = $.ballots[nextImpl].totalVotes;
-
-                // While
-                while (ballot.totalVotes < nextVotes + 1) {
-                    // Switch ranks
-                    $.ranking[nextRank] = proposedImpl;
-                    $.ranking[ballot.rank] = nextImpl;
-
-                    $.ballots[nextImpl].rank = ballot.rank;
-                    ballot.rank = nextRank;
-
-                    if (ballot.rank < maxRank) {
-                        ++nextRank;
-                        nextImpl = $.ranking[nextRank];
-                        nextVotes = $.ballots[nextImpl].totalVotes;
-                    } else {
-                        break;
-                    }
-                }
-            }
-        }
+        // Update the ranking. Check if higher ranked implementation should ranked lower.
+        $.updateRanking(proposedImpl, Ranking.SearchDirection.Higher);
 
         emit VoteRevoked({voter: voter, implementation: proposedImpl, value: oldVotum});
     }
 
     /// @inheritdoc IXanV1
-    function startDelayPeriod(address proposedImpl) external override {
-        // Check that all upgrade criteria are met before.
-        checkUpgradeCriteria(proposedImpl);
+    function startDelayPeriod(address proposedImpl) external virtual override {
+        // Check that all upgrade criteria are met before starting the delay.
+        _checkUpgradeCriteria(proposedImpl);
 
-        Ballot storage ballot = _getProposedUpgrades().ballots[proposedImpl];
+        Ranking.Ballot storage ballot = _getProposedUpgrades().ballots[proposedImpl];
 
-        uint48 startTime = Time.timestamp();
+        uint48 currentTime = Time.timestamp();
 
+        // Check that the delay period hasn't been started yet by ensuring that no end time has been set.
         if (ballot.delayEndTime != 0) {
-            revert DelayPeriodNotStarted(proposedImpl);
+            revert DelayPeriodAlreadyStarted(proposedImpl);
         }
 
-        ballot.delayEndTime = startTime + delayDuration();
+        // Set the end time and emit the associated event.
+        ballot.delayEndTime = currentTime + Parameters.DELAY_DURATION;
 
-        emit DelayStarted({implementation: proposedImpl, startTime: startTime, endTime: ballot.delayEndTime});
+        emit DelayStarted({implementation: proposedImpl, startTime: currentTime, endTime: ballot.delayEndTime});
     }
 
     /// @inheritdoc IXanV1
-    function totalVotes(address proposedImpl) external view override returns (uint256 votes) {
+    function totalVotes(address proposedImpl) external view virtual override returns (uint256 votes) {
         votes = _getProposedUpgrades().ballots[proposedImpl].totalVotes;
     }
 
-    /// @notice @inheritdoc IXan
+    /// @notice @inheritdoc IXanV1
     // slither-disable-next-line dead-code
-    function lockedTotalSupply() external view override returns (uint256 lockedSupply) {
+    function lockedTotalSupply() external view virtual override returns (uint256 lockedSupply) {
         lockedSupply = _getProposedUpgrades().lockedTotalSupply;
     }
 
-    /// @notice @inheritdoc IXan
-    function implementation() public view override returns (address thisImplementation) {
+    /// @notice @inheritdoc IXanV1
+    function implementation() public view virtual override returns (address thisImplementation) {
         thisImplementation = ERC1967Utils.getImplementation();
     }
 
-    /// @notice @inheritdoc IXan
-    function implementationRank(uint64 rank) public view override returns (address rankedImplementation) {
-        ProposedUpgrades storage $ = _getProposedUpgrades();
-        uint64 count = $.implCount;
+    /// @notice @inheritdoc IXanV1
+    function proposedImplementationByRank(uint64 rank)
+        public
+        view
+        virtual
+        override
+        returns (address rankedImplementation)
+    {
+        Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
+        uint64 implCount = $.implCount;
 
-        if (count == 0 || rank > count - 1) {
-            revert ImplementationRankNotExistent({implCount: count, rank: rank});
+        if (implCount == 0 || rank > implCount - 1) {
+            revert ImplementationRankNonExistent({implCount: implCount, rank: rank});
         }
 
         rankedImplementation = $.ranking[rank];
-    }
-
-    /// @notice @inheritdoc IXan
-    function checkUpgradeCriteria(address proposedImpl) public view override {
-        // TODO remove?
-        if (proposedImpl == address(0)) {
-            revert ImplementationZeroAddress(address(0));
-        }
-
-        // Check that the quorum for the new implementation is reached.
-        if (!_isQuorumReached(proposedImpl)) {
-            revert QuorumNotReached(proposedImpl);
-        }
-
-        // Check that the new implementation is the most voted implementation.
-        address mostVotedImpl = _getProposedUpgrades().ranking[0];
-
-        if (proposedImpl != mostVotedImpl) {
-            revert ImplementationNotMostVoted({newImpl: proposedImpl, mostVotedImpl: mostVotedImpl});
-        }
-    }
-
-    /// @notice @inheritdoc IXan
-    function checkDelayPeriod(address newImpl) public view override {
-        uint48 delayEndTime = _getProposedUpgrades().ballots[newImpl].delayEndTime;
-
-        if (delayEndTime == 0) revert DelayPeriodNotStarted(newImpl);
-
-        if (Time.timestamp() < delayEndTime) {
-            revert DelayPeriodNotEnded(newImpl);
-        }
     }
 
     /// @inheritdoc IXanV1
@@ -296,10 +188,6 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
     /// @inheritdoc IXanV1
     function lockedBalanceOf(address from) public view override returns (uint256 lockedBalance) {
         lockedBalance = _getProposedUpgrades().lockedBalances[from];
-    }
-
-    function delayDuration() public pure override returns (uint32 duration) {
-        duration = Parameters.DELAY_DURATION;
     }
 
     // solhint-disable-next-line func-name-mixedcase
@@ -324,7 +212,8 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
             uint256 unlockedBalance = unlockedBalanceOf(from);
 
             if (value > unlockedBalance) {
-                revert InsufficientUnlockedBalance({sender: from, unlockedBalance: unlockedBalance, needed: value});
+                // solhint-disable-next-line max-line-length
+                revert InsufficientUnlockedBalance({sender: from, unlockedBalance: unlockedBalance, valueToLock: value});
             }
         }
 
@@ -332,12 +221,20 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
     }
 
     function _lock(address to, uint256 value) internal {
-        ProposedUpgrades storage $ = _getProposedUpgrades();
+        Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
 
         $.lockedTotalSupply += value;
         $.lockedBalances[to] += value;
 
         emit Locked({owner: to, value: value});
+    }
+
+    /// @notice Authorizes an upgrade.
+    /// @param newImpl The new implementation to authorize the upgrade to.
+    function _authorizeUpgrade(address newImpl) internal view virtual override {
+        _checkDelayPeriod(newImpl);
+
+        _checkUpgradeCriteria(newImpl);
     }
 
     /// @notice Checks if the quorum is reached for a new implementation.
@@ -347,26 +244,48 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         reached = _getProposedUpgrades().ballots[proposedImpl].totalVotes > Parameters.QUORUM;
     }
 
-    /// @notice Authorizes an upgrade.
-    /// @param newImpl The new implementation to authorize the upgrade to.
-    function _authorizeUpgrade(address newImpl) internal view virtual override {
-        checkDelayPeriod(newImpl);
+    /// @notice Checks if the criteria to upgrade to the new implementation are met and reverts with errors if not.
+    /// @param impl The implementation to check the upgrade criteria for.
+    function _checkUpgradeCriteria(address impl) internal view virtual {
+        // Check that the quorum for the new implementation is reached.
+        if (!_isQuorumReached(impl)) {
+            revert QuorumNotReached(impl);
+        }
 
-        checkUpgradeCriteria(newImpl);
+        // Check that the new implementation is the most voted implementation.
+        address winningImpl = _getProposedUpgrades().ranking[0];
+
+        if (impl != winningImpl) {
+            revert ImplementationNotWinning({impl: impl, winningImpl: winningImpl});
+        }
+    }
+
+    /// @notice Checks if the delay period has ended and reverts with errors if not.
+    /// @param impl The implementation to check the delay period for.
+    function _checkDelayPeriod(address impl) internal view virtual {
+        uint48 delayEndTime = _getProposedUpgrades().ballots[impl].delayEndTime;
+
+        if (delayEndTime == 0) revert DelayPeriodNotStarted(impl);
+
+        if (Time.timestamp() < delayEndTime) {
+            revert DelayPeriodNotEnded(impl);
+        }
     }
 
     /// @notice Returns the upgrade data from the contract storage location.
-    /// @return upgradeData The upgrade data associated with the current implementation.
-    function _getProposedUpgrades() private view returns (ProposedUpgrades storage upgradeData) {
+    /// @return proposedUpgrades The data associated with proposed upgrades from current implementation.
+    function _getProposedUpgrades() private view returns (Ranking.ProposedUpgrades storage proposedUpgrades) {
         XanStorage storage $;
 
         // solhint-disable no-inline-assembly
-        // slither-disable-next-line assembly
-        assembly {
-            $.slot := _XAN_STORAGE_LOCATION
+        {
+            // slither-disable-next-line assembly
+            assembly {
+                $.slot := _XAN_STORAGE_LOCATION
+            }
         }
         // solhint-enable no-inline-assembly
 
-        upgradeData = $._proposedUpgrades[implementation()];
+        proposedUpgrades = $.proposedUpgrades[implementation()];
     }
 }

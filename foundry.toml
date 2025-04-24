@@ -19,10 +19,7 @@ libs = ["lib"]
 test = "test"
 script = "script"
 
-gas_reports = [
-    "Xan",
-    "MerkleDistributor",
-]
+gas_reports = ["Xan", "MerkleTree", "MerkleDistributor"]
 
 allow_internal_expect_revert = true
 
@@ -41,8 +38,6 @@ mainnet = { key = "${API_KEY_ETHERSCAN}" }
 optimism = { key = "${API_KEY_OPTIMISTIC_ETHERSCAN}" }
 polygon = { key = "${API_KEY_POLYGONSCAN}" }
 sepolia = { key = "${API_KEY_ETHERSCAN}" }
-
-
 
 [rpc_endpoints]
 arbitrum = "https://arbitrum-mainnet.infura.io/v3/${API_KEY_INFURA}"

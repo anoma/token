@@ -6,7 +6,7 @@ import {Test} from "forge-std/Test.sol";
 
 import {XanV1} from "../src/XanV1.sol";
 
-import {MockVoters} from "./Voters.m.sol";
+import {MockVoters} from "./mocks/Voters.m.sol";
 
 contract VotingTest is Test, MockVoters {
     XanV1 internal _xanProxy;
@@ -55,27 +55,27 @@ contract VotingTest is Test, MockVoters {
         vm.prank(voter("Alice"));
         _xanProxy.castVote(_implA);
 
-        assertEq(_xanProxy.implementationRank(0), _implA);
+        assertEq(_xanProxy.proposedImplementationByRank(0), _implA);
 
         vm.prank(voter("Bob"));
         _xanProxy.castVote(_implB);
 
-        assertEq(_xanProxy.implementationRank(0), _implA);
-        assertEq(_xanProxy.implementationRank(1), _implB);
+        assertEq(_xanProxy.proposedImplementationByRank(0), _implA);
+        assertEq(_xanProxy.proposedImplementationByRank(1), _implB);
 
         vm.prank(voter("Carol"));
         _xanProxy.castVote(_implC);
 
-        assertEq(_xanProxy.implementationRank(0), _implA);
-        assertEq(_xanProxy.implementationRank(1), _implB);
-        assertEq(_xanProxy.implementationRank(2), _implC);
+        assertEq(_xanProxy.proposedImplementationByRank(0), _implA);
+        assertEq(_xanProxy.proposedImplementationByRank(1), _implB);
+        assertEq(_xanProxy.proposedImplementationByRank(2), _implC);
 
         vm.prank(voter("Dave"));
         _xanProxy.castVote(_implC);
 
-        assertEq(_xanProxy.implementationRank(0), _implC);
-        assertEq(_xanProxy.implementationRank(1), _implA);
-        assertEq(_xanProxy.implementationRank(2), _implB);
+        assertEq(_xanProxy.proposedImplementationByRank(0), _implC);
+        assertEq(_xanProxy.proposedImplementationByRank(1), _implA);
+        assertEq(_xanProxy.proposedImplementationByRank(2), _implB);
     }
 
     function test_revokeVote_ranks_implementations() public {
@@ -88,16 +88,16 @@ contract VotingTest is Test, MockVoters {
         vm.prank(voter("Carol"));
         _xanProxy.castVote(_implC);
 
-        assertEq(_xanProxy.implementationRank(0), _implA);
-        assertEq(_xanProxy.implementationRank(1), _implB);
-        assertEq(_xanProxy.implementationRank(2), _implC);
+        assertEq(_xanProxy.proposedImplementationByRank(0), _implA);
+        assertEq(_xanProxy.proposedImplementationByRank(1), _implB);
+        assertEq(_xanProxy.proposedImplementationByRank(2), _implC);
 
         vm.prank(voter("Alice"));
         _xanProxy.revokeVote(_implA);
 
-        assertEq(_xanProxy.implementationRank(0), _implB);
-        assertEq(_xanProxy.implementationRank(1), _implC);
-        assertEq(_xanProxy.implementationRank(2), _implA);
+        assertEq(_xanProxy.proposedImplementationByRank(0), _implB);
+        assertEq(_xanProxy.proposedImplementationByRank(1), _implC);
+        assertEq(_xanProxy.proposedImplementationByRank(2), _implA);
     }
 
     function testFuzz_lockedBalanceOf_and_unlockedBalanceOf_sum_to_balanceOf(address owner) public view {

@@ -4,7 +4,7 @@ pragma solidity ^0.8.27;
 import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {Parameters} from "../src/Parameters.sol";
+import {Parameters} from "../src/libs/Parameters.sol";
 import {IXanV1, XanV1} from "../src/XanV1.sol";
 
 contract UnitTest is Test {
@@ -72,23 +72,23 @@ contract UnitTest is Test {
         // Check that no implementation has rank 0.
         uint64 rank = 0;
         vm.expectRevert(
-            abi.encodeWithSelector(XanV1.ImplementationRankNotExistent.selector, 0, rank), address(_xanProxy)
+            abi.encodeWithSelector(XanV1.ImplementationRankNonExistent.selector, 0, rank), address(_xanProxy)
         );
-        _xanProxy.implementationRank(rank);
+        _xanProxy.proposedImplementationByRank(rank);
 
         // Lock, vote, and check that there is an implementation with rank 0.
         vm.startPrank(_defaultSender);
         _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
-        assertEq(_IMPL, _xanProxy.implementationRank(rank));
+        assertEq(_IMPL, _xanProxy.proposedImplementationByRank(rank));
 
         // Check that no implementation has rank 1.
         rank = 1;
         vm.expectRevert(
-            abi.encodeWithSelector(XanV1.ImplementationRankNotExistent.selector, 1, rank), address(_xanProxy)
+            abi.encodeWithSelector(XanV1.ImplementationRankNonExistent.selector, 1, rank), address(_xanProxy)
         );
-        _xanProxy.implementationRank(rank);
+        _xanProxy.proposedImplementationByRank(rank);
     }
 
     function test_castVote_reverts_if_the_votum_has_already_been_casted() public {

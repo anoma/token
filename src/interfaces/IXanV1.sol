@@ -52,14 +52,6 @@ interface IXanV1 {
     /// @return votes The total votes implementation.
     function totalVotes(address proposedImpl) external view returns (uint256 votes);
 
-    /// @notice Checks if the delay period has ended and reverts with errors if not.
-    /// @param proposedImpl The proposed implementation to check the delay period for.
-    function checkDelayPeriod(address proposedImpl) external view;
-
-    /// @notice Checks if the criteria to upgrade to the new implementation are met and reverts with errors if not.
-    /// @param proposedImpl The proposed implementation to check the upgrade criteria for.
-    function checkUpgradeCriteria(address proposedImpl) external view;
-
     /// @notice Returns the unlocked token balance of an account.
     /// @param from The account to query.
     /// @param unlockedBalance The unlocked balance.
@@ -79,10 +71,6 @@ interface IXanV1 {
     function implementation() external view returns (address current);
 
     /// @notice Returns the proposed implementation with the respective rank.
-    /// @return rankedImplementation The implementation with the respective rank.
-    function implementationRank(uint64 rank) external view returns (address rankedImplementation);
-
-    /// @notice Returns the delay duration.
-    /// @return duration The delay duration.
-    function delayDuration() external pure returns (uint32 duration);
+    /// @return rankedImplementation The proposed implementation with the respective rank.
+    function proposedImplementationByRank(uint64 rank) external view returns (address rankedImplementation);
 }
