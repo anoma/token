@@ -43,7 +43,7 @@ library Ranking {
     /// @notice Assigns the highest rank to a proposed implementation.
     /// @param $ The storage containing the proposed upgrades.
     /// @param proposedImpl The proposed implementation to assign the highest rank to.
-    function assignLowestRank(ProposedUpgrades storage $, address proposedImpl) internal {
+    function assignWorstRank(ProposedUpgrades storage $, address proposedImpl) internal {
         Ballot storage ballot = $.ballots[proposedImpl];
         ballot.exists = true;
         ballot.rank = $.implCount;

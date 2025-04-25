@@ -65,7 +65,7 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         Ranking.Ballot storage ballot = $.ballots[proposedImpl];
 
         if (!ballot.exists) {
-            $.assignLowestRank(proposedImpl);
+            $.assignWorstRank(proposedImpl);
         }
 
         // Cache the old votum of the voter.
