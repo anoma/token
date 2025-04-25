@@ -53,67 +53,40 @@ library Ranking {
         ++$.implCount;
     }
 
-    /// @notice Updates the rank of implementations being ranked lower (better) than the proposed implementation.
+    /// @notice Updates the rank of the proposed implementation and those being ranked lower (better).
     /// @param $ The storage containing the ballots for proposed upgrades.
     /// @param proposedImpl The proposed implementation.
     function updateLowerRanked(ProposedUpgrades storage $, address proposedImpl) internal {
-        uint64 proposedImplRank = $.ballots[proposedImpl].rank;
-        uint256 proposedImplVotes = $.ballots[proposedImpl].totalVotes;
+        uint64 rank = $.ballots[proposedImpl].rank;
+        uint256 votes = $.ballots[proposedImpl].totalVotes;
 
-        uint64 limitRank = 0;
+        while (rank > 0) {
+            uint64 lowerRank = rank - 1;
+            (address lowerImpl, uint256 lowerVotes) = _getImplAndVotes($, lowerRank);
 
-        if (proposedImplRank > limitRank) {
-            // Cache the rank, address, and votes of the next lower ranked implementation.
-            uint64 nextRank = proposedImplRank - 1;
-            (address nextImpl, uint256 nextVotes) = _getImplAndVotes($, nextRank);
+            if (votes <= lowerVotes) break;
 
-            // Check if the next lower ranked implementation has less votes.
-            while (proposedImplVotes > nextVotes) {
-                // Switch the ranks.
-                _swapRank({$: $, implA: proposedImpl, rankA: proposedImplRank, implB: nextImpl, rankB: nextRank});
-
-                // Update the rank of the proposed implementation.
-                proposedImplRank = nextRank;
-
-                // Cache the rank, address, and votes of the next lower ranked implementation.
-                if (proposedImplRank > limitRank) {
-                    (nextImpl, nextVotes) = _getImplAndVotes($, --nextRank);
-                } else {
-                    break;
-                }
-            }
+            _swapRank({$: $, implA: proposedImpl, rankA: rank, implB: lowerImpl, rankB: lowerRank});
+            rank = lowerRank;
         }
     }
 
-    /// @notice Updates the rank of implementations being ranked higher (worse) than the proposed implementation.
+    /// @notice Updates the rank of the proposed implementation and those being ranked higher (worse).
     /// @param $ The storage containing the ballots for proposed upgrades.
     /// @param proposedImpl The proposed implementation.
     function updateHigherRanked(ProposedUpgrades storage $, address proposedImpl) internal {
-        uint64 proposedImplRank = $.ballots[proposedImpl].rank;
-        uint256 proposedImplVotes = $.ballots[proposedImpl].totalVotes;
+        uint64 rank = $.ballots[proposedImpl].rank;
+        uint256 votes = $.ballots[proposedImpl].totalVotes;
+        uint64 maxRank = $.implCount - 1;
 
-        uint64 limitRank = $.implCount - 1;
+        while (rank < maxRank) {
+            uint64 higherRank = rank + 1;
+            (address higherImpl, uint256 higherVotes) = _getImplAndVotes($, higherRank);
 
-        if (proposedImplRank < limitRank) {
-            // Cache the rank, address, and votes of the next higher ranked implementation.
-            uint64 nextRank = proposedImplRank + 1;
-            (address nextImpl, uint256 nextVotes) = _getImplAndVotes($, nextRank);
+            if (votes > higherVotes) break;
 
-            // Check if the next higher ranked implementation has more votes.
-            while (proposedImplVotes <= nextVotes) {
-                // Switch the ranks.
-                _swapRank({$: $, implA: proposedImpl, rankA: proposedImplRank, implB: nextImpl, rankB: nextRank});
-
-                // Update the rank of the proposed implementation.
-                proposedImplRank = nextRank;
-
-                // Cache the rank, address, and votes of the next higher ranked implementation.
-                if (proposedImplRank < limitRank) {
-                    (nextImpl, nextVotes) = _getImplAndVotes($, ++nextRank);
-                } else {
-                    break;
-                }
-            }
+            _swapRank({$: $, implA: proposedImpl, rankA: rank, implB: higherImpl, rankB: higherRank});
+            rank = higherRank;
         }
     }
 
