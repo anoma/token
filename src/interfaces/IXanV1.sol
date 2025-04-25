@@ -40,7 +40,7 @@ interface IXanV1 {
     /// @param proposedImpl The proposed implementation to cast the vote for.
     function castVote(address proposedImpl) external;
 
-    /// @notice Revokes the vote from a new implementation.
+    /// @notice Revokes the vote from a proposed implementation.
     /// @param proposedImpl The proposed implementation to revoke the vote for.
     function revokeVote(address proposedImpl) external;
 
@@ -48,8 +48,8 @@ interface IXanV1 {
     /// @param proposedImpl The proposed implementation to start the delay period for.
     function startDelayPeriod(address proposedImpl) external;
 
-    /// @notice Returns the total votes for a new implementation.
-    /// @return votes The total votes implementation.
+    /// @notice Returns the total votes for a proposed implementation.
+    /// @return votes The total votes of the proposed implementation.
     function totalVotes(address proposedImpl) external view returns (uint256 votes);
 
     /// @notice Returns the unlocked token balance of an account.
