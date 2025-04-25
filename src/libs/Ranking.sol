@@ -32,14 +32,6 @@ library Ranking {
         bool exists;
     }
 
-    /// @notice The search direction to be used when updating the implementation ranking.
-    /// @param Lower Used when a vote is casted for an implementation that might result in a lower (better) ranking.
-    /// @param Higher Used when a vote is revoked from an implementation that might result in a higher (worse) ranking.
-    enum SearchDirection {
-        Lower,
-        Higher
-    }
-
     /// @notice Assigns the highest rank to a proposed implementation.
     /// @param $ The storage containing the proposed upgrades.
     /// @param proposedImpl The proposed implementation to assign the highest rank to.
