@@ -71,7 +71,7 @@ contract UnitTest is Test {
         uint256 toTransfer = 1;
 
         vm.expectRevert(
-            abi.encodeWithSelector(XanV1.InsufficientUnlockedBalance.selector, _defaultSender, unlocked, toTransfer),
+            abi.encodeWithSelector(XanV1.UnlockedBalanceInsufficient.selector, _defaultSender, unlocked, toTransfer),
             address(_xanProxy)
         );
         _xanProxy.transfer({to: _RECEIVER, value: 1});
@@ -116,7 +116,7 @@ contract UnitTest is Test {
         uint256 toTransfer = 1;
 
         vm.expectRevert(
-            abi.encodeWithSelector(XanV1.InsufficientUnlockedBalance.selector, _defaultSender, unlocked, toTransfer),
+            abi.encodeWithSelector(XanV1.UnlockedBalanceInsufficient.selector, _defaultSender, unlocked, toTransfer),
             address(_xanProxy)
         );
         _xanProxy.transferAndLock({to: _RECEIVER, value: 1});
@@ -148,7 +148,7 @@ contract UnitTest is Test {
         _xanProxy.lock(_xanProxy.balanceOf(_defaultSender));
 
         vm.expectRevert(
-            abi.encodeWithSelector(XanV1.InsufficientUnlockedBalance.selector, _defaultSender, 0, 1), address(_xanProxy)
+            abi.encodeWithSelector(XanV1.UnlockedBalanceInsufficient.selector, _defaultSender, 0, 1), address(_xanProxy)
         );
         _xanProxy.burn(1);
         vm.stopPrank();
@@ -182,14 +182,14 @@ contract UnitTest is Test {
         vm.prank(_defaultSender);
 
         vm.expectRevert(
-            abi.encodeWithSelector(XanV1.InsufficientLockedBalance.selector, _defaultSender, 0), address(_xanProxy)
+            abi.encodeWithSelector(XanV1.LockedBalanceInsufficient.selector, _defaultSender, 0), address(_xanProxy)
         );
         _xanProxy.castVote(_IMPL);
     }
 
     function test_castVote_ranks_an_implementation_on_first_vote() public {
         // Check that no implementation has rank 0.
-        uint64 rank = 0;
+        uint48 rank = 0;
         vm.expectRevert(
             abi.encodeWithSelector(XanV1.ImplementationRankNonExistent.selector, 0, rank), address(_xanProxy)
         );
@@ -218,7 +218,7 @@ contract UnitTest is Test {
         _xanProxy.castVote(_IMPL);
 
         vm.expectRevert(
-            abi.encodeWithSelector(XanV1.InsufficientLockedBalance.selector, _defaultSender, valueToLock),
+            abi.encodeWithSelector(XanV1.LockedBalanceInsufficient.selector, _defaultSender, valueToLock),
             address(_xanProxy)
         );
         _xanProxy.castVote(_IMPL);
@@ -229,7 +229,7 @@ contract UnitTest is Test {
     function test_castVote_reverts_if_caller_has_no_locked_tokens() public {
         vm.prank(_defaultSender);
         vm.expectRevert(
-            abi.encodeWithSelector(XanV1.InsufficientLockedBalance.selector, _defaultSender, 0), address(_xanProxy)
+            abi.encodeWithSelector(XanV1.LockedBalanceInsufficient.selector, _defaultSender, 0), address(_xanProxy)
         );
         _xanProxy.castVote(_IMPL);
     }
@@ -265,7 +265,7 @@ contract UnitTest is Test {
         vm.stopPrank();
     }
 
-    function test_startDelayPeriod_starts_the_delay_if_quorum_is_met() public {
+    function test_activateUpgradeDelay_starts_the_delay_if_quorum_is_met() public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.SUPPLY);
         _xanProxy.castVote(_IMPL);
@@ -278,34 +278,34 @@ contract UnitTest is Test {
             startTime: currentTime,
             endTime: currentTime + Parameters.DELAY_DURATION
         });
-        _xanProxy.startDelayPeriod(_IMPL);
+        _xanProxy.activateUpgradeDelay(_IMPL);
     }
 
-    function test_startDelayPeriod_reverts_if_quorum_is_not_met() public {
+    function test_activateUpgradeDelay_reverts_if_quorum_is_not_met() public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(_xanProxy.calculateQuorum());
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
 
         vm.expectRevert(abi.encodeWithSelector(XanV1.QuorumNotReached.selector, _IMPL), address(_xanProxy));
-        _xanProxy.startDelayPeriod(_IMPL);
+        _xanProxy.activateUpgradeDelay(_IMPL);
     }
 
-    function test_startDelayPeriod_reverts_if_delay_has_already_been_started() public {
+    function test_activateUpgradeDelay_reverts_if_delay_has_already_been_started() public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.SUPPLY);
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
 
         // Start the delay
-        _xanProxy.startDelayPeriod(_IMPL);
+        _xanProxy.activateUpgradeDelay(_IMPL);
 
         // Try to start the delay again.
         vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodAlreadyStarted.selector, _IMPL), address(_xanProxy));
-        _xanProxy.startDelayPeriod(_IMPL);
+        _xanProxy.activateUpgradeDelay(_IMPL);
     }
 
-    function test_startDelayPeriod_reverts_is_not_ranked_best() public {
+    function test_activateUpgradeDelay_reverts_is_not_ranked_best() public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(_xanProxy.calculateQuorum() + 1);
         _xanProxy.castVote(_IMPL);
@@ -316,9 +316,13 @@ contract UnitTest is Test {
         assertEq(_xanProxy.proposedImplementationByRank(1), _OTHER_IMPL);
 
         vm.expectRevert(
-            abi.encodeWithSelector(XanV1.ImplementationNotRankedBest.selector, _OTHER_IMPL, _IMPL), address(_xanProxy)
+            abi.encodeWithSelector(XanV1.ImplementationNotRankedBest.selector, _IMPL, _OTHER_IMPL), address(_xanProxy)
         );
-        _xanProxy.startDelayPeriod(_OTHER_IMPL);
+        _xanProxy.activateUpgradeDelay(_OTHER_IMPL);
+    }
+
+    function test_resetDelayAfterRejectedUpgrade_() public {
+        revert("TODO");
     }
 
     function test_upgradeToAndCall_reverts_if_delay_period_has_not_started() public {
@@ -327,7 +331,7 @@ contract UnitTest is Test {
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
 
-        vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotStarted.selector, _IMPL), address(_xanProxy));
+        vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotStarted.selector), address(_xanProxy));
         _xanProxy.upgradeToAndCall({newImplementation: _IMPL, data: ""});
     }
 
@@ -337,9 +341,9 @@ contract UnitTest is Test {
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
 
-        _xanProxy.startDelayPeriod(_IMPL);
+        _xanProxy.activateUpgradeDelay(_IMPL);
 
-        vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotEnded.selector, _IMPL), address(_xanProxy));
+        vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotEnded.selector), address(_xanProxy));
         _xanProxy.upgradeToAndCall({newImplementation: _IMPL, data: ""});
     }
 
@@ -349,7 +353,7 @@ contract UnitTest is Test {
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
 
-        _xanProxy.startDelayPeriod(_IMPL);
+        _xanProxy.activateUpgradeDelay(_IMPL);
         skip(Parameters.DELAY_DURATION);
 
         vm.prank(_defaultSender);
@@ -365,7 +369,7 @@ contract UnitTest is Test {
         _xanProxy.castVote(_IMPL);
         assertEq(_xanProxy.proposedImplementationByRank(0), _IMPL);
 
-        _xanProxy.startDelayPeriod(_IMPL);
+        _xanProxy.activateUpgradeDelay(_IMPL);
         _xanProxy.lock(1);
         _xanProxy.castVote(_OTHER_IMPL);
         vm.stopPrank();
@@ -376,7 +380,7 @@ contract UnitTest is Test {
         skip(Parameters.DELAY_DURATION);
 
         vm.expectRevert(
-            abi.encodeWithSelector(XanV1.ImplementationNotRankedBest.selector, _IMPL, _OTHER_IMPL), address(_xanProxy)
+            abi.encodeWithSelector(XanV1.ImplementationNotRankedBest.selector, _OTHER_IMPL, _IMPL), address(_xanProxy)
         );
         _xanProxy.upgradeToAndCall({newImplementation: _IMPL, data: ""});
     }

@@ -44,9 +44,13 @@ interface IXanV1 {
     /// @param proposedImpl The proposed implementation to revoke the vote for.
     function revokeVote(address proposedImpl) external;
 
-    /// @notice Starts the delay period if the
-    /// @param proposedImpl The proposed implementation to start the delay period for.
-    function startDelayPeriod(address proposedImpl) external;
+    /// @notice Activates the delay period for the winning implementation.
+    /// @param winningImpl The winning implementation to activate the delay period for.
+    function activateUpgradeDelay(address winningImpl) external;
+
+    /// @notice Deactivates the delay period for an losing implementation.
+    /// @param losingImpl The losing implementation to deactivate the delay period for.
+    function deactivateUpgradeDelay(address losingImpl) external;
 
     /// @notice Calculates the quorum for a proposed implementation.
     /// @return calculatedQuorum The calculated quorum.
@@ -77,5 +81,5 @@ interface IXanV1 {
 
     /// @notice Returns the proposed implementation with the respective rank.
     /// @return rankedImplementation The proposed implementation with the respective rank.
-    function proposedImplementationByRank(uint64 rank) external view returns (address rankedImplementation);
+    function proposedImplementationByRank(uint48 rank) external view returns (address rankedImplementation);
 }

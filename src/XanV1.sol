@@ -30,14 +30,16 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     bytes32 internal constant _XAN_V1_STORAGE_LOCATION =
         0x52f7d5fb153315ca313a5634db151fa7e0b41cd83fe6719e93ed3cd02b69d200;
 
-    error InsufficientUnlockedBalance(address sender, uint256 unlockedBalance, uint256 valueToLock);
-    error InsufficientLockedBalance(address sender, uint256 lockedBalance);
-    error ImplementationNotRankedBest(address impl, address bestRankedImpl);
-    error DelayPeriodNotStarted(address proposedImpl);
-    error DelayPeriodAlreadyStarted(address proposedImpl);
-    error DelayPeriodNotEnded(address proposedImpl);
+    error UnlockedBalanceInsufficient(address sender, uint256 unlockedBalance, uint256 valueToLock);
+    error LockedBalanceInsufficient(address sender, uint256 lockedBalance);
+    error ImplementationRankNonExistent(uint48 limit, uint48 rank);
+    error ImplementationNotRankedBest(address expected, address actual);
+    error ImplementationNotDelayed(address expected, address actual);
+    error ImplementationNotResettable(address impl);
     error QuorumNotReached(address proposedImpl);
-    error ImplementationRankNonExistent(uint64 implCount, uint64 rank);
+    error DelayPeriodNotStarted();
+    error DelayPeriodAlreadyStarted(address delayedUpgradeImpl);
+    error DelayPeriodNotEnded();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -81,7 +83,7 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
 
         // Check that the locked balance is larger than the old votum.
         if (lockedBalance < oldVotum + 1) {
-            revert InsufficientLockedBalance({sender: voter, lockedBalance: lockedBalance});
+            revert LockedBalanceInsufficient({sender: voter, lockedBalance: lockedBalance});
         }
 
         // Calculate the votes that must be added.
@@ -113,6 +115,8 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
         // Cache the old votum of the voter.
         uint256 oldVotum = ballot.vota[voter];
 
+        // TODO! Add check to see if votes > 0. This will prevent `VoteRevoked` from being emitted for no reason.
+
         // Set the votum of the voter to zero.
         ballot.vota[voter] = 0;
 
@@ -126,23 +130,40 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     }
 
     /// @inheritdoc IXanV1
-    function startDelayPeriod(address proposedImpl) external virtual override {
+    function activateUpgradeDelay(address proposedImpl) external virtual override {
         // Check that all upgrade criteria are met before starting the delay.
         _checkUpgradeCriteria(proposedImpl);
 
-        Ranking.Ballot storage ballot = _getProposedUpgrades().ballots[proposedImpl];
+        Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
 
         uint48 currentTime = Time.timestamp();
 
-        // Check that the delay period hasn't been started yet by ensuring that no end time has been set.
-        if (ballot.delayEndTime != 0) {
-            revert DelayPeriodAlreadyStarted(proposedImpl);
+        // Check that the delay period hasn't been started yet by
+        // ensuring that no end time and implementation has been set.
+        if ($.delayEndTime != 0 && $.activeDelayImpl != address(0)) {
+            revert DelayPeriodAlreadyStarted($.activeDelayImpl);
         }
 
         // Set the end time and emit the associated event.
-        ballot.delayEndTime = currentTime + Parameters.DELAY_DURATION;
+        $.delayEndTime = currentTime + Parameters.DELAY_DURATION;
+        $.activeDelayImpl = proposedImpl;
 
-        emit DelayStarted({implementation: proposedImpl, startTime: currentTime, endTime: ballot.delayEndTime});
+        emit DelayStarted({implementation: proposedImpl, startTime: currentTime, endTime: $.delayEndTime});
+    }
+
+    /// @inheritdoc IXanV1
+    function deactivateUpgradeDelay(address losingImpl) external override {
+        _checkDelayCriterion(losingImpl);
+
+        Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
+
+        // Check that the quorum for the new implementation is reached.
+        if (_isQuorumReached(losingImpl) && losingImpl == $.ranking[0]) {
+            revert ImplementationNotResettable(losingImpl);
+        }
+        // Reset the delay
+        $.delayEndTime = 0;
+        $.activeDelayImpl = address(0);
     }
 
     /// @notice @inheritdoc IXanV1
@@ -166,7 +187,7 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     }
 
     /// @notice @inheritdoc IXanV1
-    function proposedImplementationByRank(uint64 rank)
+    function proposedImplementationByRank(uint48 rank)
         public
         view
         virtual
@@ -174,10 +195,10 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
         returns (address rankedImplementation)
     {
         Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
-        uint64 implCount = $.implCount;
+        uint48 implCount = $.implCount;
 
         if (implCount == 0 || rank > implCount - 1) {
-            revert ImplementationRankNonExistent({implCount: implCount, rank: rank});
+            revert ImplementationRankNonExistent({limit: implCount, rank: rank});
         }
 
         rankedImplementation = $.ranking[rank];
@@ -195,6 +216,7 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
 
     // solhint-disable-next-line func-name-mixedcase
     function __XanV1_init(address initialOwner) internal onlyInitializing {
+        __Context_init_unchained();
         __ERC20_init_unchained("Anoma Token", "Xan");
         __ERC20Burnable_init();
         __UUPSUpgradeable_init_unchained();
@@ -210,13 +232,14 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
 
     /// @inheritdoc ERC20Upgradeable
     function _update(address from, address to, uint256 value) internal override {
+        // TODO! Check if the `address(0)` check is necessary here
         // Allow only unlocked balances to be updated.
         if (from != address(0)) {
             uint256 unlockedBalance = unlockedBalanceOf(from);
 
             if (value > unlockedBalance) {
                 // solhint-disable-next-line max-line-length
-                revert InsufficientUnlockedBalance({sender: from, unlockedBalance: unlockedBalance, valueToLock: value});
+                revert UnlockedBalanceInsufficient({sender: from, unlockedBalance: unlockedBalance, valueToLock: value});
             }
         }
 
@@ -231,7 +254,7 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
 
         uint256 unlockedBalance = unlockedBalanceOf(account);
         if (value > unlockedBalance) {
-            revert InsufficientUnlockedBalance({sender: account, unlockedBalance: unlockedBalance, valueToLock: value});
+            revert UnlockedBalanceInsufficient({sender: account, unlockedBalance: unlockedBalance, valueToLock: value});
         }
 
         $.lockedTotalSupply += value;
@@ -243,7 +266,7 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     /// @notice Authorizes an upgrade.
     /// @param newImpl The new implementation to authorize the upgrade to.
     function _authorizeUpgrade(address newImpl) internal view virtual override {
-        _checkDelayPeriod(newImpl);
+        _checkDelayCriterion(newImpl);
 
         _checkUpgradeCriteria(newImpl);
     }
@@ -252,7 +275,7 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     /// @param impl The implementation to check the upgrade criteria for.
     function _checkUpgradeCriteria(address impl) internal view virtual {
         // Check that the quorum for the new implementation is reached.
-        if (totalVotes(impl) < calculateQuorum() + 1) {
+        if (!_isQuorumReached(impl)) {
             revert QuorumNotReached(impl);
         }
 
@@ -260,19 +283,28 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
         address bestRankedImpl = _getProposedUpgrades().ranking[0];
 
         if (impl != bestRankedImpl) {
-            revert ImplementationNotRankedBest({impl: impl, bestRankedImpl: bestRankedImpl});
+            revert ImplementationNotRankedBest({expected: bestRankedImpl, actual: impl});
         }
     }
 
+    function _isQuorumReached(address impl) internal view virtual returns (bool isReached) {
+        isReached = totalVotes(impl) > calculateQuorum();
+    }
+
     /// @notice Checks if the delay period has ended and reverts with errors if not.
-    /// @param impl The implementation to check the delay period for.
-    function _checkDelayPeriod(address impl) internal view virtual {
-        uint48 delayEndTime = _getProposedUpgrades().ballots[impl].delayEndTime;
+    function _checkDelayCriterion(address impl) internal view virtual {
+        Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
 
-        if (delayEndTime == 0) revert DelayPeriodNotStarted(impl);
+        if ($.delayEndTime == 0) {
+            revert DelayPeriodNotStarted();
+        }
 
-        if (Time.timestamp() < delayEndTime) {
-            revert DelayPeriodNotEnded(impl);
+        if (Time.timestamp() < $.delayEndTime) {
+            revert DelayPeriodNotEnded();
+        }
+
+        if (impl != $.activeDelayImpl) {
+            revert ImplementationNotDelayed({expected: $.activeDelayImpl, actual: impl});
         }
     }
 

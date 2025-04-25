@@ -14,8 +14,10 @@ library Ranking {
         mapping(address owner => uint256) lockedBalances;
         uint256 lockedTotalSupply;
         mapping(address proposedImpl => Ballot) ballots;
-        mapping(uint64 rank => address proposedImpl) ranking;
-        uint64 implCount;
+        mapping(uint48 rank => address proposedImpl) ranking;
+        uint48 implCount;
+        uint48 delayEndTime;
+        address activeDelayImpl;
     }
 
     /// @notice The vote data of a proposed implementation.
@@ -27,9 +29,8 @@ library Ranking {
     struct Ballot {
         mapping(address voter => uint256 votes) vota;
         uint256 totalVotes;
-        uint64 rank;
-        uint48 delayEndTime;
-        bool exists;
+        uint48 rank;
+        bool exists; //TODO! Revisit this boolean
     }
 
     /// @notice Assigns the highest rank to a proposed implementation.
@@ -50,13 +51,13 @@ library Ranking {
     /// @param proposedImpl The proposed implementation.
     function bubbleUp(ProposedUpgrades storage $, address proposedImpl) internal {
         Ballot storage ballot = $.ballots[proposedImpl];
-        uint64 rank = ballot.rank;
+        uint48 rank = ballot.rank;
         uint256 votes = ballot.totalVotes;
 
-        uint64 bestRank = 0;
+        uint48 bestRank = 0;
 
         while (rank > bestRank) {
-            uint64 nextBetterRank;
+            uint48 nextBetterRank;
             unchecked {
                 nextBetterRank = rank - 1;
             }
@@ -77,13 +78,13 @@ library Ranking {
     /// @param proposedImpl The proposed implementation.
     function bubbleDown(ProposedUpgrades storage $, address proposedImpl) internal {
         Ballot storage ballot = $.ballots[proposedImpl];
-        uint64 rank = ballot.rank;
+        uint48 rank = ballot.rank;
         uint256 votes = ballot.totalVotes;
 
-        uint64 worstRank = $.implCount - 1;
+        uint48 worstRank = $.implCount - 1;
 
         while (rank < worstRank) {
-            uint64 nextWorseRank;
+            uint48 nextWorseRank;
             unchecked {
                 nextWorseRank = rank + 1;
             }
@@ -106,7 +107,7 @@ library Ranking {
     /// @param rankA The rank of implementation A before the swap.
     /// @param implB Implementation B.
     /// @param rankB The rank of implementation B before the swap.
-    function _swapRank(ProposedUpgrades storage $, address implA, uint64 rankA, address implB, uint64 rankB) private {
+    function _swapRank(ProposedUpgrades storage $, address implA, uint48 rankA, address implB, uint48 rankB) private {
         $.ranking[rankA] = implB;
         $.ranking[rankB] = implA;
 
