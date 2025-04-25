@@ -67,6 +67,7 @@ library Ranking {
             if (votes < nextBetterVotes + 1) break;
 
             _swapRank({$: $, implA: proposedImpl, rankA: rank, implB: nextBetterImpl, rankB: nextBetterRank});
+            // Update the cached rank after the swap.
             rank = nextBetterRank;
         }
     }
@@ -93,6 +94,8 @@ library Ranking {
             if (votes > nextWorseVotes) break;
 
             _swapRank({$: $, implA: proposedImpl, rankA: rank, implB: nextWorseImpl, rankB: nextWorseRank});
+
+            // Update the cached rank after the swap.
             rank = nextWorseRank;
         }
     }
