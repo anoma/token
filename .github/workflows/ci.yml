@@ -9,6 +9,7 @@ jobs:
   foundry:
     env:
       FOUNDRY_PROFILE: ci
+      NODE_OPTIONS: "--disable-warning=ExperimentalWarning"
 
     strategy:
       fail-fast: true
