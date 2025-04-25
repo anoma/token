@@ -16,4 +16,7 @@ library Parameters {
 
     /// @notice The claim duration.
     uint32 internal constant CLAIM_DURATION = 365 days; // TODO replace by real duration
+
+    /// @notice The recipient of unclaimed tokens after the claim period.
+    address internal constant UNCLAIMED_TOKEN_RECIPIENT = address(0);
 }
