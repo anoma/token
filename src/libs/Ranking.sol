@@ -43,70 +43,65 @@ library Ranking {
     /// @notice Assigns the highest rank to a proposed implementation.
     /// @param $ The storage containing the proposed upgrades.
     /// @param proposedImpl The proposed implementation to assign the highest rank to.
-    function assignHighestRank(ProposedUpgrades storage $, address proposedImpl) internal {
-        $.ballots[proposedImpl].exists = true;
-        $.ballots[proposedImpl].rank = $.implCount;
+    function assignLowestRank(ProposedUpgrades storage $, address proposedImpl) internal {
+        Ballot storage ballot = $.ballots[proposedImpl];
+        ballot.exists = true;
+        ballot.rank = $.implCount;
 
         // Set the highest rank.
-        uint64 highestRank = $.implCount;
-        $.ranking[highestRank] = proposedImpl;
+        $.ranking[$.implCount] = proposedImpl;
         ++$.implCount;
     }
 
-    /// @notice Updates the rank of implementations being ranked lower (better) or higher (worse)
-    /// than the proposed implementation.
+    /// @notice Bubble the proposed implementation up in the ranking.
     /// @param $ The storage containing the ballots for proposed upgrades.
     /// @param proposedImpl The proposed implementation.
-    /// @param direction The search direction.
-    function updateRanking(ProposedUpgrades storage $, address proposedImpl, SearchDirection direction) internal {
-        uint64 proposedImplRank = $.ballots[proposedImpl].rank;
-        uint256 proposedImplVotes = $.ballots[proposedImpl].totalVotes;
+    function bubbleUp(ProposedUpgrades storage $, address proposedImpl) internal {
+        Ballot storage ballot = $.ballots[proposedImpl];
+        uint64 rank = ballot.rank;
+        uint256 votes = ballot.totalVotes;
 
-        // Set variables depending on the search direction.
-        uint64 limitRank;
-        function(uint64, uint64) pure returns (bool) compareRanks;
-        function(uint256, uint256) pure returns (bool) compareVotes;
+        uint64 bestRank = 0;
 
-        if (direction == SearchDirection.Lower) {
-            limitRank = 0;
-            compareRanks = _gtUint64;
-            compareVotes = _gtUint256;
-        } else {
-            limitRank = $.implCount - 1;
-            compareRanks = _ltUint64;
-            compareVotes = _leUint256;
-        }
-
-        /**
-         * Check if the rank of the proposed implementation deviates from the limit. We distinguish two cases:
-         * 1. Case `SearchDirection.Lower`:
-         *    - Checks if `proposedImplRank > limitRank` (where `limitRank = 0`)
-         *      and eventually must be ranked lower (better).
-         * 2. Case `SearchDirection.Higher`:
-         *    - Checks if `proposedImplRank < limitRank` (where `limitRank = highestRank`)
-         *      and eventually must be ranked higher (worse).
-         */
-        if (compareRanks(proposedImplRank, limitRank)) {
-            // Cache the rank, address, and votes of the next higher/lower ranked implementation.
-            uint64 nextRank = direction == SearchDirection.Lower ? proposedImplRank - 1 : proposedImplRank + 1;
-            (address nextImpl, uint256 nextVotes) = _getImplAndVotes($, nextRank);
-
-            // Check if the next lower/higher ranked implementation has more/less votes.
-            while (compareVotes(proposedImplVotes, nextVotes)) {
-                // Switch the ranks.
-                _swapRank({$: $, implA: proposedImpl, rankA: proposedImplRank, implB: nextImpl, rankB: nextRank});
-
-                // Update the rank of the proposed implementation.
-                proposedImplRank = nextRank;
-
-                // Update the rank, address, and votes of the next higher/lower ranked implementation.
-                if (compareRanks(proposedImplRank, limitRank)) {
-                    direction == SearchDirection.Lower ? --nextRank : ++nextRank;
-                    (nextImpl, nextVotes) = _getImplAndVotes($, nextRank);
-                } else {
-                    break;
-                }
+        while (rank > bestRank) {
+            uint64 nextBetterRank;
+            unchecked {
+                nextBetterRank = rank - 1;
             }
+
+            address nextBetterImpl = $.ranking[nextBetterRank];
+            uint256 nextBetterVotes = $.ballots[nextBetterImpl].totalVotes;
+
+            if (votes <= nextBetterVotes) break;
+
+            _swapRank({$: $, implA: proposedImpl, rankA: rank, implB: nextBetterImpl, rankB: nextBetterRank});
+            rank = nextBetterRank;
+        }
+    }
+
+    /// @notice Bubble the proposed implementation down in the ranking.
+    /// @param $ The storage containing the ballots for proposed upgrades.
+    /// @param proposedImpl The proposed implementation.
+    function bubbleDown(ProposedUpgrades storage $, address proposedImpl) internal {
+        Ballot storage ballot = $.ballots[proposedImpl];
+        uint64 rank = ballot.rank;
+        uint256 votes = ballot.totalVotes;
+
+        uint64 worstRank = $.implCount - 1;
+
+        while (rank < worstRank) {
+            uint64 nextWorseRank;
+            unchecked {
+                nextWorseRank = rank + 1;
+            }
+
+            address nextWorseImpl = $.ranking[nextWorseRank];
+            uint256 nextWorseVotes = $.ballots[nextWorseImpl].totalVotes;
+
+            if (votes > nextWorseVotes) break;
+
+            _swapRank({$: $, implA: proposedImpl, rankA: rank, implB: nextWorseImpl, rankB: nextWorseRank});
+            rank = nextWorseRank;
         }
     }
 
@@ -122,51 +117,5 @@ library Ranking {
 
         $.ballots[implA].rank = rankB;
         $.ballots[implB].rank = rankA;
-    }
-
-    /// @notice Returns the implementation and associated votes for a specific rank.
-    /// @param $ The storage containing the ballots for proposed upgrades.
-    /// @param rank The rank to return the implementation and votes for.
-    /// @return impl The implementation for the specific rank.
-    /// @return votes The votes for the specific rank.
-    function _getImplAndVotes(ProposedUpgrades storage $, uint64 rank)
-        private
-        view
-        returns (address impl, uint256 votes)
-    {
-        impl = $.ranking[rank];
-        votes = $.ballots[impl].totalVotes;
-    }
-
-    /// @notice Greater than comparator function for `uint64` types.
-    /// @param lhs The left-hand side value.
-    /// @param rhs The right-hand side value.
-    /// @param isGreaterThan Whether the left- is greater than the right-hand side.
-    function _gtUint64(uint64 lhs, uint64 rhs) private pure returns (bool isGreaterThan) {
-        isGreaterThan = lhs > rhs;
-    }
-
-    /// @notice Less than comparator function for `uint64` types.
-    /// @param lhs The left-hand side value.
-    /// @param rhs The right-hand side value.
-    /// @param isLessThan Whether the left- is less than the right-hand side.
-    function _ltUint64(uint64 lhs, uint64 rhs) private pure returns (bool isLessThan) {
-        isLessThan = lhs < rhs;
-    }
-
-    /// @notice Greater than comparator function for `uint256` types.
-    /// @param lhs The left-hand side value.
-    /// @param rhs The right-hand side value.
-    /// @param isGreaterThan Whether the left- is greater than the right-hand side.
-    function _gtUint256(uint256 lhs, uint256 rhs) private pure returns (bool isGreaterThan) {
-        isGreaterThan = lhs > rhs;
-    }
-
-    /// @notice Less than or equal comparator function for `uint256` types.
-    /// @param lhs The left-hand side value.
-    /// @param rhs The right-hand side value.
-    /// @param isLessThanOrEqual Whether the left- is less than or Equal the right-hand side.
-    function _leUint256(uint256 lhs, uint256 rhs) private pure returns (bool isLessThanOrEqual) {
-        isLessThanOrEqual = lhs < rhs + 1;
     }
 }

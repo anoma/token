@@ -10,6 +10,6 @@ contract StorageTest is Test, XanV1 {
         bytes32 expected =
             keccak256(abi.encode(uint256(keccak256("anoma.storage.Xan.v1")) - 1)) & ~bytes32(uint256(0xff));
 
-        assertEq(_XAN_STORAGE_LOCATION, expected);
+        assertEq(_XAN_V1_STORAGE_LOCATION, expected);
     }
 }

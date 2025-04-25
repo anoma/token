@@ -3,9 +3,9 @@ pragma solidity ^0.8.27;
 
 interface IXanV1 {
     /// @notice Emitted when tokens are locked.
-    /// @param owner The owning account.
+    /// @param account The owning account.
     /// @param value The number of tokens being locked.
-    event Locked(address owner, uint256 value);
+    event Locked(address account, uint256 value);
 
     /// @notice Emitted when a vote is cast for a implementation.
     /// @param voter The voter address.
