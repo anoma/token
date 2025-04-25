@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.27;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
+
 import {Test} from "forge-std/Test.sol";
 
 import {Parameters} from "../src/libs/Parameters.sol";
@@ -12,6 +15,8 @@ contract UnitTest is Test {
     XanV1 internal _xanProxy;
 
     address internal constant _IMPL = address(uint160(1));
+    address internal constant _OTHER_IMPL = address(uint160(2));
+    address internal constant _RECEIVER = address(uint160(3));
 
     function setUp() public {
         (, _defaultSender,) = vm.readCallers();
@@ -36,8 +41,18 @@ contract UnitTest is Test {
         assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), Parameters.SUPPLY);
     }
 
+    function test_lock_locks_incrementally() public {
+        vm.startPrank(_defaultSender);
+        assertEq(_xanProxy.lockedBalanceOf(_defaultSender), 0);
+        _xanProxy.lock(1);
+        assertEq(_xanProxy.lockedBalanceOf(_defaultSender), 1);
+        _xanProxy.lock(1);
+        assertEq(_xanProxy.lockedBalanceOf(_defaultSender), 2);
+        vm.stopPrank();
+    }
+
     function test_lock_emits_the_Locked_event() public {
-        uint256 valueToLock = _xanProxy.unlockedBalanceOf(_defaultSender) / 3;
+        uint256 valueToLock = Parameters.SUPPLY / 3;
 
         vm.expectEmit(address(_xanProxy));
         emit IXanV1.Locked({account: _defaultSender, value: valueToLock});
@@ -46,8 +61,90 @@ contract UnitTest is Test {
         _xanProxy.lock(valueToLock);
     }
 
+    function test_transfer_reverts_on_insufficient_unlocked_tokens() public {
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.SUPPLY);
+
+        uint256 unlocked = _xanProxy.unlockedBalanceOf(_defaultSender);
+        assertEq(unlocked, 0);
+
+        uint256 toTransfer = 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV1.InsufficientUnlockedBalance.selector, _defaultSender, unlocked, toTransfer),
+            address(_xanProxy)
+        );
+        _xanProxy.transfer({to: _RECEIVER, value: 1});
+    }
+
+    function test_transfer_transfers_tokens() public {
+        assertEq(_xanProxy.balanceOf(_defaultSender), Parameters.SUPPLY);
+        assertEq(_xanProxy.unlockedBalanceOf(_defaultSender), Parameters.SUPPLY);
+        assertEq(_xanProxy.lockedBalanceOf(_defaultSender), 0);
+
+        assertEq(_xanProxy.balanceOf(_RECEIVER), 0);
+        assertEq(_xanProxy.unlockedBalanceOf(_RECEIVER), 0);
+        assertEq(_xanProxy.lockedBalanceOf(_RECEIVER), 0);
+
+        vm.prank(_defaultSender);
+        _xanProxy.transfer({to: _RECEIVER, value: 1});
+
+        assertEq(_xanProxy.balanceOf(_defaultSender), Parameters.SUPPLY - 1);
+        assertEq(_xanProxy.unlockedBalanceOf(_defaultSender), Parameters.SUPPLY - 1);
+        assertEq(_xanProxy.lockedBalanceOf(_defaultSender), 0);
+
+        assertEq(_xanProxy.balanceOf(_RECEIVER), 1);
+        assertEq(_xanProxy.unlockedBalanceOf(_RECEIVER), 1);
+        assertEq(_xanProxy.lockedBalanceOf(_RECEIVER), 0);
+    }
+
+    function test_transfer_emits_the_Transfer_event() public {
+        vm.expectEmit(address(_xanProxy));
+        emit IERC20.Transfer({from: _defaultSender, to: _RECEIVER, value: 1});
+
+        vm.prank(_defaultSender);
+        _xanProxy.transfer({to: _RECEIVER, value: 1});
+    }
+
+    function test_transferAndLock_reverts_on_insufficient_unlocked_tokens() public {
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.SUPPLY);
+
+        uint256 unlocked = _xanProxy.unlockedBalanceOf(_defaultSender);
+        assertEq(unlocked, 0);
+
+        uint256 toTransfer = 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV1.InsufficientUnlockedBalance.selector, _defaultSender, unlocked, toTransfer),
+            address(_xanProxy)
+        );
+        _xanProxy.transferAndLock({to: _RECEIVER, value: 1});
+    }
+
+    function test_transfer_transfers_and_locks_tokens() public {
+        assertEq(_xanProxy.balanceOf(_defaultSender), Parameters.SUPPLY);
+        assertEq(_xanProxy.unlockedBalanceOf(_defaultSender), Parameters.SUPPLY);
+        assertEq(_xanProxy.lockedBalanceOf(_defaultSender), 0);
+
+        assertEq(_xanProxy.balanceOf(_RECEIVER), 0);
+        assertEq(_xanProxy.unlockedBalanceOf(_RECEIVER), 0);
+        assertEq(_xanProxy.lockedBalanceOf(_RECEIVER), 0);
+
+        vm.prank(_defaultSender);
+        _xanProxy.transferAndLock({to: _RECEIVER, value: 1});
+
+        assertEq(_xanProxy.balanceOf(_defaultSender), Parameters.SUPPLY - 1);
+        assertEq(_xanProxy.unlockedBalanceOf(_defaultSender), Parameters.SUPPLY - 1);
+        assertEq(_xanProxy.lockedBalanceOf(_defaultSender), 0);
+
+        assertEq(_xanProxy.balanceOf(_RECEIVER), 1);
+        assertEq(_xanProxy.unlockedBalanceOf(_RECEIVER), 0);
+        assertEq(_xanProxy.lockedBalanceOf(_RECEIVER), 1);
+    }
+
     function test_castVote_emits_the_VoteCast_event() public {
-        uint256 valueToLock = _xanProxy.unlockedBalanceOf(_defaultSender) / 3;
+        uint256 valueToLock = Parameters.SUPPLY / 3;
 
         vm.startPrank(_defaultSender);
         _xanProxy.lock(valueToLock);
@@ -78,7 +175,7 @@ contract UnitTest is Test {
 
         // Lock, vote, and check that there is an implementation with rank 0.
         vm.startPrank(_defaultSender);
-        _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));
+        _xanProxy.lock(Parameters.SUPPLY);
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
         assertEq(_IMPL, _xanProxy.proposedImplementationByRank(rank));
@@ -92,7 +189,7 @@ contract UnitTest is Test {
     }
 
     function test_castVote_reverts_if_the_votum_has_already_been_casted() public {
-        uint256 valueToLock = _xanProxy.unlockedBalanceOf(_defaultSender) / 3;
+        uint256 valueToLock = Parameters.SUPPLY / 3;
 
         vm.startPrank(_defaultSender);
         _xanProxy.lock(valueToLock);
@@ -107,9 +204,17 @@ contract UnitTest is Test {
         vm.stopPrank();
     }
 
+    function test_castVote_reverts_if_caller_has_no_locked_tokens() public {
+        vm.prank(_defaultSender);
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV1.InsufficientLockedBalance.selector, _defaultSender, 0), address(_xanProxy)
+        );
+        _xanProxy.castVote(_IMPL);
+    }
+
     function test_castVote_increases_votes_if_more_tokens_have_been_locked() public {
-        uint256 firstLockValue = _xanProxy.unlockedBalanceOf(_defaultSender) / 3;
-        uint256 secondLockValue = _xanProxy.unlockedBalanceOf(_defaultSender) - firstLockValue;
+        uint256 firstLockValue = Parameters.SUPPLY / 3;
+        uint256 secondLockValue = Parameters.SUPPLY - firstLockValue;
 
         vm.startPrank(_defaultSender);
 
@@ -125,7 +230,7 @@ contract UnitTest is Test {
     }
 
     function test_revokeVote_emits_the_VoteRevoked_event() public {
-        uint256 valueToLock = _xanProxy.unlockedBalanceOf(_defaultSender) / 2;
+        uint256 valueToLock = Parameters.SUPPLY / 2;
 
         vm.startPrank(_defaultSender);
         _xanProxy.lock(valueToLock);
@@ -138,8 +243,124 @@ contract UnitTest is Test {
         vm.stopPrank();
     }
 
+    function test_startDelayPeriod_starts_the_delay_if_quorum_is_met() public {
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.SUPPLY);
+        _xanProxy.castVote(_IMPL);
+        vm.stopPrank();
+
+        uint48 currentTime = Time.timestamp();
+        vm.expectEmit(address(_xanProxy));
+        emit IXanV1.DelayStarted({
+            implementation: _IMPL,
+            startTime: currentTime,
+            endTime: currentTime + Parameters.DELAY_DURATION
+        });
+        _xanProxy.startDelayPeriod(_IMPL);
+    }
+
+    function test_startDelayPeriod_reverts_if_quorum_is_not_met() public {
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.QUORUM);
+        _xanProxy.castVote(_IMPL);
+        vm.stopPrank();
+
+        vm.expectRevert(abi.encodeWithSelector(XanV1.QuorumNotReached.selector, _IMPL), address(_xanProxy));
+        _xanProxy.startDelayPeriod(_IMPL);
+    }
+
+    function test_startDelayPeriod_reverts_if_delay_has_already_been_started() public {
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.SUPPLY);
+        _xanProxy.castVote(_IMPL);
+        vm.stopPrank();
+
+        // Start the delay
+        _xanProxy.startDelayPeriod(_IMPL);
+
+        // Try to start the delay again.
+        vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodAlreadyStarted.selector, _IMPL), address(_xanProxy));
+        _xanProxy.startDelayPeriod(_IMPL);
+    }
+
+    function test_startDelayPeriod_reverts_is_not_ranked_best() public {
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.QUORUM + 1);
+        _xanProxy.castVote(_IMPL);
+        _xanProxy.castVote(_OTHER_IMPL);
+        vm.stopPrank();
+
+        assertEq(_xanProxy.proposedImplementationByRank(0), _IMPL);
+        assertEq(_xanProxy.proposedImplementationByRank(1), _OTHER_IMPL);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV1.ImplementationNotRankedBest.selector, _OTHER_IMPL, _IMPL), address(_xanProxy)
+        );
+        _xanProxy.startDelayPeriod(_OTHER_IMPL);
+    }
+
+    function test_upgradeToAndCall_reverts_if_delay_period_has_not_started() public {
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.QUORUM + 1);
+        _xanProxy.castVote(_IMPL);
+        vm.stopPrank();
+
+        vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotStarted.selector, _IMPL), address(_xanProxy));
+        _xanProxy.upgradeToAndCall({newImplementation: _IMPL, data: ""});
+    }
+
+    function test_upgradeToAndCall_reverts_if_delay_period_has_not_ended() public {
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.QUORUM + 1);
+        _xanProxy.castVote(_IMPL);
+        vm.stopPrank();
+
+        _xanProxy.startDelayPeriod(_IMPL);
+
+        vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotEnded.selector, _IMPL), address(_xanProxy));
+        _xanProxy.upgradeToAndCall({newImplementation: _IMPL, data: ""});
+    }
+
+    function test_upgradeToAndCall_reverts_if_quorum_is_not_met() public {
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.QUORUM + 1);
+        _xanProxy.castVote(_IMPL);
+        vm.stopPrank();
+
+        _xanProxy.startDelayPeriod(_IMPL);
+        skip(Parameters.DELAY_DURATION);
+
+        vm.prank(_defaultSender);
+        _xanProxy.revokeVote(_IMPL);
+
+        vm.expectRevert(abi.encodeWithSelector(XanV1.QuorumNotReached.selector, _IMPL), address(_xanProxy));
+        _xanProxy.upgradeToAndCall({newImplementation: _IMPL, data: ""});
+    }
+
+    function test_upgradeToAndCall_reverts_if_implementation_is_not_best_ranked() public {
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.QUORUM + 1);
+        _xanProxy.castVote(_IMPL);
+        assertEq(_xanProxy.proposedImplementationByRank(0), _IMPL);
+
+        _xanProxy.startDelayPeriod(_IMPL);
+        _xanProxy.lock(1);
+        _xanProxy.castVote(_OTHER_IMPL);
+        vm.stopPrank();
+
+        assertEq(_xanProxy.proposedImplementationByRank(0), _OTHER_IMPL); // Delay has not started
+        assertEq(_xanProxy.proposedImplementationByRank(1), _IMPL); // Delay has started
+
+        skip(Parameters.DELAY_DURATION);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV1.ImplementationNotRankedBest.selector, _IMPL, _OTHER_IMPL), address(_xanProxy)
+        );
+        _xanProxy.upgradeToAndCall({newImplementation: _IMPL, data: ""});
+    }
+
     function test_lockedBalanceOf_returns_the_locked_balance() public {
-        uint256 valueToLock = _xanProxy.unlockedBalanceOf(_defaultSender) / 3;
+        uint256 valueToLock = Parameters.SUPPLY / 3;
 
         vm.prank(_defaultSender);
         _xanProxy.lock(valueToLock);
@@ -148,8 +369,8 @@ contract UnitTest is Test {
     }
 
     function test_unlockedBalanceOf_returns_the_unlocked_balance() public {
-        uint256 valueToLock = _xanProxy.unlockedBalanceOf(_defaultSender) / 3;
-        uint256 expectedUnlockedValue = _xanProxy.unlockedBalanceOf(_defaultSender) - valueToLock;
+        uint256 valueToLock = Parameters.SUPPLY / 3;
+        uint256 expectedUnlockedValue = Parameters.SUPPLY - valueToLock;
 
         vm.prank(_defaultSender);
         _xanProxy.lock(valueToLock);
