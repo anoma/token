@@ -27,7 +27,7 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
 
     error InsufficientUnlockedBalance(address sender, uint256 unlockedBalance, uint256 valueToLock);
     error InsufficientLockedBalance(address sender, uint256 lockedBalance);
-    error ImplementationNotWinning(address impl, address winningImpl);
+    error ImplementationNotRankedBest(address impl, address bestRankedImpl);
     error DelayPeriodNotStarted(address proposedImpl);
     error DelayPeriodAlreadyStarted(address proposedImpl);
     error DelayPeriodNotEnded(address proposedImpl);
@@ -248,10 +248,10 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         }
 
         // Check that the new implementation is the most voted implementation.
-        address winningImpl = _getProposedUpgrades().ranking[0];
+        address bestRankedImpl = _getProposedUpgrades().ranking[0];
 
-        if (impl != winningImpl) {
-            revert ImplementationNotWinning({impl: impl, winningImpl: winningImpl});
+        if (impl != bestRankedImpl) {
+            revert ImplementationNotRankedBest({impl: impl, bestRankedImpl: bestRankedImpl});
         }
     }
 

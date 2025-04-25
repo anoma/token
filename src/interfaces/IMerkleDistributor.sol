@@ -27,6 +27,9 @@ interface IMerkleDistributor {
     /// @param proof The merkle proof to be verified.
     function claim(uint256 index, address to, uint256 value, bool locked, MerkleTree.Proof calldata proof) external;
 
+    /// @notice Transfers unclaimed tokens to the designated recipient and locks them.
+    function transferAndLockUnclaimedTokens() external;
+
     /// @notice Returns the value of unclaimed tokens.
     /// @param index The index in the balance tree to be claimed.
     /// @param to The receiving address.
@@ -35,6 +38,7 @@ interface IMerkleDistributor {
     /// @param proof The merkle proof to be verified.
     function unclaimedBalance(uint256 index, address to, uint256 value, bool locked, MerkleTree.Proof calldata proof)
         external
+        view
         returns (uint256 unclaimedValue);
 
     /// @notice Checks if an index on the merkle tree is claimed.

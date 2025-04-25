@@ -11,6 +11,7 @@ import {MerkleTree} from "../src/MerkleTree.sol";
 import {IMerkleDistributor} from "./interfaces/IMerkleDistributor.sol";
 
 import {Leaf} from "./libs/Leaf.sol";
+import {Parameters} from "./libs/Parameters.sol";
 import {XanV1} from "./XanV1.sol";
 
 /// @title MerkleDistributor
@@ -25,11 +26,11 @@ contract MerkleDistributor is IMerkleDistributor {
     /// @notice The root of the merkle tree containing the claimable balances.
     bytes32 internal immutable _ROOT;
 
-    /// @notice The start data of the claim.
-    uint256 internal immutable _START_DATE;
+    /// @notice The start time of the claim.
+    uint256 internal immutable _START_TIME;
 
     /// @notice The end time of the claim.
-    uint256 internal immutable _END_DATE;
+    uint256 internal immutable _END_TIME;
 
     /// @notice A packed array of booleans containing the information who claimed.
     mapping(uint256 claimedWordIndex => uint256 claimedWord) internal _claimedBitMap;
@@ -37,6 +38,7 @@ contract MerkleDistributor is IMerkleDistributor {
     error StartTimeAfterEndTime();
     error StartTimeInTheFuture();
     error StartTimeInThePast();
+    error EndTimeInTheFuture();
     error EndTimeInThePast();
 
     /// @notice Thrown if tokens have been already claimed from the distributor.
@@ -63,10 +65,10 @@ contract MerkleDistributor is IMerkleDistributor {
             uint48 currentTime = Time.timestamp();
 
             if (startTime < currentTime) revert StartTimeInThePast();
-            _START_DATE = startTime;
+            _START_TIME = startTime;
 
             if (endTime <= currentTime) revert EndTimeInThePast();
-            _END_DATE = endTime;
+            _END_TIME = endTime;
         }
         // solhint-enable  gas-strict-inequalities
 
@@ -89,9 +91,9 @@ contract MerkleDistributor is IMerkleDistributor {
     {
         uint48 currentTime = Time.timestamp();
 
-        if (currentTime < _START_DATE) revert StartTimeInTheFuture();
+        if (currentTime < _START_TIME) revert StartTimeInTheFuture();
 
-        if (_END_DATE < currentTime) revert EndTimeInThePast();
+        if (_END_TIME < currentTime) revert EndTimeInThePast();
 
         if (isClaimed(index)) revert TokenAlreadyClaimed(index);
 
@@ -110,6 +112,13 @@ contract MerkleDistributor is IMerkleDistributor {
     }
 
     /// @inheritdoc IMerkleDistributor
+    function transferAndLockUnclaimedTokens() external override {
+        if (Time.timestamp() < _END_TIME) revert EndTimeInTheFuture();
+
+        _XAN.transferAndLock({to: Parameters.UNCLAIMED_TOKEN_RECIPIENT, value: _XAN.balanceOf(address(this))});
+    }
+
+    /// @inheritdoc IMerkleDistributor
     function token() external view override returns (address addr) {
         addr = address(_XAN);
     }
@@ -121,7 +130,7 @@ contract MerkleDistributor is IMerkleDistributor {
 
     /// @inheritdoc IMerkleDistributor
     function unclaimedBalance(uint256 index, address to, uint256 value, bool locked, MerkleTree.Proof calldata proof)
-        public
+        external
         view
         override
         returns (uint256 unclaimedValue)

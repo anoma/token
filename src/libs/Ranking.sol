@@ -72,7 +72,7 @@ library Ranking {
             address nextBetterImpl = $.ranking[nextBetterRank];
             uint256 nextBetterVotes = $.ballots[nextBetterImpl].totalVotes;
 
-            if (votes <= nextBetterVotes) break;
+            if (votes < nextBetterVotes + 1) break;
 
             _swapRank({$: $, implA: proposedImpl, rankA: rank, implB: nextBetterImpl, rankB: nextBetterRank});
             rank = nextBetterRank;
