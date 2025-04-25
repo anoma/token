@@ -92,8 +92,8 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         // Update the total votes.
         ballot.totalVotes += delta;
 
-        // Update the ranking. Check if lower ranked implementation should ranked higher.
-        $.updateRanking(proposedImpl, Ranking.SearchDirection.Lower);
+        // Update the ranking. Check if lower ranked implementation should be ranked higher.
+        $.updateLowerRanked(proposedImpl);
 
         emit VoteCast({voter: voter, implementation: proposedImpl, value: delta});
     }
@@ -114,8 +114,8 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
         // Revoke the old votum by subtracting it from the total votes.
         ballot.totalVotes -= oldVotum;
 
-        // Update the ranking. Check if higher ranked implementation should ranked lower.
-        $.updateRanking(proposedImpl, Ranking.SearchDirection.Higher);
+        // Update the ranking. Check if higher ranked implementation should be ranked lower.
+        $.updateHigherRanked(proposedImpl);
 
         emit VoteRevoked({voter: voter, implementation: proposedImpl, value: oldVotum});
     }

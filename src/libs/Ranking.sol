@@ -53,56 +53,63 @@ library Ranking {
         ++$.implCount;
     }
 
-    /// @notice Updates the rank of implementations being ranked lower (better) or higher (worse)
-    /// than the proposed implementation.
+    /// @notice Updates the rank of implementations being ranked lower (better) than the proposed implementation.
     /// @param $ The storage containing the ballots for proposed upgrades.
     /// @param proposedImpl The proposed implementation.
-    /// @param direction The search direction.
-    function updateRanking(ProposedUpgrades storage $, address proposedImpl, SearchDirection direction) internal {
+    function updateLowerRanked(ProposedUpgrades storage $, address proposedImpl) internal {
         uint64 proposedImplRank = $.ballots[proposedImpl].rank;
         uint256 proposedImplVotes = $.ballots[proposedImpl].totalVotes;
 
-        // Set variables depending on the search direction.
-        uint64 limitRank;
-        function(uint64, uint64) pure returns (bool) compareRanks;
-        function(uint256, uint256) pure returns (bool) compareVotes;
+        uint64 limitRank = 0;
 
-        if (direction == SearchDirection.Lower) {
-            limitRank = 0;
-            compareRanks = _gtUint64;
-            compareVotes = _gtUint256;
-        } else {
-            limitRank = $.implCount - 1;
-            compareRanks = _ltUint64;
-            compareVotes = _leUint256;
-        }
-
-        /**
-         * Check if the rank of the proposed implementation deviates from the limit. We distinguish two cases:
-         * 1. Case `SearchDirection.Lower`:
-         *    - Checks if `proposedImplRank > limitRank` (where `limitRank = 0`)
-         *      and eventually must be ranked lower (better).
-         * 2. Case `SearchDirection.Higher`:
-         *    - Checks if `proposedImplRank < limitRank` (where `limitRank = highestRank`)
-         *      and eventually must be ranked higher (worse).
-         */
-        if (compareRanks(proposedImplRank, limitRank)) {
-            // Cache the rank, address, and votes of the next higher/lower ranked implementation.
-            uint64 nextRank = direction == SearchDirection.Lower ? proposedImplRank - 1 : proposedImplRank + 1;
+        if (proposedImplRank > limitRank) {
+            // Cache the rank, address, and votes of the next lower ranked implementation.
+            uint64 nextRank = proposedImplRank - 1;
             (address nextImpl, uint256 nextVotes) = _getImplAndVotes($, nextRank);
 
-            // Check if the next lower/higher ranked implementation has more/less votes.
-            while (compareVotes(proposedImplVotes, nextVotes)) {
+            // Check if the next lower ranked implementation has less votes.
+            while (proposedImplVotes > nextVotes) {
                 // Switch the ranks.
                 _swapRank({$: $, implA: proposedImpl, rankA: proposedImplRank, implB: nextImpl, rankB: nextRank});
 
                 // Update the rank of the proposed implementation.
                 proposedImplRank = nextRank;
 
-                // Update the rank, address, and votes of the next higher/lower ranked implementation.
-                if (compareRanks(proposedImplRank, limitRank)) {
-                    direction == SearchDirection.Lower ? --nextRank : ++nextRank;
-                    (nextImpl, nextVotes) = _getImplAndVotes($, nextRank);
+                // Cache the rank, address, and votes of the next lower ranked implementation.
+                if (proposedImplRank > limitRank) {
+                    (nextImpl, nextVotes) = _getImplAndVotes($, --nextRank);
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    /// @notice Updates the rank of implementations being ranked higher (worse) than the proposed implementation.
+    /// @param $ The storage containing the ballots for proposed upgrades.
+    /// @param proposedImpl The proposed implementation.
+    function updateHigherRanked(ProposedUpgrades storage $, address proposedImpl) internal {
+        uint64 proposedImplRank = $.ballots[proposedImpl].rank;
+        uint256 proposedImplVotes = $.ballots[proposedImpl].totalVotes;
+
+        uint64 limitRank = $.implCount - 1;
+
+        if (proposedImplRank < limitRank) {
+            // Cache the rank, address, and votes of the next higher ranked implementation.
+            uint64 nextRank = proposedImplRank + 1;
+            (address nextImpl, uint256 nextVotes) = _getImplAndVotes($, nextRank);
+
+            // Check if the next higher ranked implementation has more votes.
+            while (proposedImplVotes <= nextVotes) {
+                // Switch the ranks.
+                _swapRank({$: $, implA: proposedImpl, rankA: proposedImplRank, implB: nextImpl, rankB: nextRank});
+
+                // Update the rank of the proposed implementation.
+                proposedImplRank = nextRank;
+
+                // Cache the rank, address, and votes of the next higher ranked implementation.
+                if (proposedImplRank < limitRank) {
+                    (nextImpl, nextVotes) = _getImplAndVotes($, ++nextRank);
                 } else {
                     break;
                 }
@@ -136,37 +143,5 @@ library Ranking {
     {
         impl = $.ranking[rank];
         votes = $.ballots[impl].totalVotes;
-    }
-
-    /// @notice Greater than comparator function for `uint64` types.
-    /// @param lhs The left-hand side value.
-    /// @param rhs The right-hand side value.
-    /// @param isGreaterThan Whether the left- is greater than the right-hand side.
-    function _gtUint64(uint64 lhs, uint64 rhs) private pure returns (bool isGreaterThan) {
-        isGreaterThan = lhs > rhs;
-    }
-
-    /// @notice Less than comparator function for `uint64` types.
-    /// @param lhs The left-hand side value.
-    /// @param rhs The right-hand side value.
-    /// @param isLessThan Whether the left- is less than the right-hand side.
-    function _ltUint64(uint64 lhs, uint64 rhs) private pure returns (bool isLessThan) {
-        isLessThan = lhs < rhs;
-    }
-
-    /// @notice Greater than comparator function for `uint256` types.
-    /// @param lhs The left-hand side value.
-    /// @param rhs The right-hand side value.
-    /// @param isGreaterThan Whether the left- is greater than the right-hand side.
-    function _gtUint256(uint256 lhs, uint256 rhs) private pure returns (bool isGreaterThan) {
-        isGreaterThan = lhs > rhs;
-    }
-
-    /// @notice Less than or equal comparator function for `uint256` types.
-    /// @param lhs The left-hand side value.
-    /// @param rhs The right-hand side value.
-    /// @param isLessThanOrEqual Whether the left- is less than or Equal the right-hand side.
-    function _leUint256(uint256 lhs, uint256 rhs) private pure returns (bool isLessThanOrEqual) {
-        isLessThanOrEqual = lhs < rhs + 1;
     }
 }
