@@ -11,7 +11,6 @@ import {MerkleTree} from "../src/MerkleTree.sol";
 import {IMerkleDistributor} from "./interfaces/IMerkleDistributor.sol";
 
 import {Leaf} from "./libs/Leaf.sol";
-import {Parameters} from "./libs/Parameters.sol";
 import {XanV1} from "./XanV1.sol";
 
 /// @title MerkleDistributor
@@ -112,10 +111,10 @@ contract MerkleDistributor is IMerkleDistributor {
     }
 
     /// @inheritdoc IMerkleDistributor
-    function transferAndLockUnclaimedTokens() external override {
+    function burnUnclaimedTokens() external override {
         if (Time.timestamp() < _END_TIME) revert EndTimeInTheFuture();
 
-        _XAN.transferAndLock({to: Parameters.UNCLAIMED_TOKEN_RECIPIENT, value: _XAN.balanceOf(address(this))});
+        _XAN.burn(_XAN.balanceOf(address(this)));
     }
 
     /// @inheritdoc IMerkleDistributor

@@ -48,7 +48,12 @@ interface IXanV1 {
     /// @param proposedImpl The proposed implementation to start the delay period for.
     function startDelayPeriod(address proposedImpl) external;
 
+    /// @notice Calculates the quorum for a proposed implementation.
+    /// @return calculatedQuorum The calculated quorum.
+    function calculateQuorum() external view returns (uint256 calculatedQuorum);
+
     /// @notice Returns the total votes for a proposed implementation.
+    /// @param proposedImpl The proposed implementation to return the total votes for.
     /// @return votes The total votes of the proposed implementation.
     function totalVotes(address proposedImpl) external view returns (uint256 votes);
 

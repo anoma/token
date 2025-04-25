@@ -143,6 +143,28 @@ contract UnitTest is Test {
         assertEq(_xanProxy.lockedBalanceOf(_RECEIVER), 1);
     }
 
+    function test_burn_reverts_on_insufficient_unlocked_tokens() public {
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(_xanProxy.balanceOf(_defaultSender));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV1.InsufficientUnlockedBalance.selector, _defaultSender, 0, 1), address(_xanProxy)
+        );
+        _xanProxy.burn(1);
+        vm.stopPrank();
+    }
+
+    function test_burn_burns_unlocked_tokens() public {
+        uint256 balance = _xanProxy.balanceOf(_defaultSender);
+        assertEq(balance, _xanProxy.totalSupply());
+
+        vm.startPrank(_defaultSender);
+        _xanProxy.burn(balance);
+        vm.stopPrank();
+
+        assertEq(_xanProxy.totalSupply(), 0);
+    }
+
     function test_castVote_emits_the_VoteCast_event() public {
         uint256 valueToLock = Parameters.SUPPLY / 3;
 
@@ -261,7 +283,7 @@ contract UnitTest is Test {
 
     function test_startDelayPeriod_reverts_if_quorum_is_not_met() public {
         vm.startPrank(_defaultSender);
-        _xanProxy.lock(Parameters.QUORUM);
+        _xanProxy.lock(_xanProxy.calculateQuorum());
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
 
@@ -285,7 +307,7 @@ contract UnitTest is Test {
 
     function test_startDelayPeriod_reverts_is_not_ranked_best() public {
         vm.startPrank(_defaultSender);
-        _xanProxy.lock(Parameters.QUORUM + 1);
+        _xanProxy.lock(_xanProxy.calculateQuorum() + 1);
         _xanProxy.castVote(_IMPL);
         _xanProxy.castVote(_OTHER_IMPL);
         vm.stopPrank();
@@ -301,7 +323,7 @@ contract UnitTest is Test {
 
     function test_upgradeToAndCall_reverts_if_delay_period_has_not_started() public {
         vm.startPrank(_defaultSender);
-        _xanProxy.lock(Parameters.QUORUM + 1);
+        _xanProxy.lock(_xanProxy.calculateQuorum() + 1);
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
 
@@ -311,7 +333,7 @@ contract UnitTest is Test {
 
     function test_upgradeToAndCall_reverts_if_delay_period_has_not_ended() public {
         vm.startPrank(_defaultSender);
-        _xanProxy.lock(Parameters.QUORUM + 1);
+        _xanProxy.lock(_xanProxy.calculateQuorum() + 1);
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
 
@@ -323,7 +345,7 @@ contract UnitTest is Test {
 
     function test_upgradeToAndCall_reverts_if_quorum_is_not_met() public {
         vm.startPrank(_defaultSender);
-        _xanProxy.lock(Parameters.QUORUM + 1);
+        _xanProxy.lock(_xanProxy.calculateQuorum() + 1);
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
 
@@ -339,7 +361,7 @@ contract UnitTest is Test {
 
     function test_upgradeToAndCall_reverts_if_implementation_is_not_best_ranked() public {
         vm.startPrank(_defaultSender);
-        _xanProxy.lock(Parameters.QUORUM + 1);
+        _xanProxy.lock(_xanProxy.calculateQuorum() + 1);
         _xanProxy.castVote(_IMPL);
         assertEq(_xanProxy.proposedImplementationByRank(0), _IMPL);
 

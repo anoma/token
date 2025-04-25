@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.27;
 
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ERC20BurnableUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
 import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
@@ -10,7 +14,7 @@ import {IXanV1} from "./interfaces/IXanV1.sol";
 import {Parameters} from "./libs/Parameters.sol";
 import {Ranking} from "./libs/Ranking.sol";
 
-contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
+contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, UUPSUpgradeable {
     using Ranking for Ranking.ProposedUpgrades;
 
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.
@@ -21,7 +25,8 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
     }
 
     /// @notice The ERC-7201 storage location of the contract (see https://eips.ethereum.org/EIPS/eip-7201).
-    /// @dev `keccak256(abi.encode(uint256(keccak256("anoma.storage.Xan.v1")) - 1)) & ~bytes32(uint256(0xff))`
+    /// @dev Obtained from
+    /// `keccak256(abi.encode(uint256(keccak256("anoma.storage.Xan.v1")) - 1)) & ~bytes32(uint256(0xff))`.
     bytes32 internal constant _XAN_V1_STORAGE_LOCATION =
         0x52f7d5fb153315ca313a5634db151fa7e0b41cd83fe6719e93ed3cd02b69d200;
 
@@ -141,9 +146,13 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
     }
 
     /// @notice @inheritdoc IXanV1
-    // slither-disable-next-line dead-code
     function lockedTotalSupply() external view virtual override returns (uint256 lockedSupply) {
         lockedSupply = _getProposedUpgrades().lockedTotalSupply;
+    }
+
+    /// @notice @inheritdoc IXanV1
+    function calculateQuorum() public view override returns (uint256 calculatedQuorum) {
+        calculatedQuorum = (totalSupply() * Parameters.QUORUM_RATIO_NUMERATOR) / Parameters.QUORUM_RATIO_DENOMINATOR;
     }
 
     /// @inheritdoc IXanV1
@@ -186,8 +195,8 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
 
     // solhint-disable-next-line func-name-mixedcase
     function __XanV1_init(address initialOwner) internal onlyInitializing {
-        __Context_init_unchained();
         __ERC20_init_unchained("Anoma Token", "Xan");
+        __ERC20Burnable_init();
         __UUPSUpgradeable_init_unchained();
 
         __XanV1_init_unchained(initialOwner);
@@ -243,7 +252,7 @@ contract XanV1 is IXanV1, ERC20Upgradeable, UUPSUpgradeable {
     /// @param impl The implementation to check the upgrade criteria for.
     function _checkUpgradeCriteria(address impl) internal view virtual {
         // Check that the quorum for the new implementation is reached.
-        if (totalVotes(impl) < Parameters.QUORUM + 1) {
+        if (totalVotes(impl) < calculateQuorum() + 1) {
             revert QuorumNotReached(impl);
         }
 
