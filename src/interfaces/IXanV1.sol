@@ -80,8 +80,8 @@ interface IXanV1 {
     function lockedTotalSupply() external view returns (uint256 lockedSupply);
 
     /// @notice Returns the implementation for which the delay was started.
-    /// @return implementation The implementation the delay was started for.
-    function delayedUpgradeImplementation() external view returns (address implementation);
+    /// @return delayedImpl The implementation the delay was started for.
+    function delayedUpgradeImplementation() external view returns (address delayedImpl);
 
     /// @notice Returns the delay end time.
     /// @return endTime The delay end time.

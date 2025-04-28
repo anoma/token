@@ -173,6 +173,16 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
         lockedSupply = _getProposedUpgrades().lockedTotalSupply;
     }
 
+    /// @inheritdoc IXanV1
+    function delayedUpgradeImplementation() external view override returns (address delayedImpl) {
+        delayedImpl = _getProposedUpgrades().delayedUpgradeImpl;
+    }
+
+    /// @inheritdoc IXanV1
+    function delayEndTime() external view override returns (uint48 endTime) {
+        endTime = _getProposedUpgrades().delayEndTime;
+    }
+
     /// @notice @inheritdoc IXanV1
     function calculateQuorum() public view override returns (uint256 calculatedQuorum) {
         calculatedQuorum = (totalSupply() * Parameters.QUORUM_RATIO_NUMERATOR) / Parameters.QUORUM_RATIO_DENOMINATOR;
@@ -214,18 +224,6 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     /// @inheritdoc IXanV1
     function lockedBalanceOf(address from) public view override returns (uint256 lockedBalance) {
         lockedBalance = _getProposedUpgrades().lockedBalances[from];
-    }
-
-    /// @inheritdoc IXanV1
-
-    function delayedUpgradeImplementation() external view override returns (address delayedImpl) {
-        delayedImpl = _getProposedUpgrades().delayedUpgradeImpl;
-    }
-
-    /// @inheritdoc IXanV1
-
-    function delayEndTime() external view override returns (uint48 endTime) {
-        endTime = _getProposedUpgrades().delayEndTime;
     }
 
     // solhint-disable-next-line func-name-mixedcase
