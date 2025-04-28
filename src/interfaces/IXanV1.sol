@@ -5,25 +5,25 @@ interface IXanV1 {
     /// @notice Emitted when tokens are locked.
     /// @param account The owning account.
     /// @param value The number of tokens being locked.
-    event Locked(address account, uint256 value);
+    event Locked(address indexed account, uint256 value);
 
     /// @notice Emitted when a vote is cast for a implementation.
     /// @param voter The voter address.
     /// @param implementation The implementation the vote was cast for.
     /// @param value The number of votes cast.
-    event VoteCast(address voter, address implementation, uint256 value);
+    event VoteCast(address indexed voter, address indexed implementation, uint256 value);
 
     /// @notice Emitted when a vote is revoked from a new implementation.
     /// @param voter The voting account.
     /// @param implementation The implementation the vote was revoked from.
     /// @param value The number of votes revoked.
-    event VoteRevoked(address voter, address implementation, uint256 value);
+    event VoteRevoked(address indexed voter, address indexed implementation, uint256 value);
 
     /// @notice Emitted when the upgrade delay period for a new implementation is started.
     /// @param implementation The implementation for which the delay period was started.
     /// @param startTime The start time.
     /// @param endTime The end time.
-    event DelayStarted(address implementation, uint48 startTime, uint48 endTime);
+    event DelayStarted(address indexed implementation, uint48 startTime, uint48 endTime);
 
     /// @notice Permanently locks tokens for the current implementation until it gets upgraded.
     /// @param value The value to be locked.
