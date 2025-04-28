@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
-import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
+import {Upgrades, UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 
 import {Test} from "forge-std/Test.sol";
 
@@ -28,6 +28,19 @@ contract UnitTest is Test {
                 initializerData: abi.encodeCall(XanV1.initialize, _defaultSender)
             })
         );
+    }
+
+    function test_implementation_points_to_the_correct_implementation() public {
+        address impl = address(new XanV1());
+
+        XanV1 proxy = XanV1(
+            UnsafeUpgrades.deployUUPSProxy({
+                impl: impl,
+                initializerData: abi.encodeCall(XanV1.initialize, _defaultSender)
+            })
+        );
+
+        assertEq(proxy.implementation(), impl);
     }
 
     function test_initialize_mints_the_supply_for_the_specified_owner() public {
@@ -475,6 +488,21 @@ contract UnitTest is Test {
         _xanProxy.upgradeToAndCall({newImplementation: _IMPL, data: ""});
     }
 
+    function test_upgradeToAndCall_reverts_if_the_delay_period_has_passed_for_a_different_implementation() public {
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.SUPPLY);
+        _xanProxy.castVote(_OTHER_IMPL);
+        vm.stopPrank();
+
+        _xanProxy.startUpgradeDelay(_OTHER_IMPL);
+        skip(Parameters.DELAY_DURATION);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV1.ImplementationNotDelayed.selector, _OTHER_IMPL, _IMPL), address(_xanProxy)
+        );
+        _xanProxy.upgradeToAndCall({newImplementation: _IMPL, data: ""});
+    }
+
     function test_upgradeToAndCall_reverts_if_delay_period_has_not_started() public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(_xanProxy.calculateQuorum() + 1);
@@ -552,6 +580,21 @@ contract UnitTest is Test {
         _xanProxy.lock(valueToLock);
 
         assertEq(expectedUnlockedValue, _xanProxy.unlockedBalanceOf(_defaultSender));
+    }
+
+    function test_lockedTotalSupply_returns_the_locked_supply() public {
+        uint256 valueToLock = Parameters.SUPPLY / 3;
+
+        vm.startPrank(_defaultSender);
+
+        _xanProxy.lock(valueToLock);
+        assertEq(_xanProxy.lockedTotalSupply(), valueToLock);
+
+        _xanProxy.lock(valueToLock);
+        assertEq(_xanProxy.lockedTotalSupply(), 2 * valueToLock);
+
+        _xanProxy.lock(valueToLock);
+        assertEq(_xanProxy.lockedTotalSupply(), 3 * valueToLock);
     }
 
     function testFuzz_lockedBalanceOf_and_unlockedBalanceOf_sum_to_balanceOf(address owner) public view {

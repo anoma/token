@@ -178,23 +178,23 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     }
 
     /// @inheritdoc IXanV1
-    function delayedUpgradeImplementation() external view override returns (address delayedImpl) {
+    function delayedUpgradeImplementation() external view virtual override returns (address delayedImpl) {
         delayedImpl = _getProposedUpgrades().delayedUpgradeImpl;
     }
 
     /// @inheritdoc IXanV1
-    function delayEndTime() external view override returns (uint48 endTime) {
+    function votum(address proposedImpl) external view virtual override returns (uint256 votes) {
+        votes = _getProposedUpgrades().ballots[proposedImpl].vota[msg.sender];
+    }
+
+    /// @inheritdoc IXanV1
+    function delayEndTime() external view virtual override returns (uint48 endTime) {
         endTime = _getProposedUpgrades().delayEndTime;
     }
 
     /// @notice @inheritdoc IXanV1
-    function calculateQuorum() public view override returns (uint256 calculatedQuorum) {
+    function calculateQuorum() public view virtual override returns (uint256 calculatedQuorum) {
         calculatedQuorum = (totalSupply() * Parameters.QUORUM_RATIO_NUMERATOR) / Parameters.QUORUM_RATIO_DENOMINATOR;
-    }
-
-    /// @inheritdoc IXanV1
-    function votum(address proposedImpl) external view returns (uint256 votes) {
-        votes = _getProposedUpgrades().ballots[proposedImpl].vota[msg.sender];
     }
 
     /// @inheritdoc IXanV1
@@ -308,6 +308,8 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
         }
     }
 
+    /// @notice Returns `true` if the quorum is reached for a particular implementation.
+    /// @param impl The implementation to check the quorum citeria for.
     function _isQuorumReached(address impl) internal view virtual returns (bool isReached) {
         isReached = totalVotes(impl) > calculateQuorum();
     }
