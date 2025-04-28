@@ -32,6 +32,7 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
 
     error UnlockedBalanceInsufficient(address sender, uint256 unlockedBalance, uint256 valueToLock);
     error LockedBalanceInsufficient(address sender, uint256 lockedBalance);
+    error NoVotesToRevoke(address sender, address proposedImpl);
     error ImplementationRankNonExistent(uint48 limit, uint48 rank);
     error ImplementationNotRankedBest(address expected, address actual);
     error ImplementationNotDelayed(address expected, address actual);
@@ -115,7 +116,10 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
         // Cache the old votum of the voter.
         uint256 oldVotum = ballot.vota[voter];
 
-        // TODO! Add check to see if votes > 0. This will prevent `VoteRevoked` from being emitted for no reason.
+        // Check if there has been an old votum to revoke.
+        if (oldVotum == 0) {
+            revert NoVotesToRevoke({sender: voter, proposedImpl: proposedImpl});
+        }
 
         // Set the votum of the voter to zero.
         ballot.vota[voter] = 0;
@@ -186,6 +190,11 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     /// @notice @inheritdoc IXanV1
     function calculateQuorum() public view override returns (uint256 calculatedQuorum) {
         calculatedQuorum = (totalSupply() * Parameters.QUORUM_RATIO_NUMERATOR) / Parameters.QUORUM_RATIO_DENOMINATOR;
+    }
+
+    /// @inheritdoc IXanV1
+    function votum(address proposedImpl) external view returns (uint256 votes) {
+        votes = _getProposedUpgrades().ballots[proposedImpl].vota[msg.sender];
     }
 
     /// @inheritdoc IXanV1

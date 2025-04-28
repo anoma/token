@@ -251,6 +251,25 @@ contract UnitTest is Test {
         vm.stopPrank();
     }
 
+    function test_castVote_sets_the_votes_of_the_caller_to_the_locked_balance() public {
+        uint256 firstLockValue = Parameters.SUPPLY / 3;
+        uint256 secondLockValue = Parameters.SUPPLY - firstLockValue;
+
+        vm.startPrank(_defaultSender);
+        assertEq(_xanProxy.votum(_IMPL), 0);
+
+        _xanProxy.lock(firstLockValue);
+        _xanProxy.castVote(_IMPL);
+
+        assertEq(_xanProxy.votum(_IMPL), firstLockValue);
+
+        _xanProxy.lock(secondLockValue);
+        _xanProxy.castVote(_IMPL);
+
+        assertEq(_xanProxy.votum(_IMPL), firstLockValue + secondLockValue);
+        vm.stopPrank();
+    }
+
     function test_revokeVote_emits_the_VoteRevoked_event() public {
         uint256 valueToLock = Parameters.SUPPLY / 2;
 
@@ -263,6 +282,52 @@ contract UnitTest is Test {
 
         _xanProxy.revokeVote(_IMPL);
         vm.stopPrank();
+    }
+
+    function test_revokeVote_sets_the_votes_of_the_caller_to_zero() public {
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.SUPPLY);
+        _xanProxy.castVote(_IMPL);
+        assertEq(_xanProxy.votum(_IMPL), Parameters.SUPPLY);
+
+        _xanProxy.revokeVote(_IMPL);
+        assertEq(_xanProxy.votum(_IMPL), 0);
+        vm.stopPrank();
+    }
+
+    function test_revokeVote_subtracts_the_old_votum_from_the_total_votes() public {
+        uint256 votesReceiver = Parameters.SUPPLY / 3;
+        uint256 votesDefaultSender = Parameters.SUPPLY - votesReceiver;
+
+        // Send tokens to `_RECEIVER` from `_defaultSender` lock them.
+        vm.startPrank(_defaultSender);
+        _xanProxy.transferAndLock({to: _RECEIVER, value: votesReceiver});
+
+        // Vote as `_defaultSender`.
+        _xanProxy.lock(votesDefaultSender);
+        _xanProxy.castVote(_IMPL);
+        vm.stopPrank();
+
+        // Vote as `_RECEIVER`.
+        vm.prank(_RECEIVER);
+        _xanProxy.castVote(_IMPL);
+        assertEq(_xanProxy.totalVotes(_IMPL), votesDefaultSender + votesReceiver);
+
+        // Revoke the vote as `_defaultSender` and
+        vm.startPrank(_defaultSender);
+        _xanProxy.revokeVote(_IMPL);
+
+        // Check that the total votes are correct.
+        assertEq(_xanProxy.totalVotes(_IMPL), votesReceiver);
+        vm.stopPrank();
+    }
+
+    function test_revokeVote_reverts_if_the_voter_has_not_voted_on_the_proposal() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV1.NoVotesToRevoke.selector, _defaultSender, _IMPL), address(_xanProxy)
+        );
+        vm.prank(_defaultSender);
+        _xanProxy.revokeVote(_IMPL);
     }
 
     function test_startUpgradeDelay_starts_the_delay_if_quorum_is_met_and_the_implementation_is_ranked_best() public {

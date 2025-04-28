@@ -60,6 +60,11 @@ interface IXanV1 {
     /// @return calculatedQuorum The calculated quorum.
     function calculateQuorum() external view returns (uint256 calculatedQuorum);
 
+    /// @notice Returns the votum of the caller for a proposed implementation.
+    /// @param proposedImpl The proposed implementation to return the votum for.
+    /// @return votes The votum of the caller.
+    function votum(address proposedImpl) external view returns (uint256 votes);
+
     /// @notice Returns the total votes for a proposed implementation.
     /// @param proposedImpl The proposed implementation to return the total votes for.
     /// @return votes The total votes of the proposed implementation.
