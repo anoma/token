@@ -17,7 +17,7 @@ library Ranking {
         mapping(uint48 rank => address proposedImpl) ranking;
         uint48 implCount;
         uint48 delayEndTime;
-        address activeDelayImpl;
+        address delayedUpgradeImpl;
     }
 
     /// @notice The vote data of a proposed implementation.
@@ -30,7 +30,7 @@ library Ranking {
         mapping(address voter => uint256 votes) vota;
         uint256 totalVotes;
         uint48 rank;
-        bool exists; //TODO! Revisit this boolean
+        bool exists;
     }
 
     /// @notice Assigns the highest rank to a proposed implementation.
@@ -41,7 +41,7 @@ library Ranking {
         ballot.exists = true;
         ballot.rank = $.implCount;
 
-        // Set the highest rank.
+        // Set the worst rank.
         $.ranking[$.implCount] = proposedImpl;
         ++$.implCount;
     }

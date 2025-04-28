@@ -35,7 +35,7 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     error ImplementationRankNonExistent(uint48 limit, uint48 rank);
     error ImplementationNotRankedBest(address expected, address actual);
     error ImplementationNotDelayed(address expected, address actual);
-    error ImplementationNotResettable(address impl);
+    error UpgradeDelayNotResettable(address impl);
     error QuorumNotReached(address proposedImpl);
     error DelayPeriodNotStarted();
     error DelayPeriodAlreadyStarted(address delayedUpgradeImpl);
@@ -130,7 +130,7 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     }
 
     /// @inheritdoc IXanV1
-    function activateUpgradeDelay(address proposedImpl) external virtual override {
+    function startUpgradeDelay(address proposedImpl) external virtual override {
         // Check that all upgrade criteria are met before starting the delay.
         _checkUpgradeCriteria(proposedImpl);
 
@@ -140,30 +140,32 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
 
         // Check that the delay period hasn't been started yet by
         // ensuring that no end time and implementation has been set.
-        if ($.delayEndTime != 0 && $.activeDelayImpl != address(0)) {
-            revert DelayPeriodAlreadyStarted($.activeDelayImpl);
+        if ($.delayEndTime != 0 && $.delayedUpgradeImpl != address(0)) {
+            revert DelayPeriodAlreadyStarted($.delayedUpgradeImpl);
         }
 
         // Set the end time and emit the associated event.
         $.delayEndTime = currentTime + Parameters.DELAY_DURATION;
-        $.activeDelayImpl = proposedImpl;
+        $.delayedUpgradeImpl = proposedImpl;
 
         emit DelayStarted({implementation: proposedImpl, startTime: currentTime, endTime: $.delayEndTime});
     }
 
     /// @inheritdoc IXanV1
-    function deactivateUpgradeDelay(address losingImpl) external override {
+    function resetUpgradeDelay(address losingImpl) external override {
         _checkDelayCriterion(losingImpl);
 
         Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
 
         // Check that the quorum for the new implementation is reached.
         if (_isQuorumReached(losingImpl) && losingImpl == $.ranking[0]) {
-            revert ImplementationNotResettable(losingImpl);
+            revert UpgradeDelayNotResettable(losingImpl);
         }
         // Reset the delay
         $.delayEndTime = 0;
-        $.activeDelayImpl = address(0);
+        $.delayedUpgradeImpl = address(0);
+
+        emit DelayReset({implementation: losingImpl});
     }
 
     /// @notice @inheritdoc IXanV1
@@ -212,6 +214,18 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     /// @inheritdoc IXanV1
     function lockedBalanceOf(address from) public view override returns (uint256 lockedBalance) {
         lockedBalance = _getProposedUpgrades().lockedBalances[from];
+    }
+
+    /// @inheritdoc IXanV1
+
+    function delayedUpgradeImplementation() external view override returns (address delayedImpl) {
+        delayedImpl = _getProposedUpgrades().delayedUpgradeImpl;
+    }
+
+    /// @inheritdoc IXanV1
+
+    function delayEndTime() external view override returns (uint48 endTime) {
+        endTime = _getProposedUpgrades().delayEndTime;
     }
 
     // solhint-disable-next-line func-name-mixedcase
@@ -303,8 +317,8 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
             revert DelayPeriodNotEnded();
         }
 
-        if (impl != $.activeDelayImpl) {
-            revert ImplementationNotDelayed({expected: $.activeDelayImpl, actual: impl});
+        if (impl != $.delayedUpgradeImpl) {
+            revert ImplementationNotDelayed({expected: $.delayedUpgradeImpl, actual: impl});
         }
     }
 

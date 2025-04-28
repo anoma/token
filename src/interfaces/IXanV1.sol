@@ -20,10 +20,14 @@ interface IXanV1 {
     event VoteRevoked(address indexed voter, address indexed implementation, uint256 value);
 
     /// @notice Emitted when the upgrade delay period for a new implementation is started.
-    /// @param implementation The implementation for which the delay period was started.
+    /// @param implementation The implementation to start the delay for.
     /// @param startTime The start time.
     /// @param endTime The end time.
     event DelayStarted(address indexed implementation, uint48 startTime, uint48 endTime);
+
+    /// @notice Emitted when the upgrade delay period for a new implementation is reset.
+    /// @param implementation The implementation to reset the delay for.
+    event DelayReset(address indexed implementation);
 
     /// @notice Permanently locks tokens for the current implementation until it gets upgraded.
     /// @param value The value to be locked.
@@ -44,15 +48,15 @@ interface IXanV1 {
     /// @param proposedImpl The proposed implementation to revoke the vote for.
     function revokeVote(address proposedImpl) external;
 
-    /// @notice Activates the delay period for the winning implementation.
+    /// @notice Starts the delay period for the winning implementation.
     /// @param winningImpl The winning implementation to activate the delay period for.
-    function activateUpgradeDelay(address winningImpl) external;
+    function startUpgradeDelay(address winningImpl) external;
 
-    /// @notice Deactivates the delay period for an losing implementation.
-    /// @param losingImpl The losing implementation to deactivate the delay period for.
-    function deactivateUpgradeDelay(address losingImpl) external;
+    /// @notice Resets the delay period for a losing implementation.
+    /// @param losingImpl The losing implementation to reset the delay period for.
+    function resetUpgradeDelay(address losingImpl) external;
 
-    /// @notice Calculates the quorum for a proposed implementation.
+    /// @notice Calculates the quorum based on the current total supply.
     /// @return calculatedQuorum The calculated quorum.
     function calculateQuorum() external view returns (uint256 calculatedQuorum);
 
@@ -74,6 +78,14 @@ interface IXanV1 {
     /// @notice Returns the locked total supply of the token.
     /// @param lockedSupply The locked supply.
     function lockedTotalSupply() external view returns (uint256 lockedSupply);
+
+    /// @notice Returns the implementation for which the delay was started.
+    /// @return implementation The implementation the delay was started for.
+    function delayedUpgradeImplementation() external view returns (address implementation);
+
+    /// @notice Returns the delay end time.
+    /// @return endTime The delay end time.
+    function delayEndTime() external view returns (uint48 endTime);
 
     /// @notice Returns the current implementation
     /// @return current The current implementation.
