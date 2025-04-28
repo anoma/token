@@ -253,10 +253,10 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
 
     /// @inheritdoc ERC20Upgradeable
     function _update(address from, address to, uint256 value) internal override {
-        // Require sufficient a large enough unlocked balances for tokens to be be updated, except for the
-        // minting case (i.e., `from == address(0)`).
-        // In the minting case, tokens are created ex-nihilo and formally sent from `address(0)` to the `to` address
-        // without balance checking.
+        // Require the unlocked balance to be at least the updated value, except for the minting case, 
+        // where `from == address(0)`.
+        // In this case, tokens are created ex-nihilo and formally sent from `address(0)` to the `to` address
+        // without balance checks.
         if (from != address(0)) {
             uint256 unlockedBalance = unlockedBalanceOf(from);
 
