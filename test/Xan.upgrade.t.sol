@@ -38,7 +38,7 @@ contract UpgradeTest is Test {
     function test_upgradeProxy_emits_the_Upgraded_event() public {
         vm.prank(_defaultSender);
         _xanProxy.castVote(_newImpl);
-        _xanProxy.startDelayPeriod(_newImpl);
+        _xanProxy.startUpgradeDelay(_newImpl);
 
         skip(Parameters.DELAY_DURATION);
 

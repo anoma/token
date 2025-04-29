@@ -14,8 +14,10 @@ library Ranking {
         mapping(address owner => uint256) lockedBalances;
         uint256 lockedTotalSupply;
         mapping(address proposedImpl => Ballot) ballots;
-        mapping(uint64 rank => address proposedImpl) ranking;
-        uint64 implCount;
+        mapping(uint48 rank => address proposedImpl) ranking;
+        uint48 implCount;
+        uint48 delayEndTime;
+        address delayedUpgradeImpl;
     }
 
     /// @notice The vote data of a proposed implementation.
@@ -27,28 +29,19 @@ library Ranking {
     struct Ballot {
         mapping(address voter => uint256 votes) vota;
         uint256 totalVotes;
-        uint64 rank;
-        uint48 delayEndTime;
+        uint48 rank;
         bool exists;
-    }
-
-    /// @notice The search direction to be used when updating the implementation ranking.
-    /// @param Lower Used when a vote is casted for an implementation that might result in a lower (better) ranking.
-    /// @param Higher Used when a vote is revoked from an implementation that might result in a higher (worse) ranking.
-    enum SearchDirection {
-        Lower,
-        Higher
     }
 
     /// @notice Assigns the highest rank to a proposed implementation.
     /// @param $ The storage containing the proposed upgrades.
     /// @param proposedImpl The proposed implementation to assign the highest rank to.
-    function assignLowestRank(ProposedUpgrades storage $, address proposedImpl) internal {
+    function assignWorstRank(ProposedUpgrades storage $, address proposedImpl) internal {
         Ballot storage ballot = $.ballots[proposedImpl];
         ballot.exists = true;
         ballot.rank = $.implCount;
 
-        // Set the highest rank.
+        // Set the worst rank.
         $.ranking[$.implCount] = proposedImpl;
         ++$.implCount;
     }
@@ -58,13 +51,13 @@ library Ranking {
     /// @param proposedImpl The proposed implementation.
     function bubbleUp(ProposedUpgrades storage $, address proposedImpl) internal {
         Ballot storage ballot = $.ballots[proposedImpl];
-        uint64 rank = ballot.rank;
+        uint48 rank = ballot.rank;
         uint256 votes = ballot.totalVotes;
 
-        uint64 bestRank = 0;
+        uint48 bestRank = 0;
 
         while (rank > bestRank) {
-            uint64 nextBetterRank;
+            uint48 nextBetterRank;
             unchecked {
                 nextBetterRank = rank - 1;
             }
@@ -75,6 +68,7 @@ library Ranking {
             if (votes < nextBetterVotes + 1) break;
 
             _swapRank({$: $, implA: proposedImpl, rankA: rank, implB: nextBetterImpl, rankB: nextBetterRank});
+            // Update the cached rank after the swap.
             rank = nextBetterRank;
         }
     }
@@ -84,13 +78,13 @@ library Ranking {
     /// @param proposedImpl The proposed implementation.
     function bubbleDown(ProposedUpgrades storage $, address proposedImpl) internal {
         Ballot storage ballot = $.ballots[proposedImpl];
-        uint64 rank = ballot.rank;
+        uint48 rank = ballot.rank;
         uint256 votes = ballot.totalVotes;
 
-        uint64 worstRank = $.implCount - 1;
+        uint48 worstRank = $.implCount - 1;
 
         while (rank < worstRank) {
-            uint64 nextWorseRank;
+            uint48 nextWorseRank;
             unchecked {
                 nextWorseRank = rank + 1;
             }
@@ -101,6 +95,8 @@ library Ranking {
             if (votes > nextWorseVotes) break;
 
             _swapRank({$: $, implA: proposedImpl, rankA: rank, implB: nextWorseImpl, rankB: nextWorseRank});
+
+            // Update the cached rank after the swap.
             rank = nextWorseRank;
         }
     }
@@ -111,7 +107,7 @@ library Ranking {
     /// @param rankA The rank of implementation A before the swap.
     /// @param implB Implementation B.
     /// @param rankB The rank of implementation B before the swap.
-    function _swapRank(ProposedUpgrades storage $, address implA, uint64 rankA, address implB, uint64 rankB) private {
+    function _swapRank(ProposedUpgrades storage $, address implA, uint48 rankA, address implB, uint48 rankB) private {
         $.ranking[rankA] = implB;
         $.ranking[rankB] = implA;
 
