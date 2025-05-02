@@ -49,7 +49,7 @@ contract UnitTest is Test {
 
         assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), 0);
 
-        uninitializedProxy.initialize({initialOwner: _defaultSender});
+        uninitializedProxy.initialize({mintRecipient: _defaultSender});
 
         assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), Parameters.SUPPLY);
     }

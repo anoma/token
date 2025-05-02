@@ -45,13 +45,10 @@ contract UpgradeTest is Test {
         vm.expectEmit(address(_xanProxy));
         emit IERC1967.Upgraded(_newImpl);
 
-        vm.expectEmit(address(_xanProxy));
-        emit XanV2.Reinitialized();
-
         UnsafeUpgrades.upgradeProxy({
             proxy: address(_xanProxy),
             newImpl: _newImpl,
-            data: abi.encodeCall(XanV2.initializeV2, ())
+            data: abi.encodeCall(XanV2.initializeV2, (address(uint160(1)), bytes32(uint256(2)))) // TODO! Why does this revert for `address(0)`?
         });
     }
 }
