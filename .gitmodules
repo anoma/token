@@ -8,3 +8,6 @@
 [submodule "lib/openzeppelin-foundry-upgrades"]
 	path = lib/openzeppelin-foundry-upgrades
 	url = https://github.com/OpenZeppelin/openzeppelin-foundry-upgrades
+[submodule "lib/evm-protocol-adapter"]
+	path = lib/evm-protocol-adapter
+	url = https://github.com/anoma/evm-protocol-adapter
