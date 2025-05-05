@@ -1,55 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.27;
 
-import {IForwarder, ForwarderBase} from "@anoma/evm-protocol-adapter/ForwarderBase.sol";
-
-import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
-import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
-
 import {XanV1} from "../../src/XanV1.sol";
 
-contract XanV2Forwarder is ForwarderBase {
-    XanV2 internal immutable _XAN_PROXY;
-
-    mapping(address caller => uint48) internal lastMintTimes;
-
-    event XanMinted(address caller, uint256 value);
-
-    error InvalidFunctionSelector(bytes4 expected, bytes4 actual);
-    error MintDelayNotPassed(address caller, uint48 lastMintTime, uint48 nextMintTime);
-
-    constructor(XanV2 xanProxy, address protocolAdapter, bytes32 calldataCarrierLogicRef)
-        ForwarderBase(protocolAdapter, calldataCarrierLogicRef)
-    {
-        _XAN_PROXY = xanProxy;
-    }
-
-    function _forwardCall(bytes calldata input) internal override returns (bytes memory output) {
-        (bytes4 selector, address caller, uint256 value) = abi.decode(input, (bytes4, address, uint256));
-
-        // Check that that the mint function is the call target.
-        if (selector != XanV2.mint.selector) {
-            revert InvalidFunctionSelector({expected: XanV2.mint.selector, actual: selector});
-        }
-
-        uint48 currentTime = Time.timestamp();
-        uint48 lastMintTime = lastMintTimes[caller];
-
-        if (currentTime < lastMintTime + 1 days) {
-            revert MintDelayNotPassed({caller: caller, lastMintTime: lastMintTime, nextMintTime: lastMintTime + 1 days});
-        }
-        lastMintTimes[caller] = currentTime;
-
-        emit XanMinted({caller: caller, value: value});
-
-        output = bytes("");
-
-        _XAN_PROXY.mint({account: address(this), value: value});
-    }
-}
-
+/// @notice A draft of the second version of the XAN contract.
+/// This is to ensure that `XanV1` can be upgraded to an subsequent version.
 /// @custom:oz-upgrades-from XanV1
-contract XanV2 is ContextUpgradeable, XanV1 {
+contract XanV2 is XanV1 {
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.
     /// @custom:storage-location erc7201:anoma.storage.Xan.v2
     /// @param proposedUpgrades The upgrade proposed from a current implementation.
@@ -71,22 +28,21 @@ contract XanV2 is ContextUpgradeable, XanV1 {
     }
 
     /// @custom:oz-upgrades-validate-as-initializer
-    function initialize(address mintRecipient, address protocolAdapter, bytes32 calldataCarrierLogicRef)
-        external
-        reinitializer(2)
-    {
-        __XanV1_init(mintRecipient);
-        __XanV2_init({protocolAdapter: protocolAdapter, calldataCarrierLogicRef: calldataCarrierLogicRef});
+    function initialize(address mintRecipient, address xanV2Forwarder) external reinitializer(2) {
+        __XanV1_init({mintRecipient: mintRecipient});
+        __XanV2_init({xanV2Forwarder: xanV2Forwarder});
     }
 
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
     /// @custom:oz-upgrades-validate-as-initializer
-    function initializeV2(address protocolAdapter, bytes32 calldataCarrierLogicRef) external reinitializer(2) {
-        //__XanV2_init({protocolAdapter: protocolAdapter, calldataCarrierLogicRef: calldataCarrierLogicRef});
+    function initializeV2(address xanV2Forwarder) external reinitializer(2) {
+        __XanV2_init({xanV2Forwarder: xanV2Forwarder});
     }
 
-    /// @notice Mints tokens for
-    /// @dev The caller must be the owner.
+    /// @notice Mints tokens for an account.
+    /// @param account The receiving account.
+    /// @param value The value to be minted.
+    /// @dev Can only be called by the `XanV2Forwarder` contract that has been created during initialization of v2.
     function mint(address account, uint256 value) external onlyOwner {
         _mint(account, value);
     }
@@ -98,22 +54,13 @@ contract XanV2 is ContextUpgradeable, XanV1 {
     }
 
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
-    function __XanV2_init(address protocolAdapter, bytes32 calldataCarrierLogicRef) internal onlyInitializing {
-        __XanV2_init_unchained({protocolAdapter: protocolAdapter, calldataCarrierLogicRef: calldataCarrierLogicRef});
+    function __XanV2_init(address xanV2Forwarder) internal onlyInitializing {
+        __XanV2_init_unchained({xanV2Forwarder: xanV2Forwarder});
     }
 
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
-    function __XanV2_init_unchained(address protocolAdapter, bytes32 calldataCarrierLogicRef)
-        internal
-        onlyInitializing
-    {
-        _getXanV2Storage().owner = address(
-            new XanV2Forwarder({
-                xanProxy: XanV2(address(this)),
-                protocolAdapter: protocolAdapter,
-                calldataCarrierLogicRef: calldataCarrierLogicRef
-            })
-        );
+    function __XanV2_init_unchained(address xanV2Forwarder) internal onlyInitializing {
+        _getXanV2Storage().owner = xanV2Forwarder;
     }
 
     /// @notice Throws if the sender is not the owner.

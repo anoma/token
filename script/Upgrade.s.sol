@@ -7,6 +7,7 @@ import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Script} from "forge-std/Script.sol";
 
 import {XanV2} from "../test/mocks/XanV2.m.sol";
+import {XanV2Forwarder} from "../test/mocks/XanV2Forwarder.m.sol";
 
 contract Deploy is Script {
     address internal constant _XAN_PROXY = address(0);
@@ -23,10 +24,18 @@ contract Deploy is Script {
 
         if (_CALLDATA_CARRIER_LOGIC_REF == bytes32(0)) revert("TODO");
 
+        address xanV2Forwarder = address(
+            new XanV2Forwarder({
+                xanProxy: address(this),
+                protocolAdapter: _PROTOCOL_ADAPTER,
+                calldataCarrierLogicRef: _CALLDATA_CARRIER_LOGIC_REF
+            })
+        );
+
         Upgrades.upgradeProxy({
             proxy: _XAN_PROXY,
             contractName: "XanV2.m.sol:XanV2",
-            data: abi.encodeCall(XanV2.initializeV2, (_PROTOCOL_ADAPTER, _CALLDATA_CARRIER_LOGIC_REF))
+            data: abi.encodeCall(XanV2.initializeV2, (xanV2Forwarder))
         });
 
         vm.stopBroadcast();

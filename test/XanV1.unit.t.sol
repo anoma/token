@@ -10,7 +10,7 @@ import {Test} from "forge-std/Test.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
 import {IXanV1, XanV1} from "../src/XanV1.sol";
 
-contract UnitTest is Test {
+contract XanV1UnitTest is Test {
     address internal _defaultSender;
     XanV1 internal _xanProxy;
 

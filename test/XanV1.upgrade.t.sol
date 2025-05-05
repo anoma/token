@@ -9,7 +9,7 @@ import {Parameters} from "../src/libs/Parameters.sol";
 import {XanV1} from "../src/XanV1.sol";
 import {XanV2} from "../test/mocks/XanV2.m.sol";
 
-contract UpgradeTest is Test {
+contract XanV1UpgradeTest is Test {
     address internal _defaultSender;
     address internal _newImpl;
     XanV1 internal _xanProxy;
@@ -48,7 +48,7 @@ contract UpgradeTest is Test {
         UnsafeUpgrades.upgradeProxy({
             proxy: address(_xanProxy),
             newImpl: _newImpl,
-            data: abi.encodeCall(XanV2.initializeV2, (address(uint160(1)), bytes32(uint256(2)))) // TODO! Why does this revert for `address(0)`?
+            data: abi.encodeCall(XanV2.initializeV2, (address(uint160(1))))
         });
     }
 }
