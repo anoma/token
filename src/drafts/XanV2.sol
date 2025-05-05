@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.27;
 
-import {XanV1} from "../../src/XanV1.sol";
+import {IXanV2} from "../interfaces/IXanV2.sol";
+import {XanV1} from "../XanV1.sol";
 
 /// @notice A draft of the second version of the XAN contract.
 /// This is to ensure that `XanV1` can be upgraded to an subsequent version.
 /// @custom:oz-upgrades-from XanV1
-contract XanV2 is XanV1 {
+contract XanV2 is IXanV2, XanV1 {
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.
     /// @custom:storage-location erc7201:anoma.storage.Xan.v2
     /// @param proposedUpgrades The upgrade proposed from a current implementation.
@@ -28,6 +29,7 @@ contract XanV2 is XanV1 {
     }
 
     /// @custom:oz-upgrades-validate-as-initializer
+    // solhint-disable-next-line comprehensive-interface
     function initialize(address mintRecipient, address xanV2Forwarder) external reinitializer(2) {
         __XanV1_init({mintRecipient: mintRecipient});
         __XanV2_init({xanV2Forwarder: xanV2Forwarder});
@@ -35,30 +37,29 @@ contract XanV2 is XanV1 {
 
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
     /// @custom:oz-upgrades-validate-as-initializer
+    // solhint-disable-next-line comprehensive-interface
     function initializeV2(address xanV2Forwarder) external reinitializer(2) {
         __XanV2_init({xanV2Forwarder: xanV2Forwarder});
     }
 
-    /// @notice Mints tokens for an account.
-    /// @param account The receiving account.
-    /// @param value The value to be minted.
-    /// @dev Can only be called by the `XanV2Forwarder` contract that has been created during initialization of v2.
-    function mint(address account, uint256 value) external onlyOwner {
+    /// @inheritdoc IXanV2
+    function mint(address account, uint256 value) external override onlyOwner {
         _mint(account, value);
     }
 
-    /// @notice Returns the address of the owner.
-    function owner() public view virtual returns (address ownerAddr) {
-        XanV2Storage storage $ = _getXanV2Storage();
-        ownerAddr = $.owner;
+    /// @inheritdoc IXanV2
+    function owner() public view virtual override returns (address addr) {
+        addr = _getXanV2Storage().owner;
     }
 
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
+    // solhint-disable-next-line func-name-mixedcase
     function __XanV2_init(address xanV2Forwarder) internal onlyInitializing {
         __XanV2_init_unchained({xanV2Forwarder: xanV2Forwarder});
     }
 
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
+    // solhint-disable-next-line func-name-mixedcase
     function __XanV2_init_unchained(address xanV2Forwarder) internal onlyInitializing {
         _getXanV2Storage().owner = xanV2Forwarder;
     }

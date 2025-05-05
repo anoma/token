@@ -3,9 +3,9 @@ pragma solidity ^0.8.27;
 
 import {ForwarderBase} from "@anoma/evm-protocol-adapter/ForwarderBase.sol";
 
-import {XanV2} from "./XanV2.m.sol";
+import {XanV2} from "./XanV2.sol";
 
-/// @notice A forwarder contract minting new XAN tokens for a recpient.
+/// @notice A forwarder contract minting new XAN tokens for a recipient.
 /// Note, that the forwarder contract is the recipient of newly minted XAN tokens.
 contract XanV2Forwarder is ForwarderBase {
     XanV2 internal immutable _XAN_PROXY;

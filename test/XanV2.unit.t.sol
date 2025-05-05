@@ -6,11 +6,11 @@ import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {Upgrades, UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
+import {XanV2} from "../src/drafts/XanV2.sol";
+import {XanV2Forwarder} from "../src/drafts/XanV2Forwarder.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
 import {XanV1} from "../src/XanV1.sol";
 import {MockProtocolAdapter} from "../test/mocks/ProtocolAdapter.m.sol";
-import {XanV2} from "../test/mocks/XanV2.m.sol";
-import {XanV2Forwarder} from "../test/mocks/XanV2Forwarder.m.sol";
 
 contract XanV2UnitTest is Test {
     XanV1 internal _xanV1Proxy;
@@ -59,7 +59,7 @@ contract XanV2UnitTest is Test {
     function test_initialize_sets_the_owner() public {
         XanV2 v2Proxy = XanV2(
             Upgrades.deployUUPSProxy({
-                contractName: "XanV2.m.sol:XanV2",
+                contractName: "XanV2.sol:XanV2",
                 initializerData: abi.encodeCall(XanV2.initialize, (_defaultSender, _xanV2Forwarder))
             })
         );
