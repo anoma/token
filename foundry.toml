@@ -19,7 +19,7 @@ libs = ["lib"]
 test = "test"
 script = "script"
 
-gas_reports = ["Xan", "MerkleDistributor"]
+gas_reports = ["XanV1", "MerkleDistributor"]
 
 allow_internal_expect_revert = true
 

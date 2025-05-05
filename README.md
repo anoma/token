@@ -26,8 +26,28 @@
 Run
 
 ```sh
-forge test
+forge test --force --gas-report
 ```
+> [!NOTE]  
+> The `--force` flag is required for the [openzeppelin-foundry-upgrades](https://github.com/OpenZeppelin/openzeppelin-foundry-upgrades) package to work.
+> The `--gas-report` flag prints selected gas reports.
+
+### Coverage
+
+Run
+
+```sh
+forge coverage
+```
+
+### Documentation
+
+Run
+
+```sh
+forge doc
+```
+
 
 ### Deployment
 
