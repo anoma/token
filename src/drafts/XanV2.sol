@@ -30,8 +30,8 @@ contract XanV2 is IXanV2, XanV1 {
 
     /// @custom:oz-upgrades-validate-as-initializer
     // solhint-disable-next-line comprehensive-interface
-    function initialize(address mintRecipient, address xanV2Forwarder) external reinitializer(2) {
-        __XanV1_init({mintRecipient: mintRecipient});
+    function initialize(address initialMintRecipient, address xanV2Forwarder) external reinitializer(2) {
+        __XanV1_init({initialMintRecipient: initialMintRecipient});
         __XanV2_init({xanV2Forwarder: xanV2Forwarder});
     }
 

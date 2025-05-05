@@ -48,10 +48,10 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     }
 
     /// @notice Initializes the proxy.
-    /// @param mintRecipient The initial owner of the minted tokens.
+    /// @param initialMintRecipient The initial recipient of the minted tokens.
     // solhint-disable-next-line comprehensive-interface
-    function initialize(address mintRecipient) external virtual initializer {
-        __XanV1_init(mintRecipient);
+    function initialize(address initialMintRecipient) external virtual initializer {
+        __XanV1_init(initialMintRecipient);
     }
 
     /// @inheritdoc IXanV1
@@ -236,19 +236,19 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function __XanV1_init(address mintRecipient) internal onlyInitializing {
+    function __XanV1_init(address initialMintRecipient) internal onlyInitializing {
         __Context_init_unchained();
         __ERC20_init_unchained("Anoma Token", "Xan");
         __ERC20Burnable_init();
         __UUPSUpgradeable_init_unchained();
 
-        __XanV1_init_unchained(mintRecipient);
+        __XanV1_init_unchained(initialMintRecipient);
     }
 
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
     // solhint-disable-next-line func-name-mixedcase
-    function __XanV1_init_unchained(address mintRecipient) internal onlyInitializing {
-        _mint(mintRecipient, Parameters.SUPPLY);
+    function __XanV1_init_unchained(address initialMintRecipient) internal onlyInitializing {
+        _mint(initialMintRecipient, Parameters.SUPPLY);
     }
 
     /// @inheritdoc ERC20Upgradeable

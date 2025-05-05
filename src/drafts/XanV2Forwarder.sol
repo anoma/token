@@ -20,7 +20,6 @@ contract XanV2Forwarder is ForwarderBase {
     }
 
     /// @notice Forwards mint calls to the XAN proxy contract pointing to the `XanV2` implementation.
-
     /// @param input The `bytes` encoded mint calldata (including the `bytes4` function selector).
     /// @return output The empty output of the call.
     function _forwardCall(bytes calldata input) internal override returns (bytes memory output) {
