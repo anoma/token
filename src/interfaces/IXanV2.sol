@@ -10,7 +10,7 @@ interface IXanV2 is IXanV1 {
     /// @dev Can only be called by the `XanV2Forwarder` contract that has been created during initialization of v2.
     function mint(address account, uint256 value) external;
 
-    /// @notice Returns the address of the owner being permitted to call the `mint` function.
-    /// @return addr The address of the owner.
-    function owner() external view returns (address addr);
+    /// @notice Returns the address of the forwarder contract being permitted to call the `mint` function.
+    /// @return addr The forwarder address.
+    function forwarder() external view returns (address addr);
 }

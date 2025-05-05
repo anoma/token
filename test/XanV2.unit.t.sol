@@ -56,17 +56,17 @@ contract XanV2UnitTest is Test {
         _xanV2Proxy = XanV2(address(_xanV1Proxy));
     }
 
-    function test_initialize_sets_the_owner() public {
+    function test_initialize_sets_the_forwarder() public {
         XanV2 v2Proxy = XanV2(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV2.sol:XanV2",
                 initializerData: abi.encodeCall(XanV2.initialize, (_defaultSender, _xanV2Forwarder))
             })
         );
-        assertEq(v2Proxy.owner(), _xanV2Forwarder);
+        assertEq(v2Proxy.forwarder(), _xanV2Forwarder);
     }
 
-    function test_initializeV2_sets_the_owner() public {
+    function test_initializeV2_sets_the_forwarder() public {
         XanV2 v2ProxyUninitialized;
         {
             // Deploy v1
@@ -84,11 +84,11 @@ contract XanV2UnitTest is Test {
         }
 
         // Check that the owner hasn't been set.
-        assertEq(v2ProxyUninitialized.owner(), address(0));
+        assertEq(v2ProxyUninitialized.forwarder(), address(0));
 
         // Reinitialize and expect the owner to be set.
         v2ProxyUninitialized.initializeV2({xanV2Forwarder: _xanV2Forwarder});
-        assertEq(v2ProxyUninitialized.owner(), _xanV2Forwarder);
+        assertEq(v2ProxyUninitialized.forwarder(), _xanV2Forwarder);
     }
 
     function test_mint_is_callable_from_the_ProtocolAdapter_via_the_XanV2Forwarder() public {
@@ -118,9 +118,7 @@ contract XanV2UnitTest is Test {
     }
 
     function test_mint_reverts_if_the_caller_is_not_the_XanV2Forwarder() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(XanV2.OwnableUnauthorizedAccount.selector, _defaultSender), address(_xanV2Proxy)
-        );
+        vm.expectRevert(abi.encodeWithSelector(XanV2.UnauthorizedCaller.selector, _defaultSender), address(_xanV2Proxy));
 
         // Call without being the `XanV2Forwarder` contract.
         vm.prank(_defaultSender);

@@ -12,7 +12,7 @@ contract XanV2 is IXanV2, XanV1 {
     /// @custom:storage-location erc7201:anoma.storage.Xan.v2
     /// @param proposedUpgrades The upgrade proposed from a current implementation.
     struct XanV2Storage {
-        address owner;
+        address forwarder;
     }
 
     /// @notice The ERC-7201 storage location of the Xan V2 contract (see https://eips.ethereum.org/EIPS/eip-7201).
@@ -21,10 +21,10 @@ contract XanV2 is IXanV2, XanV1 {
     bytes32 internal constant _XAN_V2_STORAGE_LOCATION =
         0x52ac9b9514a24171c0416c0576d612fe5fab9f5a41dcf77ddbf6be60ca9da600;
 
-    error OwnableUnauthorizedAccount(address account);
+    error UnauthorizedCaller(address caller);
 
-    modifier onlyOwner() {
-        _checkOwner();
+    modifier onlyForwarder() {
+        _checkForwarder();
         _;
     }
 
@@ -43,13 +43,13 @@ contract XanV2 is IXanV2, XanV1 {
     }
 
     /// @inheritdoc IXanV2
-    function mint(address account, uint256 value) external override onlyOwner {
+    function mint(address account, uint256 value) external override onlyForwarder {
         _mint(account, value);
     }
 
     /// @inheritdoc IXanV2
-    function owner() public view virtual override returns (address addr) {
-        addr = _getXanV2Storage().owner;
+    function forwarder() public view virtual override returns (address addr) {
+        addr = _getXanV2Storage().forwarder;
     }
 
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
@@ -61,13 +61,13 @@ contract XanV2 is IXanV2, XanV1 {
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
     // solhint-disable-next-line func-name-mixedcase
     function __XanV2_init_unchained(address xanV2Forwarder) internal onlyInitializing {
-        _getXanV2Storage().owner = xanV2Forwarder;
+        _getXanV2Storage().forwarder = xanV2Forwarder;
     }
 
-    /// @notice Throws if the sender is not the owner.
-    function _checkOwner() internal view virtual {
-        if (owner() != _msgSender()) {
-            revert OwnableUnauthorizedAccount(_msgSender());
+    /// @notice Throws if the sender is not the forwarder.
+    function _checkForwarder() internal view virtual {
+        if (forwarder() != _msgSender()) {
+            revert UnauthorizedCaller({caller: _msgSender()});
         }
     }
 
