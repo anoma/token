@@ -26,8 +26,27 @@
 Run
 
 ```sh
-forge test
+forge test --force  
 ```
+> [!NOTE]  
+> The `--force` flag is required for the [openzeppelin-foundry-upgrades](https://github.com/OpenZeppelin/openzeppelin-foundry-upgrades) package to work.
+
+### Coverage
+
+Run
+
+```sh
+forge coverage
+```
+
+### Documentation
+
+Run
+
+```sh
+forge doc
+```
+
 
 ### Deployment
 
