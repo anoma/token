@@ -6,9 +6,9 @@ import {Test} from "forge-std/Test.sol";
 
 import {XanV1} from "../src/XanV1.sol";
 
-import {MockVoters} from "./mocks/Voters.m.sol";
+import {MockPersons} from "./mocks/Persons.m.sol";
 
-contract XanV1VotingTest is Test, MockVoters {
+contract XanV1VotingTest is Test, MockPersons {
     XanV1 internal _xanProxy;
 
     string[4] internal _census;
@@ -37,7 +37,7 @@ contract XanV1VotingTest is Test, MockVoters {
 
         // Allocate tokens
         for (uint256 i = 0; i < _census.length; ++i) {
-            address voterAddr = voter(_census[i]);
+            address voterAddr = person(_census[i]);
 
             assertEq(_xanProxy.balanceOf(voterAddr), 0);
             assertEq(_xanProxy.lockedBalanceOf(voterAddr), 0);
@@ -52,25 +52,25 @@ contract XanV1VotingTest is Test, MockVoters {
     }
 
     function test_castVote_ranks_implementations() public {
-        vm.prank(voter("Alice"));
+        vm.prank(person("Alice"));
         _xanProxy.castVote(_implA);
 
         assertEq(_xanProxy.proposedImplementationByRank(0), _implA);
 
-        vm.prank(voter("Bob"));
+        vm.prank(person("Bob"));
         _xanProxy.castVote(_implB);
 
         assertEq(_xanProxy.proposedImplementationByRank(0), _implA);
         assertEq(_xanProxy.proposedImplementationByRank(1), _implB);
 
-        vm.prank(voter("Carol"));
+        vm.prank(person("Carol"));
         _xanProxy.castVote(_implC);
 
         assertEq(_xanProxy.proposedImplementationByRank(0), _implA);
         assertEq(_xanProxy.proposedImplementationByRank(1), _implB);
         assertEq(_xanProxy.proposedImplementationByRank(2), _implC);
 
-        vm.prank(voter("Dave"));
+        vm.prank(person("Dave"));
         _xanProxy.castVote(_implC);
 
         assertEq(_xanProxy.proposedImplementationByRank(0), _implC);
@@ -79,20 +79,20 @@ contract XanV1VotingTest is Test, MockVoters {
     }
 
     function test_revokeVote_ranks_implementations() public {
-        vm.prank(voter("Alice"));
+        vm.prank(person("Alice"));
         _xanProxy.castVote(_implA);
 
-        vm.prank(voter("Bob"));
+        vm.prank(person("Bob"));
         _xanProxy.castVote(_implB);
 
-        vm.prank(voter("Carol"));
+        vm.prank(person("Carol"));
         _xanProxy.castVote(_implC);
 
         assertEq(_xanProxy.proposedImplementationByRank(0), _implA);
         assertEq(_xanProxy.proposedImplementationByRank(1), _implB);
         assertEq(_xanProxy.proposedImplementationByRank(2), _implC);
 
-        vm.prank(voter("Alice"));
+        vm.prank(person("Alice"));
         _xanProxy.revokeVote(_implA);
 
         assertEq(_xanProxy.proposedImplementationByRank(0), _implB);
