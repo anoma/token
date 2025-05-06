@@ -182,6 +182,23 @@ contract MerkleDistributorTest is Test, MockDistribution {
         }
     }
 
+    function test_burnUnclaimedTokens_burns_unclaimed_tokens() public {
+        skip(Parameters.CLAIM_START_TIME + Parameters.CLAIM_DURATION);
+
+        assertEq(_xanProxy.totalSupply(), Parameters.SUPPLY);
+        assertEq(_xanProxy.balanceOf(address(_md)), Parameters.SUPPLY);
+
+        _md.burnUnclaimedTokens();
+
+        assertEq(_xanProxy.totalSupply(), 0);
+        assertEq(_xanProxy.balanceOf(address(_md)), 0);
+    }
+
+    function test_burnUnclaimedTokens_reverts_if_the_end_time_is_in_the_future() public {
+        vm.expectRevert(abi.encodeWithSelector(MerkleDistributor.EndTimeInTheFuture.selector), address(_md));
+        _md.burnUnclaimedTokens();
+    }
+
     function _claimFor(string[] memory names) internal {
         for (uint256 i = 0; i < names.length; ++i) {
             (address addr, uint256 id) = personAddrAndId(names[i]);
