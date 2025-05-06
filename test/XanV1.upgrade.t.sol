@@ -5,11 +5,11 @@ import {IERC1967} from "@openzeppelin/contracts/interfaces/IERC1967.sol";
 import {Upgrades, UnsafeUpgrades, Options} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
+import {XanV2} from "../src/drafts/XanV2.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
 import {XanV1} from "../src/XanV1.sol";
-import {XanV2} from "../test/mocks/XanV2.m.sol";
 
-contract UpgradeTest is Test {
+contract XanV1UpgradeTest is Test {
     address internal _defaultSender;
     address internal _newImpl;
     XanV1 internal _xanProxy;
@@ -27,7 +27,7 @@ contract UpgradeTest is Test {
         );
 
         Options memory opts;
-        _newImpl = Upgrades.prepareUpgrade({contractName: "XanV2.m.sol:XanV2", opts: opts});
+        _newImpl = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});
 
         // Lock the tokens for the `_defaultSender`.
         _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));
@@ -45,13 +45,10 @@ contract UpgradeTest is Test {
         vm.expectEmit(address(_xanProxy));
         emit IERC1967.Upgraded(_newImpl);
 
-        vm.expectEmit(address(_xanProxy));
-        emit XanV2.Reinitialized();
-
         UnsafeUpgrades.upgradeProxy({
             proxy: address(_xanProxy),
             newImpl: _newImpl,
-            data: abi.encodeCall(XanV2.initializeV2, ())
+            data: abi.encodeCall(XanV2.initializeV2, (address(uint160(1))))
         });
     }
 }

@@ -10,13 +10,13 @@ import {Test} from "forge-std/Test.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
 import {IXanV1, XanV1} from "../src/XanV1.sol";
 
-contract UnitTest is Test {
-    address internal _defaultSender;
-    XanV1 internal _xanProxy;
-
+contract XanV1UnitTest is Test {
     address internal constant _IMPL = address(uint160(1));
     address internal constant _OTHER_IMPL = address(uint160(2));
     address internal constant _RECEIVER = address(uint160(3));
+
+    address internal _defaultSender;
+    XanV1 internal _xanProxy;
 
     function setUp() public {
         (, _defaultSender,) = vm.readCallers();
@@ -49,7 +49,7 @@ contract UnitTest is Test {
 
         assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), 0);
 
-        uninitializedProxy.initialize({initialOwner: _defaultSender});
+        uninitializedProxy.initialize({initialMintRecipient: _defaultSender});
 
         assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), Parameters.SUPPLY);
     }

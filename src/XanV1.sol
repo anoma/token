@@ -18,13 +18,13 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     using Ranking for Ranking.ProposedUpgrades;
 
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.
-    /// @custom:storage-location erc7201:anoma.storage.XanV1.v1
+    /// @custom:storage-location erc7201:anoma.storage.Xan.v1
     /// @param proposedUpgrades The upgrade proposed from a current implementation.
     struct XanV1Storage {
         mapping(address current => Ranking.ProposedUpgrades) proposedUpgrades;
     }
 
-    /// @notice The ERC-7201 storage location of the contract (see https://eips.ethereum.org/EIPS/eip-7201).
+    /// @notice The ERC-7201 storage location of the Xan V1 contract (see https://eips.ethereum.org/EIPS/eip-7201).
     /// @dev Obtained from
     /// `keccak256(abi.encode(uint256(keccak256("anoma.storage.Xan.v1")) - 1)) & ~bytes32(uint256(0xff))`.
     bytes32 internal constant _XAN_V1_STORAGE_LOCATION =
@@ -48,10 +48,10 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     }
 
     /// @notice Initializes the proxy.
-    /// @param initialOwner The initial owner of the minted tokens.
+    /// @param initialMintRecipient The initial recipient of the minted tokens.
     // solhint-disable-next-line comprehensive-interface
-    function initialize(address initialOwner) external virtual initializer {
-        __XanV1_init(initialOwner);
+    function initialize(address initialMintRecipient) external virtual initializer {
+        __XanV1_init(initialMintRecipient);
     }
 
     /// @inheritdoc IXanV1
@@ -236,19 +236,19 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function __XanV1_init(address initialOwner) internal onlyInitializing {
+    function __XanV1_init(address initialMintRecipient) internal onlyInitializing {
         __Context_init_unchained();
         __ERC20_init_unchained("Anoma Token", "Xan");
         __ERC20Burnable_init();
         __UUPSUpgradeable_init_unchained();
 
-        __XanV1_init_unchained(initialOwner);
+        __XanV1_init_unchained(initialMintRecipient);
     }
 
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
     // solhint-disable-next-line func-name-mixedcase
-    function __XanV1_init_unchained(address initialOwner) internal onlyInitializing {
-        _mint(initialOwner, Parameters.SUPPLY);
+    function __XanV1_init_unchained(address initialMintRecipient) internal onlyInitializing {
+        _mint(initialMintRecipient, Parameters.SUPPLY);
     }
 
     /// @inheritdoc ERC20Upgradeable
@@ -339,7 +339,7 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
         proposedUpgrades = _getXanV1Storage().proposedUpgrades[implementation()];
     }
 
-    /// @notice Returns the storage from the contract storage location.
+    /// @notice Returns the storage from the Xan V1 storage location.
     /// @return $ The data associated with Xan token storage.
     function _getXanV1Storage() internal pure returns (XanV1Storage storage $) {
         // solhint-disable no-inline-assembly

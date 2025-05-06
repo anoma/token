@@ -8,7 +8,7 @@ import {XanV1} from "../src/XanV1.sol";
 
 import {MockVoters} from "./mocks/Voters.m.sol";
 
-contract VotingTest is Test, MockVoters {
+contract XanV1VotingTest is Test, MockVoters {
     XanV1 internal _xanProxy;
 
     string[4] internal _census;
