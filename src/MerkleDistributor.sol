@@ -5,8 +5,8 @@ pragma solidity ^0.8.27;
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
 import {IMerkleDistributor} from "./interfaces/IMerkleDistributor.sol";
 

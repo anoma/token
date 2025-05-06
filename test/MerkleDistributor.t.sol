@@ -24,7 +24,7 @@ contract MerkleDistributorTest is Test, MockDistribution {
     }
 
     function test_claim_reverts_if_the_start_time_is_in_the_future() public {
-        (address addr, uint256 id) = personAddrAndId("Alice");
+        (address addr, uint256 id) = _personAddrAndId("Alice");
 
         vm.expectRevert(abi.encodeWithSelector(MerkleDistributor.StartTimeInTheFuture.selector), address(_md));
 
@@ -33,7 +33,7 @@ contract MerkleDistributorTest is Test, MockDistribution {
     }
 
     function test_claim_reverts_if_the_end_time_is_in_the_past() public {
-        (address addr, uint256 id) = personAddrAndId("Alice");
+        (address addr, uint256 id) = _personAddrAndId("Alice");
 
         skip(Parameters.CLAIM_START_TIME + Parameters.CLAIM_DURATION);
         vm.expectRevert(abi.encodeWithSelector(MerkleDistributor.EndTimeInThePast.selector), address(_md));
@@ -44,7 +44,7 @@ contract MerkleDistributorTest is Test, MockDistribution {
 
     function test_claim_reverts_if_already_claimed() public {
         skip(Parameters.CLAIM_START_TIME);
-        (address addr, uint256 id) = personAddrAndId("Alice");
+        (address addr, uint256 id) = _personAddrAndId("Alice");
 
         vm.startPrank(addr);
         _md.claim({index: id, to: addr, value: _TOKEN_SHARE, locked: _locked[id], proof: _merkleProof({index: id})});
@@ -58,7 +58,7 @@ contract MerkleDistributorTest is Test, MockDistribution {
     function test_claim_reverts_if_the_index_is_wrong() public {
         skip(Parameters.CLAIM_START_TIME);
 
-        (address addr, uint256 id) = personAddrAndId("Alice");
+        (address addr, uint256 id) = _personAddrAndId("Alice");
         uint256 wrongIndex = 2;
 
         vm.prank(addr);
@@ -80,8 +80,8 @@ contract MerkleDistributorTest is Test, MockDistribution {
     function test_claim_reverts_if_the_receiver_is_wrong() public {
         skip(Parameters.CLAIM_START_TIME);
 
-        (address addr, uint256 id) = personAddrAndId("Alice");
-        address wrongReceiver = person("Bob");
+        (address addr, uint256 id) = _personAddrAndId("Alice");
+        address wrongReceiver = _person("Bob");
 
         vm.prank(addr);
         vm.expectRevert(
@@ -102,7 +102,7 @@ contract MerkleDistributorTest is Test, MockDistribution {
     function test_claim_reverts_if_the_value_is_wrong() public {
         skip(Parameters.CLAIM_START_TIME);
 
-        (address addr, uint256 id) = personAddrAndId("Alice");
+        (address addr, uint256 id) = _personAddrAndId("Alice");
         uint256 wrongValue = 123;
 
         vm.prank(addr);
@@ -116,7 +116,7 @@ contract MerkleDistributorTest is Test, MockDistribution {
     function test_claim_reverts_if_the_locked_flag_is_wrong() public {
         skip(Parameters.CLAIM_START_TIME);
 
-        (address addr, uint256 id) = personAddrAndId("Alice");
+        (address addr, uint256 id) = _personAddrAndId("Alice");
         bool wrongLockedFlag = false;
 
         vm.prank(addr);
@@ -132,8 +132,8 @@ contract MerkleDistributorTest is Test, MockDistribution {
     function test_claim_reverts_if_the_proof_is_wrong() public {
         skip(Parameters.CLAIM_START_TIME);
 
-        (address addr, uint256 id) = personAddrAndId("Alice");
-        bytes32[] memory wrongProof = _merkleProof({index: personId("Bob")});
+        (address addr, uint256 id) = _personAddrAndId("Alice");
+        bytes32[] memory wrongProof = _merkleProof({index: _personId("Bob")});
 
         vm.prank(addr);
         vm.expectRevert(
@@ -147,7 +147,7 @@ contract MerkleDistributorTest is Test, MockDistribution {
         skip(Parameters.CLAIM_START_TIME);
 
         for (uint256 i = 0; i < _census.length; ++i) {
-            address addr = person(_census[i]);
+            address addr = _person(_census[i]);
             assertEq(_xanProxy.balanceOf(addr), 0);
             assertEq(_xanProxy.lockedBalanceOf(addr), 0);
         }
@@ -155,7 +155,7 @@ contract MerkleDistributorTest is Test, MockDistribution {
         _claimFor(_census);
 
         for (uint256 i = 0; i < _census.length; ++i) {
-            address addr = person(_census[i]);
+            address addr = _person(_census[i]);
             // Check if tokens were transferred locked or unlocked.
             assertEq(_xanProxy.balanceOf(addr), _TOKEN_SHARE);
             if (_locked[i]) {
@@ -201,7 +201,7 @@ contract MerkleDistributorTest is Test, MockDistribution {
 
     function _claimFor(string[] memory names) internal {
         for (uint256 i = 0; i < names.length; ++i) {
-            (address addr, uint256 id) = personAddrAndId(names[i]);
+            (address addr, uint256 id) = _personAddrAndId(names[i]);
 
             vm.prank(addr);
             _md.claim({index: id, to: addr, value: _TOKEN_SHARE, locked: _locked[id], proof: _merkleProof({index: id})});

@@ -33,20 +33,20 @@ contract MockPersons {
         }
     }
 
-    function person(string memory name) internal view returns (address addr) {
+    function _person(string memory name) internal view returns (address addr) {
         addr = _persons[name];
     }
 
-    function person(uint256 id) internal view returns (address addr) {
+    function _person(uint256 id) internal view returns (address addr) {
         addr = _addresses[id];
     }
 
-    function personId(string memory name) internal view returns (uint256 id) {
+    function _personId(string memory name) internal view returns (uint256 id) {
         id = _personIds[name];
     }
 
-    function personAddrAndId(string memory name) internal view returns (address addr, uint256 id) {
-        addr = person(name);
-        id = personId(name);
+    function _personAddrAndId(string memory name) internal view returns (address addr, uint256 id) {
+        addr = _person(name);
+        id = _personId(name);
     }
 }

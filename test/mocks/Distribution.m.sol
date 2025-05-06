@@ -45,7 +45,7 @@ contract MockDistribution is MockPersons {
 
         bytes32 newRoot;
         for (uint256 i = 0; i < 2 ** _TREE_DEPTH; ++i) {
-            bytes32 leaf = Leaf.hash({index: i, to: person(i), value: _TOKEN_SHARE, locked: _locked[i]});
+            bytes32 leaf = Leaf.hash({index: i, to: _person(i), value: _TOKEN_SHARE, locked: _locked[i]});
 
             _leafs[i] = leaf;
 
