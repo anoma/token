@@ -5,9 +5,9 @@ pragma solidity ^0.8.27;
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
-import {MerkleTree} from "../src/MerkleTree.sol";
 import {IMerkleDistributor} from "./interfaces/IMerkleDistributor.sol";
 
 import {Leaf} from "./libs/Leaf.sol";
@@ -84,10 +84,7 @@ contract MerkleDistributor is IMerkleDistributor {
     }
 
     /// @inheritdoc IMerkleDistributor
-    function claim(uint256 index, address to, uint256 value, bool locked, MerkleTree.Proof calldata proof)
-        external
-        override
-    {
+    function claim(uint256 index, address to, uint256 value, bool locked, bytes32[] calldata proof) external override {
         uint48 currentTime = Time.timestamp();
 
         if (currentTime < _START_TIME) revert StartTimeInTheFuture();
@@ -128,7 +125,7 @@ contract MerkleDistributor is IMerkleDistributor {
     }
 
     /// @inheritdoc IMerkleDistributor
-    function unclaimedBalance(uint256 index, address to, uint256 value, bool locked, MerkleTree.Proof calldata proof)
+    function unclaimedBalance(uint256 index, address to, uint256 value, bool locked, bytes32[] calldata proof)
         external
         view
         override
@@ -164,14 +161,14 @@ contract MerkleDistributor is IMerkleDistributor {
     /// @param locked Whether the tokens are locked or not.
     /// @param proof The merkle proof to be verified.
     /// @return valid Whether the proof is valid or not.
-    function _verifyProof(uint256 index, address to, uint256 value, bool locked, MerkleTree.Proof calldata proof)
+    function _verifyProof(uint256 index, address to, uint256 value, bool locked, bytes32[] calldata proof)
         internal
         view
         returns (bool valid)
     {
         bytes32 leaf = Leaf.hash({index: index, to: to, value: value, locked: locked});
 
-        bytes32 computedRoot = MerkleTree.processProof({proof: proof, leaf: leaf});
+        bytes32 computedRoot = MerkleProof.processProof({proof: proof, leaf: leaf});
 
         valid = computedRoot == _ROOT;
     }

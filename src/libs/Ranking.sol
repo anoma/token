@@ -21,7 +21,7 @@ library Ranking {
     }
 
     /// @notice The vote data of a proposed implementation.
-    /// @param vota The vota of the individual voters.
+    /// @param vota The vota of the individual identities.
     /// @param totalVotes The total votes casted.
     /// @param rank The voting rank of the implementation
     /// @param  delayEndTime The end time of the delay period.
