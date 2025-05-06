@@ -14,11 +14,11 @@ contract MockDistribution is MockPersons {
 
     uint256 internal constant _TOKEN_SHARE = 1_000_000_000 / (2 ** _TREE_DEPTH);
 
-    bytes32 internal immutable _ROOT;
-
     /// @notice The hash representing the empty leaf that is not expected to be part of the tree.
     /// @dev Obtained from `sha256("EMPTY_LEAF")`.
     bytes32 internal constant _EMPTY_LEAF_HASH = 0x283d1bb3a401a7e0302d0ffb9102c8fc1f4730c2715a2bfd46a9d9209d5965e0;
+
+    bytes32 internal immutable _ROOT;
 
     MerkleTree.Bytes32PushTree internal _tree;
     string[] internal _census;
