@@ -47,33 +47,3 @@ Run
 ```sh
 forge doc
 ```
-
-
-### Deployment
-
-To simulate deployment on sepolia, run
-
-```sh
-forge script script/Deploy.s.sol:Deploy \
-   --rpc-url sepolia
-```
-
-Append the
-
-- `--broadcast` flag to deploy on sepolia
-- `--verify` flag for subsequent contract verification on Etherscan
-- `--account <ACCOUNT_NAME>` flag to use a previously imported keystore (see
-  `cast wallet --help` for more info)
-
-#### Block Explorer Verification
-
-For post-deployment verification on Etherscan run
-
-```sh
-forge verify-contract \
-   <ADDRESS> \
-   src/MerkleDistributor.sol:MerkleDistributor \
-   --chain sepolia
-```
-
-after replacing `<ADDRESS>` with the respective contract address.
