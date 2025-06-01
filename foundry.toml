@@ -7,8 +7,14 @@ ffi = true
 ast = true
 build_info = true
 extra_output = ["storageLayout"]
-#cbor_metadata = false
-#bytecode_hash = "none"
+
+remappings = [
+    "forge-std/=lib/forge-std/src/",
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/",
+    "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
+    "@openzeppelin/foundry-upgrades/=lib/openzeppelin-foundry-upgrades/src/",
+    "@anoma/evm-protocol-adapter/=lib/evm-protocol-adapter/src/",
+]
 
 optimizer_runs = 10_000
 fuzz = { runs = 1_000 }
