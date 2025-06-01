@@ -13,7 +13,7 @@ remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/",
     "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
     "@openzeppelin/foundry-upgrades/=lib/openzeppelin-foundry-upgrades/src/",
-    "@anoma/evm-protocol-adapter/=lib/evm-protocol-adapter/src/",
+    "@anoma/evm-protocol-adapter/=lib/evm-protocol-adapter/contracts/src/",
 ]
 
 optimizer_runs = 10_000

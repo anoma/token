@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
-import {IForwarder} from "@anoma/evm-protocol-adapter/ForwarderBase.sol";
+import {IForwarder} from "@anoma/evm-protocol-adapter/forwarders/ForwarderBase.sol";
 
 import {ForwarderCalldata} from "@anoma/evm-protocol-adapter/Types.sol";
 
