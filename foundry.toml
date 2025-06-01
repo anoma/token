@@ -1,6 +1,6 @@
 [profile.default]
 evm_version = "cancun"
-solc = "0.8.28"
+solc = "0.8.30"
 optimizer = true
 via_ir = true
 ffi = true
