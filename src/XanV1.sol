@@ -193,6 +193,8 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     }
 
     /// @notice @inheritdoc IXanV1
+    //! WARNING: This threshold is reached easily if the locked total supply values is low.
+    //! As a mitigation, a sufficiently large share of the total supply must be locked on minting.
     function calculateQuorumThreshold() public view virtual override returns (uint256 threshold) {
         threshold = (lockedSupply() * Parameters.QUORUM_RATIO_NUMERATOR) / Parameters.QUORUM_RATIO_DENOMINATOR;
     }
