@@ -113,6 +113,6 @@ contract XanV1VotingTest is Test, MockPersons {
     }
 
     function invariant_lockedBalance() public view {
-        assertLe(_xanProxy.lockedTotalSupply(), _xanProxy.totalSupply());
+        assertLe(_xanProxy.lockedSupply(), _xanProxy.totalSupply());
     }
 }

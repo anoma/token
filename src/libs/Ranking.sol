@@ -6,13 +6,13 @@ library Ranking {
 
     /// @notice A struct containing data associated with a current implementation and proposed upgrades from it.
     /// @param lockedBalances The locked balances associated with the current implementation.
-    /// @param lockedTotalSupply The locked total supply associated with the current implementation.
+    /// @param lockedSupply The locked total supply associated with the current implementation.
     /// @param ballots The ballots of proposed implementations to upgrade to.
     /// @param ranking The proposed implementations ranking.
     /// @param implCount The count of proposed implementations.
     struct ProposedUpgrades {
         mapping(address owner => uint256) lockedBalances;
-        uint256 lockedTotalSupply;
+        uint256 lockedSupply;
         mapping(address proposedImpl => Ballot) ballots;
         mapping(uint48 rank => address proposedImpl) ranking;
         uint48 implCount;

@@ -56,7 +56,7 @@ interface IXanV1 {
     /// @param losingImpl The losing implementation to reset the delay period for.
     function resetUpgradeDelay(address losingImpl) external;
 
-    /// @notice Calculates the quorum based on the current total supply.
+    /// @notice Calculates the quorum based on the current locked supply.
     /// @return threshold The calculated quorum threshold.
     function calculateQuorumThreshold() external view returns (uint256 threshold);
 
@@ -81,8 +81,8 @@ interface IXanV1 {
     function lockedBalanceOf(address from) external view returns (uint256 lockedBalance);
 
     /// @notice Returns the locked total supply of the token.
-    /// @param lockedSupply The locked supply.
-    function lockedTotalSupply() external view returns (uint256 lockedSupply);
+    /// @param locked The locked supply.
+    function lockedSupply() external view returns (uint256 locked);
 
     /// @notice Returns the implementation for which the delay was started.
     /// @return delayedImpl The implementation the delay was started for.

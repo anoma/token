@@ -595,19 +595,19 @@ contract XanV1UnitTest is Test {
         assertEq(expectedUnlockedValue, _xanProxy.unlockedBalanceOf(_defaultSender));
     }
 
-    function test_lockedTotalSupply_returns_the_locked_supply() public {
+    function test_lockedSupply_returns_the_locked_supply() public {
         uint256 valueToLock = Parameters.SUPPLY / 3;
 
         vm.startPrank(_defaultSender);
 
         _xanProxy.lock(valueToLock);
-        assertEq(_xanProxy.lockedTotalSupply(), valueToLock);
+        assertEq(_xanProxy.lockedSupply(), valueToLock);
 
         _xanProxy.lock(valueToLock);
-        assertEq(_xanProxy.lockedTotalSupply(), 2 * valueToLock);
+        assertEq(_xanProxy.lockedSupply(), 2 * valueToLock);
 
         _xanProxy.lock(valueToLock);
-        assertEq(_xanProxy.lockedTotalSupply(), 3 * valueToLock);
+        assertEq(_xanProxy.lockedSupply(), 3 * valueToLock);
     }
 
     function testFuzz_lockedBalanceOf_and_unlockedBalanceOf_sum_to_balanceOf(address owner) public view {
@@ -623,6 +623,6 @@ contract XanV1UnitTest is Test {
     }
 
     function invariant_lockedBalance() public view {
-        assertLe(_xanProxy.lockedTotalSupply(), _xanProxy.totalSupply());
+        assertLe(_xanProxy.lockedSupply(), _xanProxy.totalSupply());
     }
 }

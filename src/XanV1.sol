@@ -188,14 +188,13 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     }
 
     /// @notice @inheritdoc IXanV1
-    function lockedTotalSupply() public view virtual override returns (uint256 lockedSupply) {
-        lockedSupply = _getProposedUpgrades().lockedTotalSupply;
+    function lockedSupply() public view virtual override returns (uint256 locked) {
+        locked = _getProposedUpgrades().lockedSupply;
     }
 
     /// @notice @inheritdoc IXanV1
-    function calculateQuorumThreshold() public view virtual override returns (uint256 calculatedQuorum) {
-        calculatedQuorum =
-            (lockedTotalSupply() * Parameters.QUORUM_RATIO_NUMERATOR) / Parameters.QUORUM_RATIO_DENOMINATOR;
+    function calculateQuorumThreshold() public view virtual override returns (uint256 threshold) {
+        threshold = (lockedSupply() * Parameters.QUORUM_RATIO_NUMERATOR) / Parameters.QUORUM_RATIO_DENOMINATOR;
     }
 
     /// @inheritdoc IXanV1
@@ -281,7 +280,7 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
             revert UnlockedBalanceInsufficient({sender: account, unlockedBalance: unlockedBalance, valueToLock: value});
         }
 
-        $.lockedTotalSupply += value;
+        $.lockedSupply += value;
         $.lockedBalances[account] += value;
 
         emit Locked({account: account, value: value});
