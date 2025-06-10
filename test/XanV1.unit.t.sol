@@ -349,7 +349,7 @@ contract XanV1UnitTest is Test {
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
 
-        assertGt(_xanProxy.totalVotes(_IMPL), _xanProxy.calculateQuorum());
+        assertGt(_xanProxy.totalVotes(_IMPL), _xanProxy.calculateQuorumThreshold());
         assertEq(_xanProxy.proposedImplementationByRank(0), _IMPL);
 
         uint48 currentTime = Time.timestamp();
@@ -376,9 +376,17 @@ contract XanV1UnitTest is Test {
     }
 
     function test_startUpgradeDelay_reverts_if_quorum_is_not_met() public {
+        uint256 quorumThreshold =
+            (Parameters.SUPPLY * Parameters.QUORUM_RATIO_NUMERATOR) / Parameters.QUORUM_RATIO_DENOMINATOR;
+
         vm.startPrank(_defaultSender);
-        _xanProxy.lock(_xanProxy.calculateQuorum());
+        // Lock first half.
+        _xanProxy.lock(quorumThreshold);
+        // Vote with first half.
         _xanProxy.castVote(_IMPL);
+
+        // Lock second half.
+        _xanProxy.lock(quorumThreshold);
         vm.stopPrank();
 
         vm.expectRevert(abi.encodeWithSelector(XanV1.QuorumNotReached.selector, _IMPL), address(_xanProxy));
@@ -401,7 +409,7 @@ contract XanV1UnitTest is Test {
 
     function test_startUpgradeDelay_reverts_is_not_ranked_best() public {
         vm.startPrank(_defaultSender);
-        _xanProxy.lock(_xanProxy.calculateQuorum() + 1);
+        _xanProxy.lock(_xanProxy.calculateQuorumThreshold() + 1);
         _xanProxy.castVote(_IMPL);
         _xanProxy.castVote(_OTHER_IMPL);
         vm.stopPrank();
@@ -505,7 +513,7 @@ contract XanV1UnitTest is Test {
 
     function test_upgradeToAndCall_reverts_if_delay_period_has_not_started() public {
         vm.startPrank(_defaultSender);
-        _xanProxy.lock(_xanProxy.calculateQuorum() + 1);
+        _xanProxy.lock(_xanProxy.calculateQuorumThreshold() + 1);
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
 
@@ -515,7 +523,7 @@ contract XanV1UnitTest is Test {
 
     function test_upgradeToAndCall_reverts_if_delay_period_has_not_ended() public {
         vm.startPrank(_defaultSender);
-        _xanProxy.lock(_xanProxy.calculateQuorum() + 1);
+        _xanProxy.lock(_xanProxy.calculateQuorumThreshold() + 1);
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
 
@@ -527,7 +535,7 @@ contract XanV1UnitTest is Test {
 
     function test_upgradeToAndCall_reverts_if_quorum_is_not_met() public {
         vm.startPrank(_defaultSender);
-        _xanProxy.lock(_xanProxy.calculateQuorum() + 1);
+        _xanProxy.lock(_xanProxy.calculateQuorumThreshold() + 1);
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
 
@@ -543,7 +551,12 @@ contract XanV1UnitTest is Test {
 
     function test_upgradeToAndCall_reverts_if_implementation_is_not_best_ranked() public {
         vm.startPrank(_defaultSender);
-        _xanProxy.lock(_xanProxy.calculateQuorum() + 1);
+
+        uint256 quorumThreshold =
+            (Parameters.SUPPLY * Parameters.QUORUM_RATIO_NUMERATOR) / Parameters.QUORUM_RATIO_DENOMINATOR;
+
+        // Meet the quorum threshold with one excess vote.
+        _xanProxy.lock(quorumThreshold + 1);
         _xanProxy.castVote(_IMPL);
         assertEq(_xanProxy.proposedImplementationByRank(0), _IMPL);
 

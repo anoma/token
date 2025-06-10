@@ -57,8 +57,8 @@ interface IXanV1 {
     function resetUpgradeDelay(address losingImpl) external;
 
     /// @notice Calculates the quorum based on the current total supply.
-    /// @return calculatedQuorum The calculated quorum.
-    function calculateQuorum() external view returns (uint256 calculatedQuorum);
+    /// @return threshold The calculated quorum threshold.
+    function calculateQuorumThreshold() external view returns (uint256 threshold);
 
     /// @notice Returns the votum of the caller for a proposed implementation.
     /// @param proposedImpl The proposed implementation to return the votum for.
