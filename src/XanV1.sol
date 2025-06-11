@@ -3,18 +3,28 @@ pragma solidity ^0.8.30;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {ERC20BurnableUpgradeable} from
     "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import {ERC20PermitUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
+
 import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
 import {IXanV1} from "./interfaces/IXanV1.sol";
 import {Parameters} from "./libs/Parameters.sol";
 import {Ranking} from "./libs/Ranking.sol";
 
-contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, UUPSUpgradeable {
+contract XanV1 is
+    IXanV1,
+    Initializable,
+    ERC20Upgradeable,
+    ERC20PermitUpgradeable,
+    ERC20BurnableUpgradeable,
+    UUPSUpgradeable
+{
     using Ranking for Ranking.ProposedUpgrades;
 
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.
@@ -243,7 +253,11 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     function __XanV1_init(address initialMintRecipient) internal onlyInitializing {
         // Initialize inherited contracts
         __Context_init_unchained();
+
         __ERC20_init_unchained({name_: Parameters.NAME, symbol_: Parameters.SYMBOL});
+        __ERC20Permit_init(Parameters.NAME); // TODO! Revisit OZ
+        //__ERC20Permit_init_unchained(tokenName);
+        //__EIP712_init_unchained({name: tokenName, version: "1"});
         __ERC20Burnable_init_unchained();
         __UUPSUpgradeable_init_unchained();
 
