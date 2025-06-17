@@ -37,6 +37,8 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     error ImplementationNotRankedBest(address expected, address actual);
     error ImplementationNotDelayed(address expected, address actual);
     error UpgradeDelayNotResettable(address impl);
+
+    error MinLockedSupplyNotReached();
     error QuorumNotReached(address proposedImpl);
     error DelayPeriodNotStarted();
     error DelayPeriodAlreadyStarted(address delayedUpgradeImpl);
@@ -193,8 +195,6 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     }
 
     /// @notice @inheritdoc IXanV1
-    //! WARNING: This threshold is reached easily, if the locked total supply values is low.
-    //! As a mitigation, a sufficiently large share of the total supply must be locked on minting.
     function calculateQuorumThreshold() public view virtual override returns (uint256 threshold) {
         threshold = (lockedSupply() * Parameters.QUORUM_RATIO_NUMERATOR) / Parameters.QUORUM_RATIO_DENOMINATOR;
     }
@@ -299,6 +299,11 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     /// @notice Checks if the criteria to upgrade to the new implementation are met and reverts with errors if not.
     /// @param impl The implementation to check the upgrade criteria for.
     function _checkUpgradeCriteria(address impl) internal view virtual {
+        // Check that the minimal required supply has been locked.
+        if (!_isMinLockedSupplyReached()) {
+            revert MinLockedSupplyNotReached();
+        }
+
         // Check that the quorum for the new implementation is reached.
         if (!_isQuorumReached(impl)) {
             revert QuorumNotReached(impl);
@@ -316,6 +321,11 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     /// @param impl The implementation to check the quorum citeria for.
     function _isQuorumReached(address impl) internal view virtual returns (bool isReached) {
         isReached = totalVotes(impl) > calculateQuorumThreshold();
+    }
+
+    /// @notice Returns `true` if the quorum is reached for a particular implementation.
+    function _isMinLockedSupplyReached() internal view virtual returns (bool isReached) {
+        isReached = lockedSupply() >= Parameters.MIN_LOCKED_SUPPLY;
     }
 
     /// @notice Checks if the delay period has ended and reverts with errors if not.
