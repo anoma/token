@@ -51,7 +51,7 @@ contract XanV1UnitTest is Test {
 
         uninitializedProxy.initialize({initialMintRecipient: _defaultSender});
 
-        assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), Parameters.SUPPLY);
+        assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), uninitializedProxy.totalSupply());
     }
 
     function test_lock_locks_incrementally() public {
@@ -65,7 +65,7 @@ contract XanV1UnitTest is Test {
     }
 
     function test_lock_emits_the_Locked_event() public {
-        uint256 valueToLock = Parameters.SUPPLY / 3;
+        uint256 valueToLock = _xanProxy.totalSupply() / 3;
 
         vm.expectEmit(address(_xanProxy));
         emit IXanV1.Locked({account: _defaultSender, value: valueToLock});
@@ -76,7 +76,7 @@ contract XanV1UnitTest is Test {
 
     function test_transfer_reverts_on_insufficient_unlocked_tokens() public {
         vm.startPrank(_defaultSender);
-        _xanProxy.lock(Parameters.SUPPLY);
+        _xanProxy.lock(_xanProxy.totalSupply());
 
         uint256 unlocked = _xanProxy.unlockedBalanceOf(_defaultSender);
         assertEq(unlocked, 0);
@@ -91,8 +91,9 @@ contract XanV1UnitTest is Test {
     }
 
     function test_transfer_transfers_tokens() public {
-        assertEq(_xanProxy.balanceOf(_defaultSender), Parameters.SUPPLY);
-        assertEq(_xanProxy.unlockedBalanceOf(_defaultSender), Parameters.SUPPLY);
+        uint256 supply = _xanProxy.totalSupply();
+        assertEq(_xanProxy.balanceOf(_defaultSender), supply);
+        assertEq(_xanProxy.unlockedBalanceOf(_defaultSender), supply);
         assertEq(_xanProxy.lockedBalanceOf(_defaultSender), 0);
 
         assertEq(_xanProxy.balanceOf(_RECEIVER), 0);
@@ -102,8 +103,8 @@ contract XanV1UnitTest is Test {
         vm.prank(_defaultSender);
         _xanProxy.transfer({to: _RECEIVER, value: 1});
 
-        assertEq(_xanProxy.balanceOf(_defaultSender), Parameters.SUPPLY - 1);
-        assertEq(_xanProxy.unlockedBalanceOf(_defaultSender), Parameters.SUPPLY - 1);
+        assertEq(_xanProxy.balanceOf(_defaultSender), supply - 1);
+        assertEq(_xanProxy.unlockedBalanceOf(_defaultSender), supply - 1);
         assertEq(_xanProxy.lockedBalanceOf(_defaultSender), 0);
 
         assertEq(_xanProxy.balanceOf(_RECEIVER), 1);
@@ -121,7 +122,7 @@ contract XanV1UnitTest is Test {
 
     function test_transferAndLock_reverts_on_insufficient_unlocked_tokens() public {
         vm.startPrank(_defaultSender);
-        _xanProxy.lock(Parameters.SUPPLY);
+        _xanProxy.lock(_xanProxy.totalSupply());
 
         uint256 unlocked = _xanProxy.unlockedBalanceOf(_defaultSender);
         assertEq(unlocked, 0);
@@ -136,8 +137,10 @@ contract XanV1UnitTest is Test {
     }
 
     function test_transfer_transfers_and_locks_tokens() public {
-        assertEq(_xanProxy.balanceOf(_defaultSender), Parameters.SUPPLY);
-        assertEq(_xanProxy.unlockedBalanceOf(_defaultSender), Parameters.SUPPLY);
+        uint256 supply = _xanProxy.totalSupply();
+
+        assertEq(_xanProxy.balanceOf(_defaultSender), supply);
+        assertEq(_xanProxy.unlockedBalanceOf(_defaultSender), supply);
         assertEq(_xanProxy.lockedBalanceOf(_defaultSender), 0);
 
         assertEq(_xanProxy.balanceOf(_RECEIVER), 0);
@@ -147,8 +150,8 @@ contract XanV1UnitTest is Test {
         vm.prank(_defaultSender);
         _xanProxy.transferAndLock({to: _RECEIVER, value: 1});
 
-        assertEq(_xanProxy.balanceOf(_defaultSender), Parameters.SUPPLY - 1);
-        assertEq(_xanProxy.unlockedBalanceOf(_defaultSender), Parameters.SUPPLY - 1);
+        assertEq(_xanProxy.balanceOf(_defaultSender), supply - 1);
+        assertEq(_xanProxy.unlockedBalanceOf(_defaultSender), supply - 1);
         assertEq(_xanProxy.lockedBalanceOf(_defaultSender), 0);
 
         assertEq(_xanProxy.balanceOf(_RECEIVER), 1);
@@ -179,7 +182,7 @@ contract XanV1UnitTest is Test {
     }
 
     function test_castVote_emits_the_VoteCast_event() public {
-        uint256 valueToLock = Parameters.SUPPLY / 3;
+        uint256 valueToLock = _xanProxy.totalSupply() / 3;
 
         vm.startPrank(_defaultSender);
         _xanProxy.lock(valueToLock);
@@ -224,7 +227,7 @@ contract XanV1UnitTest is Test {
     }
 
     function test_castVote_reverts_if_the_votum_has_already_been_casted() public {
-        uint256 valueToLock = Parameters.SUPPLY / 3;
+        uint256 valueToLock = _xanProxy.totalSupply() / 3;
 
         vm.startPrank(_defaultSender);
         _xanProxy.lock(valueToLock);
@@ -248,8 +251,8 @@ contract XanV1UnitTest is Test {
     }
 
     function test_castVote_increases_votes_if_more_tokens_have_been_locked() public {
-        uint256 firstLockValue = Parameters.SUPPLY / 3;
-        uint256 secondLockValue = Parameters.SUPPLY - firstLockValue;
+        uint256 firstLockValue = _xanProxy.totalSupply() / 3;
+        uint256 secondLockValue = _xanProxy.totalSupply() - firstLockValue;
 
         vm.startPrank(_defaultSender);
 
@@ -265,8 +268,8 @@ contract XanV1UnitTest is Test {
     }
 
     function test_castVote_sets_the_votes_of_the_caller_to_the_locked_balance() public {
-        uint256 firstLockValue = Parameters.SUPPLY / 3;
-        uint256 secondLockValue = Parameters.SUPPLY - firstLockValue;
+        uint256 firstLockValue = _xanProxy.totalSupply() / 3;
+        uint256 secondLockValue = _xanProxy.totalSupply() - firstLockValue;
 
         vm.startPrank(_defaultSender);
         assertEq(_xanProxy.votum(_IMPL), 0);
@@ -284,7 +287,7 @@ contract XanV1UnitTest is Test {
     }
 
     function test_revokeVote_emits_the_VoteRevoked_event() public {
-        uint256 valueToLock = Parameters.SUPPLY / 2;
+        uint256 valueToLock = _xanProxy.totalSupply() / 2;
 
         vm.startPrank(_defaultSender);
         _xanProxy.lock(valueToLock);
@@ -299,9 +302,9 @@ contract XanV1UnitTest is Test {
 
     function test_revokeVote_sets_the_votes_of_the_caller_to_zero() public {
         vm.startPrank(_defaultSender);
-        _xanProxy.lock(Parameters.SUPPLY);
+        _xanProxy.lock(_xanProxy.totalSupply());
         _xanProxy.castVote(_IMPL);
-        assertEq(_xanProxy.votum(_IMPL), Parameters.SUPPLY);
+        assertEq(_xanProxy.votum(_IMPL), _xanProxy.totalSupply());
 
         _xanProxy.revokeVote(_IMPL);
         assertEq(_xanProxy.votum(_IMPL), 0);
@@ -309,8 +312,8 @@ contract XanV1UnitTest is Test {
     }
 
     function test_revokeVote_subtracts_the_old_votum_from_the_total_votes() public {
-        uint256 votesReceiver = Parameters.SUPPLY / 3;
-        uint256 votesDefaultSender = Parameters.SUPPLY - votesReceiver;
+        uint256 votesReceiver = _xanProxy.totalSupply() / 3;
+        uint256 votesDefaultSender = _xanProxy.totalSupply() - votesReceiver;
 
         // Send tokens to `_RECEIVER` from `_defaultSender` lock them.
         vm.startPrank(_defaultSender);
@@ -365,7 +368,7 @@ contract XanV1UnitTest is Test {
 
     function test_startUpgradeDelay_emits_the_DelayStarted_event() public {
         vm.startPrank(_defaultSender);
-        _xanProxy.lock(Parameters.SUPPLY);
+        _xanProxy.lock(_xanProxy.totalSupply());
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
 
@@ -390,7 +393,7 @@ contract XanV1UnitTest is Test {
 
     function test_startUpgradeDelay_reverts_if_quorum_is_not_met() public {
         uint256 quorumThreshold =
-            (Parameters.SUPPLY * Parameters.QUORUM_RATIO_NUMERATOR) / Parameters.QUORUM_RATIO_DENOMINATOR;
+            (_xanProxy.totalSupply() * Parameters.QUORUM_RATIO_NUMERATOR) / Parameters.QUORUM_RATIO_DENOMINATOR;
 
         vm.startPrank(_defaultSender);
         // Lock first half.
@@ -566,7 +569,7 @@ contract XanV1UnitTest is Test {
         vm.startPrank(_defaultSender);
 
         uint256 quorumThreshold =
-            (Parameters.SUPPLY * Parameters.QUORUM_RATIO_NUMERATOR) / Parameters.QUORUM_RATIO_DENOMINATOR;
+            (_xanProxy.totalSupply() * Parameters.QUORUM_RATIO_NUMERATOR) / Parameters.QUORUM_RATIO_DENOMINATOR;
 
         // Meet the quorum threshold with one excess vote.
         _xanProxy.lock(quorumThreshold + 1);
@@ -590,7 +593,7 @@ contract XanV1UnitTest is Test {
     }
 
     function test_lockedBalanceOf_returns_the_locked_balance() public {
-        uint256 valueToLock = Parameters.SUPPLY / 3;
+        uint256 valueToLock = _xanProxy.totalSupply() / 3;
 
         vm.prank(_defaultSender);
         _xanProxy.lock(valueToLock);
@@ -599,8 +602,8 @@ contract XanV1UnitTest is Test {
     }
 
     function test_unlockedBalanceOf_returns_the_unlocked_balance() public {
-        uint256 valueToLock = Parameters.SUPPLY / 3;
-        uint256 expectedUnlockedValue = Parameters.SUPPLY - valueToLock;
+        uint256 valueToLock = _xanProxy.totalSupply() / 3;
+        uint256 expectedUnlockedValue = _xanProxy.totalSupply() - valueToLock;
 
         vm.prank(_defaultSender);
         _xanProxy.lock(valueToLock);
@@ -609,7 +612,7 @@ contract XanV1UnitTest is Test {
     }
 
     function test_lockedSupply_returns_the_locked_supply() public {
-        uint256 valueToLock = Parameters.SUPPLY / 3;
+        uint256 valueToLock = _xanProxy.totalSupply() / 3;
 
         vm.startPrank(_defaultSender);
 
@@ -621,6 +624,13 @@ contract XanV1UnitTest is Test {
 
         _xanProxy.lock(valueToLock);
         assertEq(_xanProxy.lockedSupply(), 3 * valueToLock);
+    }
+
+    function test_initialize_mints_1_billion_tokens() public view {
+        uint256 expectedSupply = 10 ** 9 * (10 ** _xanProxy.decimals());
+
+        assertEq(Parameters.SUPPLY, expectedSupply);
+        assertEq(_xanProxy.totalSupply(), expectedSupply);
     }
 
     function testFuzz_lockedBalanceOf_and_unlockedBalanceOf_sum_to_balanceOf(address owner) public view {
