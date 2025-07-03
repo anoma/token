@@ -250,7 +250,7 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
     // solhint-disable-next-line func-name-mixedcase
     function __XanV1_init_unchained(address initialMintRecipient) internal onlyInitializing {
-        _mint(initialMintRecipient, Parameters.SUPPLY);
+        _mint(initialMintRecipient, Parameters.SUPPLY * 10 ** decimals());
     }
 
     /// @inheritdoc ERC20Upgradeable
