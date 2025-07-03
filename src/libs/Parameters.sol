@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
-// TODO! Replace placeholder values.
 library Parameters {
     /// @notice The total supply of the token.
     uint256 internal constant SUPPLY = 1_000_000_000;
