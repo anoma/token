@@ -626,8 +626,11 @@ contract XanV1UnitTest is Test {
         assertEq(_xanProxy.lockedSupply(), 3 * valueToLock);
     }
 
-    function test_initialize_mints_1_billion_tokens() public view {
-        uint256 expectedSupply = 10 ** 9 * (10 ** _xanProxy.decimals());
+    function test_initialize_mints_the_expected_supply_amounting_to_1_billion_tokens() public view {
+        uint256 expectedTokens = 10 ** 9;
+
+        // Consider the decimals for the expected supply.
+        uint256 expectedSupply = expectedTokens * (10 ** _xanProxy.decimals());
 
         assertEq(Parameters.SUPPLY, expectedSupply);
         assertEq(_xanProxy.totalSupply(), expectedSupply);
