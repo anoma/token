@@ -9,7 +9,7 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract ForeignReserve is Initializable, OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardTransientUpgradeable {
+contract ForeignReserveV1 is Initializable, OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardTransientUpgradeable {
     using Address for address;
 
     event Received(address sender, uint256 amount);
