@@ -325,7 +325,7 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
 
     /// @notice Returns `true` if the quorum is reached for a particular implementation.
     function _isMinLockedSupplyReached() internal view virtual returns (bool isReached) {
-        isReached = lockedSupply() >= Parameters.MIN_LOCKED_SUPPLY;
+        isReached = lockedSupply() + 1 > Parameters.MIN_LOCKED_SUPPLY;
     }
 
     /// @notice Checks if the delay period has ended and reverts with errors if not.
