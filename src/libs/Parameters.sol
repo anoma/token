@@ -2,6 +2,12 @@
 pragma solidity ^0.8.30;
 
 library Parameters {
+    /// @notice The name of the token.
+    string internal constant NAME = "Anoma";
+
+    /// @notice The symbol of the token.
+    string internal constant SYMBOL = "XAN";
+
     /// @notice The total supply amounting to 1 bn (10^9) tokens with 18 decimals.
     uint256 internal constant SUPPLY = 10 ** (9 + 18);
 
