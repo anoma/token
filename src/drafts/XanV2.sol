@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {IXanV2} from "../interfaces/IXanV2.sol";
+import {Parameters} from "../libs/Parameters.sol";
 import {XanV1} from "../XanV1.sol";
 
 /// @notice A draft of the second version of the XAN contract.
@@ -10,7 +11,7 @@ import {XanV1} from "../XanV1.sol";
 contract XanV2 is IXanV2, XanV1 {
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.
     /// @custom:storage-location erc7201:anoma.storage.Xan.v2
-    /// @param proposedUpgrades The upgrade proposed from a current implementation.
+    /// @param forwarder The forwarder being allowed to mint more tokens.
     struct XanV2Storage {
         address forwarder;
     }
@@ -28,6 +29,9 @@ contract XanV2 is IXanV2, XanV1 {
         _;
     }
 
+    /// @notice Initializes the proxy.
+    /// @param initialMintRecipient The initial recipient of the minted tokens.
+    /// @param xanV2Forwarder The XanV2 forwarder contract.
     /// @custom:oz-upgrades-validate-as-initializer
     // solhint-disable-next-line comprehensive-interface
     function initialize(address initialMintRecipient, address xanV2Forwarder) external reinitializer(2) {
@@ -39,6 +43,7 @@ contract XanV2 is IXanV2, XanV1 {
     /// @custom:oz-upgrades-validate-as-initializer
     // solhint-disable-next-line comprehensive-interface
     function initializeV2(address xanV2Forwarder) external reinitializer(2) {
+        // Initialize the XanV2 contract
         __XanV2_init({xanV2Forwarder: xanV2Forwarder});
     }
 
@@ -52,13 +57,16 @@ contract XanV2 is IXanV2, XanV1 {
         addr = _getXanV2Storage().forwarder;
     }
 
+    /// @notice Initializes the XanV2 contract and newly inherited contracts.
+    /// @param xanV2Forwarder The XanV2 forwarder contract.
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
     // solhint-disable-next-line func-name-mixedcase
     function __XanV2_init(address xanV2Forwarder) internal onlyInitializing {
         __XanV2_init_unchained({xanV2Forwarder: xanV2Forwarder});
     }
 
-    /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
+    /// @notice Initializes the XanV2 contract.
+    /// @param xanV2Forwarder The XanV2 forwarder contract.
     // solhint-disable-next-line func-name-mixedcase
     function __XanV2_init_unchained(address xanV2Forwarder) internal onlyInitializing {
         _getXanV2Storage().forwarder = xanV2Forwarder;

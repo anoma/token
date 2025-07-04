@@ -237,17 +237,22 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
         lockedBalance = _getProposedUpgrades().lockedBalances[from];
     }
 
+    /// @notice Initializes the XanV1 contract and inherited contracts.
+    /// @param initialMintRecipient The initial recipient of the minted tokens.
     // solhint-disable-next-line func-name-mixedcase
     function __XanV1_init(address initialMintRecipient) internal onlyInitializing {
+        // Initialize inherited contracts
         __Context_init_unchained();
-        __ERC20_init_unchained("Anoma Token", "Xan");
-        __ERC20Burnable_init();
+        __ERC20_init_unchained({name_: Parameters.NAME, symbol_: Parameters.SYMBOL});
+        __ERC20Burnable_init_unchained();
         __UUPSUpgradeable_init_unchained();
 
+        // Initialize the XanV1 contract
         __XanV1_init_unchained(initialMintRecipient);
     }
 
-    /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
+    /// @notice Initializes the XanV1 contract.
+    /// @param initialMintRecipient The initial recipient of the minted tokens.
     // solhint-disable-next-line func-name-mixedcase
     function __XanV1_init_unchained(address initialMintRecipient) internal onlyInitializing {
         _mint(initialMintRecipient, Parameters.SUPPLY);
