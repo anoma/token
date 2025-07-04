@@ -30,12 +30,12 @@ contract XanV1 is
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.
     /// @custom:storage-location erc7201:anoma.storage.Xan.v1
     /// @param governanceCouncil The address of the governance council.
-    /// @param proposedCouncilUpgrade The upgrade proposed by the governance council.
-    /// @param proposedUpgrades The upgrade proposed from a current implementation.
+    /// @param governanceCouncilData The upgrade proposed by the governance council.
+    /// @param voterBodyData The upgrades proposed by the voter body from a current implementation.
     struct XanV1Storage {
         address governanceCouncil;
-        Council.ProposedUpgrade proposedCouncilUpgrade; // TODO! rename to governanceCouncilData or similar
-        mapping(address current => Ranking.ProposedUpgrades) proposedUpgrades; // TODO! rename to voterBodyData or similar
+        Council.ProposedUpgrade governanceCouncilData;
+        mapping(address current => Ranking.ProposedUpgrades) voterBodyData;
     }
 
     /// @notice The ERC-7201 storage location of the Xan V1 contract (see https://eips.ethereum.org/EIPS/eip-7201).
@@ -102,7 +102,7 @@ contract XanV1 is
     function castVote(address proposedImpl) external virtual override {
         address voter = msg.sender;
 
-        Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
+        Ranking.ProposedUpgrades storage $ = _getVoterBodyData();
         Ranking.Ballot storage ballot = $.ballots[proposedImpl];
 
         if (!ballot.exists) {
@@ -143,7 +143,7 @@ contract XanV1 is
     function revokeVote(address proposedImpl) external virtual override {
         address voter = msg.sender;
 
-        Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
+        Ranking.ProposedUpgrades storage $ = _getVoterBodyData();
         Ranking.Ballot storage ballot = $.ballots[proposedImpl];
 
         // Cache the old votum of the voter.
@@ -171,7 +171,7 @@ contract XanV1 is
         // Check that all upgrade criteria are met before starting the delay.
         _checkUpgradeCriteria(proposedImpl);
 
-        Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
+        Ranking.ProposedUpgrades storage $ = _getVoterBodyData();
 
         uint48 currentTime = Time.timestamp();
 
@@ -192,7 +192,7 @@ contract XanV1 is
     function resetUpgradeDelay(address losingImpl) external override {
         _checkDelayCriterion(losingImpl);
 
-        Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
+        Ranking.ProposedUpgrades storage $ = _getVoterBodyData();
 
         // Check that the quorum for the new implementation is reached.
         if (_isQuorumReached(losingImpl) && losingImpl == $.ranking[0]) {
@@ -207,27 +207,27 @@ contract XanV1 is
 
     /// @inheritdoc IXanV1
     function delayedUpgradeImplementation() external view virtual override returns (address delayedImpl) {
-        delayedImpl = _getProposedUpgrades().delayedUpgradeImpl;
+        delayedImpl = _getVoterBodyData().delayedUpgradeImpl;
     }
 
     /// @inheritdoc IXanV1
     function votum(address proposedImpl) external view virtual override returns (uint256 votes) {
-        votes = _getProposedUpgrades().ballots[proposedImpl].vota[msg.sender];
+        votes = _getVoterBodyData().ballots[proposedImpl].vota[msg.sender];
     }
 
     /// @inheritdoc IXanV1
     function vetoVotum() external view returns (uint256 vetoVotes) {
-        vetoVotes = _getCouncilProposedUpgrade().vota[msg.sender];
+        vetoVotes = _getGovernanceCouncilData().vota[msg.sender];
     }
 
     /// @inheritdoc IXanV1
     function delayEndTime() external view virtual override returns (uint48 endTime) {
-        endTime = _getProposedUpgrades().delayEndTime;
+        endTime = _getVoterBodyData().delayEndTime;
     }
 
     /// @notice @inheritdoc IXanV1
     function lockedSupply() public view virtual override returns (uint256 locked) {
-        locked = _getProposedUpgrades().lockedSupply;
+        locked = _getVoterBodyData().lockedSupply;
     }
 
     /// @notice @inheritdoc IXanV1
@@ -257,7 +257,7 @@ contract XanV1 is
 
     /// @inheritdoc IXanV1
     function totalVotes(address proposedImpl) public view virtual override returns (uint256 votes) {
-        votes = _getProposedUpgrades().ballots[proposedImpl].totalVotes;
+        votes = _getVoterBodyData().ballots[proposedImpl].totalVotes;
     }
 
     /// @inheritdoc IXanV1
@@ -278,7 +278,7 @@ contract XanV1 is
         override
         returns (address rankedImplementation)
     {
-        Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
+        Ranking.ProposedUpgrades storage $ = _getVoterBodyData();
         uint48 implCount = $.implCount;
 
         if (implCount == 0 || rank > implCount - 1) {
@@ -300,7 +300,7 @@ contract XanV1 is
 
     /// @inheritdoc IXanV1
     function lockedBalanceOf(address from) public view override returns (uint256 lockedBalance) {
-        lockedBalance = _getProposedUpgrades().lockedBalances[from];
+        lockedBalance = _getVoterBodyData().lockedBalances[from];
     }
 
     /// @inheritdoc ERC20Upgradeable
@@ -325,7 +325,7 @@ contract XanV1 is
     /// @param account The account to lock  the tokens for.
     /// @param value The value to be locked.
     function _lock(address account, uint256 value) internal {
-        Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
+        Ranking.ProposedUpgrades storage $ = _getVoterBodyData();
 
         uint256 unlockedBalance = unlockedBalanceOf(account);
         if (value > unlockedBalance) {
@@ -341,7 +341,7 @@ contract XanV1 is
     /// @notice Authorizes an upgrade.
     /// @param newImpl The new implementation to authorize the upgrade to.
     function _authorizeUpgrade(address newImpl) internal view virtual override {
-        address councilProposedImpl = _getXanV1Storage().proposedCouncilUpgrade.proposedImpl;
+        address councilProposedImpl = _getXanV1Storage().governanceCouncilData.proposedImpl;
 
         // TODO!
         if (newImpl == councilProposedImpl) {
@@ -376,7 +376,7 @@ contract XanV1 is
         }
 
         // Check that the new implementation is the most voted implementation.
-        address bestRankedImpl = _getProposedUpgrades().ranking[0];
+        address bestRankedImpl = _getVoterBodyData().ranking[0];
 
         if (impl != bestRankedImpl) {
             revert ImplementationNotRankedBest({expected: bestRankedImpl, actual: impl});
@@ -400,7 +400,7 @@ contract XanV1 is
 
     /// @notice Checks if the delay period has ended and reverts with errors if not.
     function _checkDelayCriterion(address impl) internal view virtual {
-        Ranking.ProposedUpgrades storage $ = _getProposedUpgrades();
+        Ranking.ProposedUpgrades storage $ = _getVoterBodyData();
 
         if ($.delayEndTime == 0) {
             revert DelayPeriodNotStarted();
@@ -420,20 +420,20 @@ contract XanV1 is
     }
 
     /// @notice Returns the proposed upgrades from the from current implementation from the contract storage location.
-    /// @return proposedUpgrades The data associated with proposed upgrades from current implementation.
-    function _getProposedUpgrades() internal view virtual returns (Ranking.ProposedUpgrades storage proposedUpgrades) {
-        proposedUpgrades = _getXanV1Storage().proposedUpgrades[implementation()];
+    /// @return voterBodyData The data associated with proposed upgrades from current implementation.
+    function _getVoterBodyData() internal view virtual returns (Ranking.ProposedUpgrades storage voterBodyData) {
+        voterBodyData = _getXanV1Storage().voterBodyData[implementation()];
     }
 
     /// @notice Returns the data of the upgrade proposed by the council from the contract storage location.
     /// @return proposedUpgrade The data associated with upgrade proposed by the council.
-    function _getCouncilProposedUpgrade()
+    function _getGovernanceCouncilData()
         internal
         view
         virtual
         returns (Council.ProposedUpgrade storage proposedUpgrade)
     {
-        proposedUpgrade = _getXanV1Storage().proposedCouncilUpgrade;
+        proposedUpgrade = _getXanV1Storage().governanceCouncilData;
     }
 
     /// @notice Returns the storage from the Xan V1 storage location.
