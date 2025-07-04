@@ -216,6 +216,11 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
+    function vetoVotum() external view returns (uint256 vetoVotes) {
+        revert("NOT IMPLEMENTED");
+    }
+
+    /// @inheritdoc IXanV1
     function delayEndTime() external view virtual override returns (uint48 endTime) {
         endTime = _getProposedUpgrades().delayEndTime;
     }
@@ -226,6 +231,26 @@ contract XanV1 is
     }
 
     /// @notice @inheritdoc IXanV1
+    function proposeCouncilUpgrade(address proposedImpl) external virtual override onlyGovernanceCouncil {
+        //
+    }
+
+    /// @notice @inheritdoc IXanV1
+    function vetoCouncilUpgrade() external virtual override {
+        revert("NOT IMPLEMENTED");
+    }
+
+    /// @notice @inheritdoc IXanV1
+    function startCouncilUpgradeDelay() external virtual override {
+        revert("NOT IMPLEMENTED");
+    }
+
+    /// @notice @inheritdoc IXanV1
+    function stopCouncilUpgrade() external virtual override {
+        revert("NOT IMPLEMENTED");
+    }
+
+    /// @notice @inheritdoc IXanV1
     function calculateQuorumThreshold() public view virtual override returns (uint256 threshold) {
         threshold = (lockedSupply() * Parameters.QUORUM_RATIO_NUMERATOR) / Parameters.QUORUM_RATIO_DENOMINATOR;
     }
@@ -233,6 +258,11 @@ contract XanV1 is
     /// @inheritdoc IXanV1
     function totalVotes(address proposedImpl) public view virtual override returns (uint256 votes) {
         votes = _getProposedUpgrades().ballots[proposedImpl].totalVotes;
+    }
+
+    /// @inheritdoc IXanV1
+    function totalVetoVotes() public view returns (uint256 vetoVotes) {
+        revert("NOT IMPLEMENTED");
     }
 
     /// @notice @inheritdoc IXanV1
@@ -311,9 +341,18 @@ contract XanV1 is
     /// @notice Authorizes an upgrade.
     /// @param newImpl The new implementation to authorize the upgrade to.
     function _authorizeUpgrade(address newImpl) internal view virtual override {
-        _checkDelayCriterion(newImpl);
+        address councilProposedImpl = _getXanV1Storage().proposedCouncilUpgrade.proposedImpl;
 
-        _checkUpgradeCriteria(newImpl);
+        // TODO!
+        if (newImpl == councilProposedImpl) {
+            _checkCouncilDelayCriterion(councilProposedImpl);
+
+            _checkCouncilUpgradeCriteria(councilProposedImpl);
+        } else {
+            _checkDelayCriterion(newImpl);
+
+            _checkUpgradeCriteria(newImpl);
+        }
     }
 
     /// @notice Throws if the sender is not the forwarder.
@@ -344,6 +383,10 @@ contract XanV1 is
         }
     }
 
+    function _checkCouncilUpgradeCriteria(address councilProposedImpl) internal view virtual {
+        revert("NOT IMPLEMENTED");
+    }
+
     /// @notice Returns `true` if the quorum is reached for a particular implementation.
     /// @param impl The implementation to check the quorum citeria for.
     function _isQuorumReached(address impl) internal view virtual returns (bool isReached) {
@@ -370,6 +413,10 @@ contract XanV1 is
         if (impl != $.delayedUpgradeImpl) {
             revert ImplementationNotDelayed({expected: $.delayedUpgradeImpl, actual: impl});
         }
+    }
+
+    function _checkCouncilDelayCriterion(address councilProposedImpl) internal view {
+        revert("NOT IMPLEMENTED");
     }
 
     /// @notice Returns the proposed upgrades from the from current implementation from the contract storage location.
