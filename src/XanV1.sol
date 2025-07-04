@@ -34,8 +34,8 @@ contract XanV1 is
     /// @param proposedUpgrades The upgrade proposed from a current implementation.
     struct XanV1Storage {
         address governanceCouncil;
-        Council.ProposedUpgrade proposedCouncilUpgrade;
-        mapping(address current => Ranking.ProposedUpgrades) proposedUpgrades;
+        Council.ProposedUpgrade proposedCouncilUpgrade; // TODO! rename to governanceCouncilData or similar
+        mapping(address current => Ranking.ProposedUpgrades) proposedUpgrades; // TODO! rename to voterBodyData or similar
     }
 
     /// @notice The ERC-7201 storage location of the Xan V1 contract (see https://eips.ethereum.org/EIPS/eip-7201).
@@ -217,7 +217,7 @@ contract XanV1 is
 
     /// @inheritdoc IXanV1
     function vetoVotum() external view returns (uint256 vetoVotes) {
-        revert("NOT IMPLEMENTED");
+        vetoVotes = _getCouncilProposedUpgrade().vota[msg.sender];
     }
 
     /// @inheritdoc IXanV1
@@ -423,6 +423,17 @@ contract XanV1 is
     /// @return proposedUpgrades The data associated with proposed upgrades from current implementation.
     function _getProposedUpgrades() internal view virtual returns (Ranking.ProposedUpgrades storage proposedUpgrades) {
         proposedUpgrades = _getXanV1Storage().proposedUpgrades[implementation()];
+    }
+
+    /// @notice Returns the data of the upgrade proposed by the council from the contract storage location.
+    /// @return proposedUpgrade The data associated with upgrade proposed by the council.
+    function _getCouncilProposedUpgrade()
+        internal
+        view
+        virtual
+        returns (Council.ProposedUpgrade storage proposedUpgrade)
+    {
+        proposedUpgrade = _getXanV1Storage().proposedCouncilUpgrade;
     }
 
     /// @notice Returns the storage from the Xan V1 storage location.
