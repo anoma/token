@@ -64,7 +64,7 @@ jobs:
         run: bunx --bun solhint --config .solhint.other.json 'script/**/*.sol'
         id: solhint-script
 
-      - name: Install uUgrades-core
+      - name: Install Upgrades-core
         run: |
           bun install @openzeppelin/upgrades-core@latest
 
