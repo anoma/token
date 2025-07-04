@@ -11,6 +11,7 @@ import {XanV1} from "../src/XanV1.sol";
 
 contract XanV1UpgradeTest is Test {
     address internal _defaultSender;
+    address internal _governanceCouncil;
     address internal _newImpl;
     XanV1 internal _xanProxy;
 
@@ -22,7 +23,7 @@ contract XanV1UpgradeTest is Test {
         _xanProxy = XanV1(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV1.sol:XanV1",
-                initializerData: abi.encodeCall(XanV1.initializeV1, _defaultSender)
+                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _governanceCouncil))
             })
         );
 

@@ -30,6 +30,7 @@ contract XanV1 is
     /// @custom:storage-location erc7201:anoma.storage.Xan.v1
     /// @param proposedUpgrades The upgrade proposed from a current implementation.
     struct XanV1Storage {
+        address governanceCouncil;
         mapping(address current => Ranking.ProposedUpgrades) proposedUpgrades;
     }
 
@@ -58,10 +59,11 @@ contract XanV1 is
         _disableInitializers();
     }
 
-    /// @notice Initializes the proxy.
+    /// @notice Initializes the XanV1 contract.
     /// @param initialMintRecipient The initial recipient of the minted tokens.
+    /// @param governanceCouncil The address of the governance council contract.
     // solhint-disable-next-line comprehensive-interface
-    function initializeV1(address initialMintRecipient) external virtual initializer {
+    function initializeV1(address initialMintRecipient, address governanceCouncil) external virtual initializer {
         // Initialize inherited contracts
         __ERC20_init({name_: Parameters.NAME, symbol_: Parameters.SYMBOL});
         __ERC20Permit_init({name: Parameters.NAME});
@@ -70,6 +72,7 @@ contract XanV1 is
 
         // Initialize the XanV1 contract
         _mint(initialMintRecipient, Parameters.SUPPLY);
+        _getXanV1Storage().governanceCouncil = governanceCouncil;
     }
 
     /// @inheritdoc IXanV1

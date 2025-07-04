@@ -19,18 +19,20 @@ contract XanV2UnitTest is Test {
     address internal _xanV2Forwarder;
     address internal _defaultSender;
     address internal _other;
+    address internal _governanceCouncil;
 
     MockProtocolAdapter internal _mockProtocolAdapter = new MockProtocolAdapter();
 
     function setUp() public {
         (, _defaultSender,) = vm.readCallers();
         _other = address(uint160(1));
+        _governanceCouncil = address(uint160(2));
 
         // Deploy proxy and mint tokens for the `_defaultSender`.
         _xanV1Proxy = XanV1(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV1.sol:XanV1",
-                initializerData: abi.encodeCall(XanV1.initializeV1, _defaultSender)
+                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _governanceCouncil))
             })
         );
         _xanV2Forwarder = address(
@@ -60,7 +62,7 @@ contract XanV2UnitTest is Test {
         XanV2 v2Proxy = XanV2(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV2.sol:XanV2",
-                initializerData: abi.encodeCall(XanV2.initializeV2, (_defaultSender, _xanV2Forwarder))
+                initializerData: abi.encodeCall(XanV2.initializeV2, (_defaultSender, _governanceCouncil, _xanV2Forwarder))
             })
         );
         assertEq(v2Proxy.forwarder(), _xanV2Forwarder);
@@ -73,7 +75,7 @@ contract XanV2UnitTest is Test {
             XanV1 v1Proxy = XanV1(
                 Upgrades.deployUUPSProxy({
                     contractName: "XanV1.sol:XanV1",
-                    initializerData: abi.encodeCall(XanV1.initializeV1, _defaultSender)
+                    initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _governanceCouncil))
                 })
             );
             _winUpgradeVoteForV2Impl(v1Proxy);

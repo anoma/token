@@ -13,6 +13,7 @@ contract XanV1VotingTest is Test, MockPersons {
 
     string[4] internal _census;
 
+    address internal _governanceCouncil;
     address internal _implA;
     address internal _implB;
     address internal _implC;
@@ -23,7 +24,7 @@ contract XanV1VotingTest is Test, MockPersons {
         _xanProxy = XanV1(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV1.sol:XanV1",
-                initializerData: abi.encodeCall(XanV1.initializeV1, _defaultSender)
+                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _governanceCouncil))
             })
         );
 

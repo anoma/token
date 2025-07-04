@@ -29,12 +29,16 @@ contract XanV2 is IXanV2, XanV1 {
         _;
     }
 
-    /// @notice Initializes the proxy.
+    /// @notice Initializes the XanV2 contract.
     /// @param initialMintRecipient The initial recipient of the minted tokens.
+    /// @param governanceCouncil The address of the governance council contract.
     /// @param xanV2Forwarder The XanV2 forwarder contract.
     /// @custom:oz-upgrades-validate-as-initializer
     // solhint-disable-next-line comprehensive-interface
-    function initializeV2(address initialMintRecipient, address xanV2Forwarder) external reinitializer(2) {
+    function initializeV2(address initialMintRecipient, address governanceCouncil, address xanV2Forwarder)
+        external
+        reinitializer(2)
+    {
         // Initialize inherited contracts
         __ERC20_init({name_: Parameters.NAME, symbol_: Parameters.SYMBOL});
         __ERC20Permit_init({name: Parameters.NAME});
@@ -43,15 +47,18 @@ contract XanV2 is IXanV2, XanV1 {
 
         // Initialize the XanV1 contract
         _mint(initialMintRecipient, Parameters.SUPPLY);
+        _getXanV1Storage().governanceCouncil = governanceCouncil;
 
         // Initialize the XanV2 contract
         _getXanV2Storage().forwarder = xanV2Forwarder;
     }
 
+    /// @notice Initializes the XanV2 contract after an upgrade from XanV1.
+    /// @param xanV2Forwarder The XanV2 forwarder contract.
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
     /// @custom:oz-upgrades-validate-as-initializer
     // solhint-disable-next-line comprehensive-interface
-    function initializeFromV1(address xanV2Forwarder) external reinitializer(2) {
+    function reinitializeAfterUpgradeFromV1(address xanV2Forwarder) external reinitializer(2) {
         // Initialize the XanV2 contract
         _getXanV2Storage().forwarder = xanV2Forwarder;
     }
