@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {IXanV2} from "../interfaces/IXanV2.sol";
-import {Parameters} from "../libs/Parameters.sol";
 import {XanV1} from "../XanV1.sol";
 
 /// @notice A draft of the second version of the XAN contract.
