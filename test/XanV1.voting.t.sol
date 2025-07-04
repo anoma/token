@@ -23,7 +23,7 @@ contract XanV1VotingTest is Test, MockPersons {
         _xanProxy = XanV1(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV1.sol:XanV1",
-                initializerData: abi.encodeCall(XanV1.initialize, _defaultSender)
+                initializerData: abi.encodeCall(XanV1.initializeV1, _defaultSender)
             })
         );
 

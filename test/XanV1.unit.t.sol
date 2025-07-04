@@ -24,7 +24,7 @@ contract XanV1UnitTest is Test {
         _xanProxy = XanV1(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV1.sol:XanV1",
-                initializerData: abi.encodeCall(XanV1.initialize, _defaultSender)
+                initializerData: abi.encodeCall(XanV1.initializeV1, _defaultSender)
             })
         );
     }
@@ -35,7 +35,7 @@ contract XanV1UnitTest is Test {
         XanV1 proxy = XanV1(
             UnsafeUpgrades.deployUUPSProxy({
                 impl: impl,
-                initializerData: abi.encodeCall(XanV1.initialize, _defaultSender)
+                initializerData: abi.encodeCall(XanV1.initializeV1, _defaultSender)
             })
         );
 
@@ -48,7 +48,7 @@ contract XanV1UnitTest is Test {
 
         assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), 0);
 
-        uninitializedProxy.initialize({initialMintRecipient: _defaultSender});
+        uninitializedProxy.initializeV1({initialMintRecipient: _defaultSender});
 
         assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), uninitializedProxy.totalSupply());
     }

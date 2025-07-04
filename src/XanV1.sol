@@ -61,8 +61,15 @@ contract XanV1 is
     /// @notice Initializes the proxy.
     /// @param initialMintRecipient The initial recipient of the minted tokens.
     // solhint-disable-next-line comprehensive-interface
-    function initialize(address initialMintRecipient) external virtual initializer {
-        __XanV1_init(initialMintRecipient);
+    function initializeV1(address initialMintRecipient) external virtual initializer {
+        // Initialize inherited contracts
+        __ERC20_init({name_: Parameters.NAME, symbol_: Parameters.SYMBOL});
+        __ERC20Permit_init({name: Parameters.NAME});
+        __ERC20Burnable_init();
+        __UUPSUpgradeable_init();
+
+        // Initialize the XanV1 contract
+        _mint(initialMintRecipient, Parameters.SUPPLY);
     }
 
     /// @inheritdoc IXanV1
@@ -244,33 +251,6 @@ contract XanV1 is
     /// @inheritdoc IXanV1
     function lockedBalanceOf(address from) public view override returns (uint256 lockedBalance) {
         lockedBalance = _getProposedUpgrades().lockedBalances[from];
-    }
-
-    /// @notice Initializes the XanV1 contract and inherited contracts.
-    /// @param initialMintRecipient The initial recipient of the minted tokens.
-    // solhint-disable-next-line func-name-mixedcase
-    function __XanV1_init(address initialMintRecipient) internal onlyInitializing {
-        // Initialize inherited contracts
-        __Context_init_unchained();
-        __ERC20_init_unchained({name_: Parameters.NAME, symbol_: Parameters.SYMBOL});
-        __ERC20Permit_init(Parameters.NAME); // TODO! https://github.com/OpenZeppelin/openzeppelin-upgrades/issues/1175
-        /* // TODO Use below instead
-        __ERC20Permit_init_unchained(Parameters.NAME);
-        __EIP712_init_unchained({name: Parameters.NAME, version: "1"});
-        __Nonces_init_unchained();
-        */
-        __ERC20Burnable_init_unchained();
-        __UUPSUpgradeable_init_unchained();
-
-        // Initialize the XanV1 contract
-        __XanV1_init_unchained(initialMintRecipient);
-    }
-
-    /// @notice Initializes the XanV1 contract.
-    /// @param initialMintRecipient The initial recipient of the minted tokens.
-    // solhint-disable-next-line func-name-mixedcase
-    function __XanV1_init_unchained(address initialMintRecipient) internal onlyInitializing {
-        _mint(initialMintRecipient, Parameters.SUPPLY);
     }
 
     /// @inheritdoc ERC20Upgradeable
