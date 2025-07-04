@@ -34,7 +34,7 @@ contract XanV1 is
     /// @param voterBodyData The upgrades proposed by the voter body from a current implementation.
     struct XanV1Storage {
         address governanceCouncil;
-        Council.ProposedUpgrade governanceCouncilData;
+        mapping(address current => Council.ProposedUpgrade) governanceCouncilData;
         mapping(address current => Ranking.ProposedUpgrades) voterBodyData;
     }
 
@@ -341,7 +341,7 @@ contract XanV1 is
     /// @notice Authorizes an upgrade.
     /// @param newImpl The new implementation to authorize the upgrade to.
     function _authorizeUpgrade(address newImpl) internal view virtual override {
-        address councilProposedImpl = _getXanV1Storage().governanceCouncilData.proposedImpl;
+        address councilProposedImpl = _getGovernanceCouncilData().proposedImpl;
 
         // TODO!
         if (newImpl == councilProposedImpl) {
@@ -419,21 +419,21 @@ contract XanV1 is
         revert("NOT IMPLEMENTED");
     }
 
-    /// @notice Returns the proposed upgrades from the from current implementation from the contract storage location.
-    /// @return voterBodyData The data associated with proposed upgrades from current implementation.
+    /// @notice Returns the proposed upgrades from the current implementation from the contract storage location.
+    /// @return voterBodyData The data associated with proposed upgrades from the current implementation.
     function _getVoterBodyData() internal view virtual returns (Ranking.ProposedUpgrades storage voterBodyData) {
         voterBodyData = _getXanV1Storage().voterBodyData[implementation()];
     }
 
-    /// @notice Returns the data of the upgrade proposed by the council from the contract storage location.
-    /// @return proposedUpgrade The data associated with upgrade proposed by the council.
+    /// @notice Returns the data of the upgrade proposed by the council from the current implementation from the contract storage location.
+    /// @return proposedUpgrade The data associated with upgrade proposed by the council from the current implementation.
     function _getGovernanceCouncilData()
         internal
         view
         virtual
         returns (Council.ProposedUpgrade storage proposedUpgrade)
     {
-        proposedUpgrade = _getXanV1Storage().governanceCouncilData;
+        proposedUpgrade = _getXanV1Storage().governanceCouncilData[implementation()];
     }
 
     /// @notice Returns the storage from the Xan V1 storage location.
