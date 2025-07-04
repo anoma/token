@@ -9,10 +9,21 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract ForeignReserveV1 is Initializable, OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardTransientUpgradeable {
+import {IForeignReserve} from "./interfaces/IForeignReserve.sol";
+
+contract ForeignReserveV1 is
+    IForeignReserve,
+    Initializable,
+    OwnableUpgradeable,
+    UUPSUpgradeable,
+    ReentrancyGuardTransientUpgradeable
+{
     using Address for address;
 
-    event Received(address sender, uint256 amount);
+    /// @notice Emitted when the contract received native tokens.
+    /// @param sender The sender of the native token.
+    /// @param value The native token value.
+    event NativeTokenReceived(address sender, uint256 value);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -35,6 +46,7 @@ contract ForeignReserveV1 is Initializable, OwnableUpgradeable, UUPSUpgradeable,
     function execute(address target, uint256 value, bytes calldata data)
         external
         payable
+        override
         onlyOwner
         nonReentrant
         returns (bytes memory result)
@@ -46,8 +58,8 @@ contract ForeignReserveV1 is Initializable, OwnableUpgradeable, UUPSUpgradeable,
     /// @param newImplementation The new implementation.
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
-    /// @notice Emits an event if native tokens are deposited.
+    /// @notice Emits an event if native tokens are received.
     receive() external payable {
-        emit Received(msg.sender, msg.value);
+        emit NativeTokenReceived(msg.sender, msg.value);
     }
 }
