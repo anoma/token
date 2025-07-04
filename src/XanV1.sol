@@ -216,11 +216,6 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
-    function vetoVotum() external view returns (uint256 vetoVotes) {
-        vetoVotes = _getGovernanceCouncilData().vota[msg.sender];
-    }
-
-    /// @inheritdoc IXanV1
     function delayEndTime() external view virtual override returns (uint48 endTime) {
         endTime = _getVoterBodyData().delayEndTime;
     }
@@ -237,16 +232,14 @@ contract XanV1 is
 
     /// @notice @inheritdoc IXanV1
     function vetoCouncilUpgrade() external virtual override {
+        // TODO! if there has been a quorum of votes for another impl, mark the council upgrade as failed.
+        // TODO! For the voter body to stop a council upgrade, they can vote for a different impl, even the current one. If this is winning, the council upgrade can be cancelled (without waiting / 2 week delay).
+
         revert("NOT IMPLEMENTED");
     }
 
     /// @notice @inheritdoc IXanV1
-    function startCouncilUpgradeDelay() external virtual override {
-        revert("NOT IMPLEMENTED");
-    }
-
-    /// @notice @inheritdoc IXanV1
-    function stopCouncilUpgrade() external virtual override {
+    function cancelCouncilUpgrade() external virtual override onlyGovernanceCouncil {
         revert("NOT IMPLEMENTED");
     }
 
@@ -258,11 +251,6 @@ contract XanV1 is
     /// @inheritdoc IXanV1
     function totalVotes(address proposedImpl) public view virtual override returns (uint256 votes) {
         votes = _getVoterBodyData().ballots[proposedImpl].totalVotes;
-    }
-
-    /// @inheritdoc IXanV1
-    function totalVetoVotes() public view returns (uint256 vetoVotes) {
-        revert("NOT IMPLEMENTED");
     }
 
     /// @notice @inheritdoc IXanV1
@@ -384,6 +372,11 @@ contract XanV1 is
     }
 
     function _checkCouncilUpgradeCriteria(address councilProposedImpl) internal view virtual {
+        // No other impl. has reached quorum (does not need to be winning!).
+
+        // Two weeks have passed
+
+        // Note: the new impl can be the current impl.
         revert("NOT IMPLEMENTED");
     }
 
@@ -416,6 +409,7 @@ contract XanV1 is
     }
 
     function _checkCouncilDelayCriterion(address councilProposedImpl) internal view {
+        // Check the delay
         revert("NOT IMPLEMENTED");
     }
 

@@ -3,9 +3,7 @@ pragma solidity ^0.8.30;
 
 library Council {
     struct ProposedUpgrade {
-        mapping(address voter => uint256 votes) vota;
-        uint256 totalVetoVotes;
-        uint48 delayEndTime;
         address proposedImpl;
+        uint48 delayEndTime;
     }
 }

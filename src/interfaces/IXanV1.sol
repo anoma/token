@@ -60,14 +60,11 @@ interface IXanV1 {
     /// @param proposedImpl The implementation proposed by the council.
     function proposeCouncilUpgrade(address proposedImpl) external;
 
-    /// @notice Casts the vote vetoing the governance council proposal.
+    /// @notice Marks the council upgrade as failed if there is any .
     function vetoCouncilUpgrade() external;
 
-    /// @notice Starts the delay period for the implementation proposed by the governance council.
-    function startCouncilUpgradeDelay() external;
-
-    /// @notice Stop the upgrade to the implementation proposed by the governance council.
-    function stopCouncilUpgrade() external;
+    /// @notice Cancel the upgrade to the implementation proposed by the governance council. This is only callable by the council.
+    function cancelCouncilUpgrade() external;
 
     /// @notice Calculates the quorum based on the current locked supply.
     /// @return threshold The calculated quorum threshold.
@@ -82,14 +79,6 @@ interface IXanV1 {
     /// @param proposedImpl The proposed implementation to return the total votes for.
     /// @return votes The total votes of the proposed implementation.
     function totalVotes(address proposedImpl) external view returns (uint256 votes);
-
-    /// @notice Returns the veto votum of the caller for a proposed implementation.
-    /// @return vetoVotes The veto votum of the caller.
-    function vetoVotum() external view returns (uint256 vetoVotes);
-
-    /// @notice Returns the total veto votes for the implementation proposed by the council.
-    /// @return vetoVotes The total veto votes for the implementation proposed by the council.
-    function totalVetoVotes() external view returns (uint256 vetoVotes);
 
     /// @notice Returns the unlocked token balance of an account.
     /// @param from The account to query.
