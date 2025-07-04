@@ -13,6 +13,7 @@ import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.s
 import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
 import {IXanV1} from "./interfaces/IXanV1.sol";
+import {Council} from "./libs/Council.sol";
 import {Parameters} from "./libs/Parameters.sol";
 import {Ranking} from "./libs/Ranking.sol";
 
@@ -28,9 +29,12 @@ contract XanV1 is
 
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.
     /// @custom:storage-location erc7201:anoma.storage.Xan.v1
+    /// @param governanceCouncil The address of the governance council.
+    /// @param proposedCouncilUpgrade The upgrade proposed by the governance council.
     /// @param proposedUpgrades The upgrade proposed from a current implementation.
     struct XanV1Storage {
         address governanceCouncil;
+        Council.ProposedUpgrade proposedCouncilUpgrade;
         mapping(address current => Ranking.ProposedUpgrades) proposedUpgrades;
     }
 
@@ -54,16 +58,23 @@ contract XanV1 is
     error DelayPeriodAlreadyStarted(address delayedUpgradeImpl);
     error DelayPeriodNotEnded();
 
+    error UnauthorizedCaller(address caller);
+
+    modifier onlyGovernanceCouncil() {
+        _checkGovernanceCouncil();
+        _;
+    }
     /// @custom:oz-upgrades-unsafe-allow constructor
+
     constructor() {
         _disableInitializers();
     }
 
     /// @notice Initializes the XanV1 contract.
     /// @param initialMintRecipient The initial recipient of the minted tokens.
-    /// @param governanceCouncil The address of the governance council contract.
+    /// @param council The address of the governance council contract.
     // solhint-disable-next-line comprehensive-interface
-    function initializeV1(address initialMintRecipient, address governanceCouncil) external virtual initializer {
+    function initializeV1(address initialMintRecipient, address council) external virtual initializer {
         // Initialize inherited contracts
         __ERC20_init({name_: Parameters.NAME, symbol_: Parameters.SYMBOL});
         __ERC20Permit_init({name: Parameters.NAME});
@@ -72,7 +83,7 @@ contract XanV1 is
 
         // Initialize the XanV1 contract
         _mint(initialMintRecipient, Parameters.SUPPLY);
-        _getXanV1Storage().governanceCouncil = governanceCouncil;
+        _getXanV1Storage().governanceCouncil = council;
     }
 
     /// @inheritdoc IXanV1
@@ -247,6 +258,11 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
+    function governanceCouncil() public view virtual override returns (address addr) {
+        addr = _getXanV1Storage().governanceCouncil;
+    }
+
+    /// @inheritdoc IXanV1
     function unlockedBalanceOf(address from) public view override returns (uint256 unlockedBalance) {
         unlockedBalance = balanceOf(from) - lockedBalanceOf(from);
     }
@@ -297,6 +313,13 @@ contract XanV1 is
         _checkDelayCriterion(newImpl);
 
         _checkUpgradeCriteria(newImpl);
+    }
+
+    /// @notice Throws if the sender is not the forwarder.
+    function _checkGovernanceCouncil() internal view virtual {
+        if (governanceCouncil() != _msgSender()) {
+            revert UnauthorizedCaller({caller: _msgSender()});
+        }
     }
 
     /// @notice Checks if the criteria to upgrade to the new implementation are met and reverts with errors if not.

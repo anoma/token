@@ -49,7 +49,7 @@ contract XanV1UnitTest is Test {
 
         assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), 0);
 
-        uninitializedProxy.initializeV1({initialMintRecipient: _defaultSender, governanceCouncil: _governanceCouncil});
+        uninitializedProxy.initializeV1({initialMintRecipient: _defaultSender, council: _governanceCouncil});
 
         assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), uninitializedProxy.totalSupply());
     }

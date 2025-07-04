@@ -49,7 +49,7 @@ contract XanV1UpgradeTest is Test {
         UnsafeUpgrades.upgradeProxy({
             proxy: address(_xanProxy),
             newImpl: _newImpl,
-            data: abi.encodeCall(XanV2.initializeFromV1, (address(uint160(1))))
+            data: abi.encodeCall(XanV2.reinitializeFromV1, (address(uint160(1))))
         });
     }
 }

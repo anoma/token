@@ -99,4 +99,8 @@ interface IXanV1 {
     /// @notice Returns the proposed implementation with the respective rank.
     /// @return rankedImplementation The proposed implementation with the respective rank.
     function proposedImplementationByRank(uint48 rank) external view returns (address rankedImplementation);
+
+    /// @notice Returns the address of the governance council.
+    /// @return council The governance council address.
+    function governanceCouncil() external view returns (address council);
 }

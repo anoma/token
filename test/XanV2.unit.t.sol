@@ -52,7 +52,7 @@ contract XanV2UnitTest is Test {
         UnsafeUpgrades.upgradeProxy({
             proxy: address(_xanV1Proxy),
             newImpl: _xanV2Impl,
-            data: abi.encodeCall(XanV2.initializeFromV1, (_xanV2Forwarder))
+            data: abi.encodeCall(XanV2.reinitializeFromV1, (_xanV2Forwarder))
         });
 
         _xanV2Proxy = XanV2(address(_xanV1Proxy));
@@ -89,7 +89,7 @@ contract XanV2UnitTest is Test {
         assertEq(v2ProxyUninitialized.forwarder(), address(0));
 
         // Reinitialize and expect the owner to be set.
-        v2ProxyUninitialized.initializeFromV1({xanV2Forwarder: _xanV2Forwarder});
+        v2ProxyUninitialized.reinitializeFromV1({xanV2Forwarder: _xanV2Forwarder});
         assertEq(v2ProxyUninitialized.forwarder(), _xanV2Forwarder);
     }
 
@@ -120,7 +120,7 @@ contract XanV2UnitTest is Test {
     }
 
     function test_mint_reverts_if_the_caller_is_not_the_XanV2Forwarder() public {
-        vm.expectRevert(abi.encodeWithSelector(XanV2.UnauthorizedCaller.selector, _defaultSender), address(_xanV2Proxy));
+        vm.expectRevert(abi.encodeWithSelector(XanV1.UnauthorizedCaller.selector, _defaultSender), address(_xanV2Proxy));
 
         // Call without being the `XanV2Forwarder` contract.
         vm.prank(_defaultSender);

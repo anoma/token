@@ -22,8 +22,6 @@ contract XanV2 is IXanV2, XanV1 {
     bytes32 internal constant _XAN_V2_STORAGE_LOCATION =
         0x52ac9b9514a24171c0416c0576d612fe5fab9f5a41dcf77ddbf6be60ca9da600;
 
-    error UnauthorizedCaller(address caller);
-
     modifier onlyForwarder() {
         _checkForwarder();
         _;
@@ -31,11 +29,11 @@ contract XanV2 is IXanV2, XanV1 {
 
     /// @notice Initializes the XanV2 contract.
     /// @param initialMintRecipient The initial recipient of the minted tokens.
-    /// @param governanceCouncil The address of the governance council contract.
+    /// @param council The address of the governance council contract.
     /// @param xanV2Forwarder The XanV2 forwarder contract.
     /// @custom:oz-upgrades-validate-as-initializer
     // solhint-disable-next-line comprehensive-interface
-    function initializeV2(address initialMintRecipient, address governanceCouncil, address xanV2Forwarder)
+    function initializeV2(address initialMintRecipient, address council, address xanV2Forwarder)
         external
         reinitializer(2)
     {
@@ -47,18 +45,18 @@ contract XanV2 is IXanV2, XanV1 {
 
         // Initialize the XanV1 contract
         _mint(initialMintRecipient, Parameters.SUPPLY);
-        _getXanV1Storage().governanceCouncil = governanceCouncil;
+        _getXanV1Storage().governanceCouncil = council;
 
         // Initialize the XanV2 contract
         _getXanV2Storage().forwarder = xanV2Forwarder;
     }
 
-    /// @notice Initializes the XanV2 contract after an upgrade from XanV1.
+    /// @notice Reinitializes the XanV2 contract after an upgrade from XanV1.
     /// @param xanV2Forwarder The XanV2 forwarder contract.
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
     /// @custom:oz-upgrades-validate-as-initializer
     // solhint-disable-next-line comprehensive-interface
-    function reinitializeAfterUpgradeFromV1(address xanV2Forwarder) external reinitializer(2) {
+    function reinitializeFromV1(address xanV2Forwarder) external reinitializer(2) {
         // Initialize the XanV2 contract
         _getXanV2Storage().forwarder = xanV2Forwarder;
     }
@@ -69,12 +67,12 @@ contract XanV2 is IXanV2, XanV1 {
     }
 
     /// @inheritdoc IXanV2
-    function forwarder() public view virtual override returns (address addr) {
+    function forwarder() public view override returns (address addr) {
         addr = _getXanV2Storage().forwarder;
     }
 
     /// @notice Throws if the sender is not the forwarder.
-    function _checkForwarder() internal view virtual {
+    function _checkForwarder() internal view {
         if (forwarder() != _msgSender()) {
             revert UnauthorizedCaller({caller: _msgSender()});
         }
