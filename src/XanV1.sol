@@ -54,6 +54,7 @@ contract XanV1 is
 
     error MinLockedSupplyNotReached();
     error QuorumNotReached(address proposedImpl);
+    error QuorumReachedForVoterBodyProposedImplementation(address voterBodyProposedImpl);
     error DelayPeriodNotStarted();
     error DelayPeriodAlreadyStarted(address delayedUpgradeImpl);
     error DelayPeriodNotEnded();
@@ -227,7 +228,7 @@ contract XanV1 is
 
     /// @notice @inheritdoc IXanV1
     function proposeCouncilUpgrade(address proposedImpl) external virtual override onlyGovernanceCouncil {
-        //
+        // TODO
     }
 
     /// @notice @inheritdoc IXanV1
@@ -329,11 +330,11 @@ contract XanV1 is
     /// @notice Authorizes an upgrade.
     /// @param newImpl The new implementation to authorize the upgrade to.
     function _authorizeUpgrade(address newImpl) internal view virtual override {
+        // TODO optimize fetching? Data is also used in Criteria checks
         address councilProposedImpl = _getGovernanceCouncilData().proposedImpl;
 
-        // TODO!
         if (newImpl == councilProposedImpl) {
-            _checkCouncilDelayCriterion(councilProposedImpl);
+            _checkCouncilDelayCriterion( /*TODO! //councilProposedImpl*/ );
 
             _checkCouncilUpgradeCriteria(councilProposedImpl);
         } else {
@@ -374,14 +375,17 @@ contract XanV1 is
     function _checkCouncilUpgradeCriteria(address councilProposedImpl) internal view virtual {
         // No other impl. has reached quorum (does not need to be winning!).
 
-        // Two weeks have passed
+        address voterBodyProposedImpl = _getVoterBodyData().ranking[0];
 
-        // Note: the new impl can be the current impl.
-        revert("NOT IMPLEMENTED");
+        if (councilProposedImpl == voterBodyProposedImpl) return; // TODO ! Test this logic carefully
+
+        if (_isQuorumReached(voterBodyProposedImpl)) {
+            revert QuorumReachedForVoterBodyProposedImplementation(voterBodyProposedImpl);
+        }
     }
 
     /// @notice Returns `true` if the quorum is reached for a particular implementation.
-    /// @param impl The implementation to check the quorum citeria for.
+    /// @param impl The implementation to check the quorum criteria for.
     function _isQuorumReached(address impl) internal view virtual returns (bool isReached) {
         isReached = totalVotes(impl) > calculateQuorumThreshold();
     }
@@ -392,6 +396,7 @@ contract XanV1 is
     }
 
     /// @notice Checks if the delay period has ended and reverts with errors if not.
+    /// @param impl The implementation to check the quorum criteria for.
     function _checkDelayCriterion(address impl) internal view virtual {
         Ranking.ProposedUpgrades storage $ = _getVoterBodyData();
 
@@ -408,9 +413,17 @@ contract XanV1 is
         }
     }
 
-    function _checkCouncilDelayCriterion(address councilProposedImpl) internal view {
-        // Check the delay
-        revert("NOT IMPLEMENTED");
+    /// @notice Checks if the delay period has ended and reverts with errors if not.
+    function _checkCouncilDelayCriterion() internal view {
+        Council.ProposedUpgrade storage $ = _getGovernanceCouncilData();
+
+        if ($.delayEndTime == 0) {
+            revert DelayPeriodNotStarted();
+        }
+
+        if (Time.timestamp() < $.delayEndTime) {
+            revert DelayPeriodNotEnded();
+        }
     }
 
     /// @notice Returns the proposed upgrades from the current implementation from the contract storage location.
