@@ -60,12 +60,13 @@ contract XanV1 is
 
     error UnauthorizedCaller(address caller);
 
+    /// @notice Limits functions to be callable only by the governance council address.
     modifier onlyGovernanceCouncil() {
-        _checkGovernanceCouncil();
+        _checkIfCallerIsGovernanceCouncil();
         _;
     }
-    /// @custom:oz-upgrades-unsafe-allow constructor
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
@@ -316,7 +317,7 @@ contract XanV1 is
     }
 
     /// @notice Throws if the sender is not the forwarder.
-    function _checkGovernanceCouncil() internal view virtual {
+    function _checkIfCallerIsGovernanceCouncil() internal view virtual {
         if (governanceCouncil() != _msgSender()) {
             revert UnauthorizedCaller({caller: _msgSender()});
         }

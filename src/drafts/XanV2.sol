@@ -22,8 +22,9 @@ contract XanV2 is IXanV2, XanV1 {
     bytes32 internal constant _XAN_V2_STORAGE_LOCATION =
         0x52ac9b9514a24171c0416c0576d612fe5fab9f5a41dcf77ddbf6be60ca9da600;
 
+    /// @notice Limits functions to be callable only by the forwarder address.
     modifier onlyForwarder() {
-        _checkForwarder();
+        _checkIfCallerIsForwarder();
         _;
     }
 
@@ -72,7 +73,7 @@ contract XanV2 is IXanV2, XanV1 {
     }
 
     /// @notice Throws if the sender is not the forwarder.
-    function _checkForwarder() internal view {
+    function _checkIfCallerIsForwarder() internal view {
         if (forwarder() != _msgSender()) {
             revert UnauthorizedCaller({caller: _msgSender()});
         }
