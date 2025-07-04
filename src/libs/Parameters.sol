@@ -2,11 +2,11 @@
 pragma solidity ^0.8.30;
 
 library Parameters {
-    /// @notice The total supply of the token.
-    uint256 internal constant SUPPLY = 1_000_000_000;
+    /// @notice The total supply amounting to 1 bn (10^9) tokens with 18 decimals.
+    uint256 internal constant SUPPLY = 10 ** (9 + 18);
 
-    /// @notice The minimal locked supply required for upgrades.
-    uint256 internal constant MIN_LOCKED_SUPPLY = 250_000_000;
+    /// @notice The minimal locked supply required for upgrades amounting to 25% of the total supply.
+    uint256 internal constant MIN_LOCKED_SUPPLY = SUPPLY / 4;
 
     /// @notice The quorum ration numerator.
     uint256 internal constant QUORUM_RATIO_NUMERATOR = 1;

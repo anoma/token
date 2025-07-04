@@ -147,6 +147,8 @@ contract XanV2UnitTest is Test {
     }
 
     function test_mint_increases_the_total_supply() public {
+        uint256 currentSupply = _xanV1Proxy.totalSupply();
+
         uint256 valueToMint = 123;
 
         ForwarderCalldata memory forwarderCalldata = ForwarderCalldata({
@@ -156,7 +158,7 @@ contract XanV2UnitTest is Test {
         });
         _mockProtocolAdapter.executeForwarderCall(forwarderCalldata);
 
-        assertEq(_xanV2Proxy.totalSupply(), Parameters.SUPPLY + valueToMint);
+        assertEq(_xanV2Proxy.totalSupply(), currentSupply + valueToMint);
     }
 
     function _winUpgradeVoteForV2Impl(XanV1 xanV1Proxy) internal {
