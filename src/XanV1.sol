@@ -262,13 +262,8 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
-    // TODO! RENAME,
     function voterBodyProposedImplementation() external view override returns (address delayedImpl) {
         delayedImpl = _getVotingData().delayedUpgradeImpl;
-    }
-
-    function councilProposedImplementation() external view override returns (address delayedImpl) {
-        delayedImpl = _getCouncilData().proposedImpl;
     }
 
     /// @inheritdoc IXanV1
@@ -279,6 +274,16 @@ contract XanV1 is
     /// @inheritdoc IXanV1
     function voterBodyDelayEndTime() external view override returns (uint48 endTime) {
         endTime = _getVotingData().delayEndTime;
+    }
+
+    /// @inheritdoc IXanV1
+    function councilProposedImplementation() external view override returns (address delayedImpl) {
+        delayedImpl = _getCouncilData().proposedImpl;
+    }
+
+    /// @inheritdoc IXanV1
+    function councilDelayEndTime() external view override returns (uint48 endTime) {
+        endTime = _getCouncilData().delayEndTime;
     }
 
     /// @notice @inheritdoc IXanV1

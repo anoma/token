@@ -115,6 +115,10 @@ interface IXanV1 {
     /// reached quorum yet.
     function voterBodyProposedImplementation() external view returns (address proposedImpl);
 
+    /// @notice Returns the delay end time of the implementation proposed by the voter body.
+    /// @return endTime The delay end time.
+    function voterBodyDelayEndTime() external view returns (uint48 endTime);
+
     // TODO Revisits `address(0)` case.
     /// @notice Returns the implementation proposed by the council or `address(0)` if no implementation has reached
     /// quorum yet.
@@ -122,9 +126,10 @@ interface IXanV1 {
     // reached quorum yet.
     function councilProposedImplementation() external view returns (address proposedImpl);
 
-    /// @notice Returns the delay end time of the implementation proposed by the voter body.
+    // TODO Revisit naming.
+    /// @notice Returns the delay end time of the implementation proposed by the council.
     /// @return endTime The delay end time.
-    function voterBodyDelayEndTime() external view returns (uint48 endTime);
+    function councilDelayEndTime() external view returns (uint48 endTime);
 
     /// @notice Returns the current implementation
     /// @return current The current implementation.
