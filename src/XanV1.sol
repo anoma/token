@@ -3,18 +3,27 @@ pragma solidity ^0.8.30;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {ERC20BurnableUpgradeable} from
     "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import {ERC20PermitUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
+
 import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
 import {IXanV1} from "./interfaces/IXanV1.sol";
 import {Parameters} from "./libs/Parameters.sol";
 import {Ranking} from "./libs/Ranking.sol";
 
-contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, UUPSUpgradeable {
+contract XanV1 is
+    IXanV1,
+    Initializable,
+    ERC20Upgradeable,
+    ERC20PermitUpgradeable,
+    ERC20BurnableUpgradeable,
+    UUPSUpgradeable
+{
     using Ranking for Ranking.ProposedUpgrades;
 
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.
@@ -52,8 +61,15 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     /// @notice Initializes the proxy.
     /// @param initialMintRecipient The initial recipient of the minted tokens.
     // solhint-disable-next-line comprehensive-interface
-    function initialize(address initialMintRecipient) external virtual initializer {
-        __XanV1_init(initialMintRecipient);
+    function initializeV1(address initialMintRecipient) external virtual initializer {
+        // Initialize inherited contracts
+        __ERC20_init({name_: Parameters.NAME, symbol_: Parameters.SYMBOL});
+        __ERC20Permit_init({name: Parameters.NAME});
+        __ERC20Burnable_init();
+        __UUPSUpgradeable_init();
+
+        // Initialize the XanV1 contract
+        _mint(initialMintRecipient, Parameters.SUPPLY);
     }
 
     /// @inheritdoc IXanV1
@@ -235,27 +251,6 @@ contract XanV1 is IXanV1, Initializable, ERC20Upgradeable, ERC20BurnableUpgradea
     /// @inheritdoc IXanV1
     function lockedBalanceOf(address from) public view override returns (uint256 lockedBalance) {
         lockedBalance = _getProposedUpgrades().lockedBalances[from];
-    }
-
-    /// @notice Initializes the XanV1 contract and inherited contracts.
-    /// @param initialMintRecipient The initial recipient of the minted tokens.
-    // solhint-disable-next-line func-name-mixedcase
-    function __XanV1_init(address initialMintRecipient) internal onlyInitializing {
-        // Initialize inherited contracts
-        __Context_init_unchained();
-        __ERC20_init_unchained({name_: Parameters.NAME, symbol_: Parameters.SYMBOL});
-        __ERC20Burnable_init_unchained();
-        __UUPSUpgradeable_init_unchained();
-
-        // Initialize the XanV1 contract
-        __XanV1_init_unchained(initialMintRecipient);
-    }
-
-    /// @notice Initializes the XanV1 contract.
-    /// @param initialMintRecipient The initial recipient of the minted tokens.
-    // solhint-disable-next-line func-name-mixedcase
-    function __XanV1_init_unchained(address initialMintRecipient) internal onlyInitializing {
-        _mint(initialMintRecipient, Parameters.SUPPLY);
     }
 
     /// @inheritdoc ERC20Upgradeable

@@ -27,7 +27,7 @@ contract XanV2ForwarderUnitTest is Test {
             calldataCarrierLogicRef: bytes32(0)
         });
 
-        _xanV2Proxy.initialize({initialMintRecipient: _defaultSender, xanV2Forwarder: address(_xanV2Forwarder)});
+        _xanV2Proxy.initializeV2({initialMintRecipient: _defaultSender, xanV2Forwarder: address(_xanV2Forwarder)});
     }
 
     function test_forwardCall_reverts_if_the_caller_is_not_the_protocol_adapter() public {

@@ -30,7 +30,7 @@ contract XanV2UnitTest is Test {
         _xanV1Proxy = XanV1(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV1.sol:XanV1",
-                initializerData: abi.encodeCall(XanV1.initialize, _defaultSender)
+                initializerData: abi.encodeCall(XanV1.initializeV1, _defaultSender)
             })
         );
         _xanV2Forwarder = address(
@@ -50,7 +50,7 @@ contract XanV2UnitTest is Test {
         UnsafeUpgrades.upgradeProxy({
             proxy: address(_xanV1Proxy),
             newImpl: _xanV2Impl,
-            data: abi.encodeCall(XanV2.initializeV2, (_xanV2Forwarder))
+            data: abi.encodeCall(XanV2.initializeFromV1, (_xanV2Forwarder))
         });
 
         _xanV2Proxy = XanV2(address(_xanV1Proxy));
@@ -60,7 +60,7 @@ contract XanV2UnitTest is Test {
         XanV2 v2Proxy = XanV2(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV2.sol:XanV2",
-                initializerData: abi.encodeCall(XanV2.initialize, (_defaultSender, _xanV2Forwarder))
+                initializerData: abi.encodeCall(XanV2.initializeV2, (_defaultSender, _xanV2Forwarder))
             })
         );
         assertEq(v2Proxy.forwarder(), _xanV2Forwarder);
@@ -73,7 +73,7 @@ contract XanV2UnitTest is Test {
             XanV1 v1Proxy = XanV1(
                 Upgrades.deployUUPSProxy({
                     contractName: "XanV1.sol:XanV1",
-                    initializerData: abi.encodeCall(XanV1.initialize, _defaultSender)
+                    initializerData: abi.encodeCall(XanV1.initializeV1, _defaultSender)
                 })
             );
             _winUpgradeVoteForV2Impl(v1Proxy);
@@ -87,7 +87,7 @@ contract XanV2UnitTest is Test {
         assertEq(v2ProxyUninitialized.forwarder(), address(0));
 
         // Reinitialize and expect the owner to be set.
-        v2ProxyUninitialized.initializeV2({xanV2Forwarder: _xanV2Forwarder});
+        v2ProxyUninitialized.initializeFromV1({xanV2Forwarder: _xanV2Forwarder});
         assertEq(v2ProxyUninitialized.forwarder(), _xanV2Forwarder);
     }
 

@@ -35,7 +35,7 @@ contract Deploy is Script {
         Upgrades.upgradeProxy({
             proxy: _XAN_PROXY,
             contractName: "XanV2.sol:XanV2",
-            data: abi.encodeCall(XanV2.initializeV2, (xanV2Forwarder))
+            data: abi.encodeCall(XanV2.initializeFromV1, (xanV2Forwarder))
         });
 
         vm.stopBroadcast();

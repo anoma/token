@@ -21,11 +21,10 @@ contract XanV1UnitTest is Test {
     function setUp() public {
         (, _defaultSender,) = vm.readCallers();
 
-        vm.prank(_defaultSender);
         _xanProxy = XanV1(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV1.sol:XanV1",
-                initializerData: abi.encodeCall(XanV1.initialize, _defaultSender)
+                initializerData: abi.encodeCall(XanV1.initializeV1, _defaultSender)
             })
         );
     }
@@ -36,7 +35,7 @@ contract XanV1UnitTest is Test {
         XanV1 proxy = XanV1(
             UnsafeUpgrades.deployUUPSProxy({
                 impl: impl,
-                initializerData: abi.encodeCall(XanV1.initialize, _defaultSender)
+                initializerData: abi.encodeCall(XanV1.initializeV1, _defaultSender)
             })
         );
 
@@ -49,7 +48,7 @@ contract XanV1UnitTest is Test {
 
         assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), 0);
 
-        uninitializedProxy.initialize({initialMintRecipient: _defaultSender});
+        uninitializedProxy.initializeV1({initialMintRecipient: _defaultSender});
 
         assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), uninitializedProxy.totalSupply());
     }
@@ -624,6 +623,46 @@ contract XanV1UnitTest is Test {
 
         _xanProxy.lock(valueToLock);
         assertEq(_xanProxy.lockedSupply(), 3 * valueToLock);
+    }
+
+    function test_permits_spending_given_an_EIP712_signature() public {
+        uint256 alicePrivKey = 0xA11CE;
+        address aliceAddr = vm.addr(alicePrivKey);
+        address spender = address(uint160(4));
+
+        // Give funds to Alice
+        vm.prank(_defaultSender);
+        _xanProxy.transfer({to: aliceAddr, value: 1_000});
+
+        // Sign message
+        uint256 nonce = _xanProxy.nonces(aliceAddr);
+        uint256 deadline = block.timestamp + 1 hours;
+        uint256 value = 500;
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                aliceAddr,
+                spender,
+                value,
+                nonce,
+                deadline
+            )
+        );
+
+        bytes32 domainSeparator = _xanProxy.DOMAIN_SEPARATOR();
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alicePrivKey, digest);
+
+        // Check that the spender is allowed to spend 0 XAN of Alice before the `permit` call.
+        assertEq(_xanProxy.allowance({owner: aliceAddr, spender: spender}), 0);
+
+        // Given the signature, anyone (here `_defaultSender`) can set the allowance.
+        vm.prank(_defaultSender);
+        _xanProxy.permit({owner: aliceAddr, spender: spender, value: value, deadline: deadline, v: v, r: r, s: s});
+
+        // Check that the spender is allowed to spend `value` XAN of Alice after the `permit` call.
+        assertEq(_xanProxy.allowance({owner: aliceAddr, spender: spender}), value);
     }
 
     function test_initialize_mints_the_expected_supply_amounting_to_1_billion_tokens() public view {

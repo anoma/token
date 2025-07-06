@@ -22,7 +22,7 @@ contract XanV1UpgradeTest is Test {
         _xanProxy = XanV1(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV1.sol:XanV1",
-                initializerData: abi.encodeCall(XanV1.initialize, _defaultSender)
+                initializerData: abi.encodeCall(XanV1.initializeV1, _defaultSender)
             })
         );
 
@@ -48,7 +48,7 @@ contract XanV1UpgradeTest is Test {
         UnsafeUpgrades.upgradeProxy({
             proxy: address(_xanProxy),
             newImpl: _newImpl,
-            data: abi.encodeCall(XanV2.initializeV2, (address(uint160(1))))
+            data: abi.encodeCall(XanV2.initializeFromV1, (address(uint160(1))))
         });
     }
 }
