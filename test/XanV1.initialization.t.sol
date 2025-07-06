@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {Upgrades, UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 
 import {Test} from "forge-std/Test.sol";
