@@ -158,6 +158,30 @@ contract XanV1UpgradeTest is Test {
         _xanProxy.upgradeToAndCall({newImplementation: _councilProposedImpl, data: ""});
     }
 
+    function test_authorizeUpgrade_does_not_increase_the_delay_of_the_implementation_proposed_by_the_voter_body_if_the_council_endorses_it(
+    ) public {
+        // Voter body votes on `_voterProposedImpl`
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));
+        _xanProxy.castVote(_voterProposedImpl);
+        vm.stopPrank();
+
+        // Start upgrade delay for `_voterProposedImpl`
+        _xanProxy.startVoterBodyUpgradeDelay(_voterProposedImpl);
+
+        // Advance time close to the delay end of the implementation proposed by the voter body.
+        skip(_xanProxy.voterBodyDelayEndTime() - 5 minutes);
+
+        // Council endorses `_voterProposedImpl`
+        vm.prank(_COUNCIL);
+        _xanProxy.proposeCouncilUpgrade(_voterProposedImpl);
+
+        // Advance time after the delay end of the implementation proposed by the voter body.
+        skip(_xanProxy.voterBodyDelayEndTime());
+
+        _xanProxy.upgradeToAndCall({newImplementation: _voterProposedImpl, data: ""});
+    }
+
     function test_authorizeUpgrade_passes_if_the_council_and_voter_body_have_proposed_the_same_implementation()
         public
     {
