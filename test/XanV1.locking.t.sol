@@ -10,7 +10,7 @@ import {Test} from "forge-std/Test.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
 import {IXanV1, XanV1} from "../src/XanV1.sol";
 
-contract XanV1UnitTest is Test {
+contract XanV1LockingTest is Test {
     address internal constant _COUNCIL = address(uint160(1));
     address internal constant _RECEIVER = address(uint160(2));
 
