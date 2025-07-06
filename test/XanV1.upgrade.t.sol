@@ -93,20 +93,4 @@ contract XanV1UpgradeTest is Test {
         emit IERC1967.Upgraded(sameImpl);
         address(_xanProxy).upgradeProxy({newImpl: sameImpl, data: ""});
     }
-
-    function test_upgradeToAndCall_reverts_for_an_upgrade_to_address_0() public {
-        //! TODO use gov council for testing
-
-        address addr0 = address(0);
-
-        vm.prank(_defaultSender);
-        _xanProxy.castVote(addr0);
-        _xanProxy.startVoterBodyUpgradeDelay(addr0);
-
-        skip(Parameters.DELAY_DURATION);
-
-        vm.expectRevert(abi.encodeWithSelector(XanV1.ImplementationZero.selector), address(_xanProxy));
-        // Use `ERC1967Utils.upgradeToAndCall` instead of `UnsafeUpgrades.upgradeProxy` to get the expected error.
-        _xanProxy.upgradeToAndCall({newImplementation: addr0, data: ""});
-    }
 }

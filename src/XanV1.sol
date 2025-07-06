@@ -73,8 +73,8 @@ contract XanV1 is
     error UnauthorizedCaller(address caller);
 
     /// @notice Limits functions to be callable only by the governance council address.
-    modifier onlyGovernanceCouncil() {
-        _checkIfCallerIsGovernanceCouncil();
+    modifier onlyCouncil() {
+        _checkOnlyCouncil();
         _;
     }
 
@@ -222,7 +222,7 @@ contract XanV1 is
     }
 
     /// @notice @inheritdoc IXanV1
-    function proposeCouncilUpgrade(address proposedImpl) external virtual override onlyGovernanceCouncil {
+    function proposeCouncilUpgrade(address proposedImpl) external virtual override onlyCouncil {
         Council.Data storage data = _getCouncilData();
         data.proposedImpl = proposedImpl;
 
@@ -233,7 +233,7 @@ contract XanV1 is
     }
 
     /// @notice @inheritdoc IXanV1
-    function cancelCouncilUpgrade() external virtual override onlyGovernanceCouncil {
+    function cancelCouncilUpgrade() external virtual override onlyCouncil {
         emit CouncilUpgradeCancelled();
         _cancelCouncilUpgrade();
     }
@@ -390,10 +390,10 @@ contract XanV1 is
         }
     }
 
-    /// @notice Throws if the sender is not the forwarder.
-    function _checkIfCallerIsGovernanceCouncil() internal view virtual {
-        if (governanceCouncil() != _msgSender()) {
-            revert UnauthorizedCaller({caller: _msgSender()});
+    /// @notice Throws if the sender is not the governance council.
+    function _checkOnlyCouncil() internal view virtual {
+        if (governanceCouncil() != msg.sender) {
+            revert UnauthorizedCaller({caller: msg.sender});
         }
     }
 

@@ -14,10 +14,10 @@ contract XanV1UnitTest is Test {
     address internal constant _IMPL = address(uint160(1));
     address internal constant _OTHER_IMPL = address(uint160(2));
     address internal constant _RECEIVER = address(uint160(3));
+    address internal constant _COUNCIL = address(uint160(4));
 
     address internal _defaultSender;
     XanV1 internal _xanProxy;
-    address internal _governanceCouncil;
 
     function setUp() public {
         (, _defaultSender,) = vm.readCallers();
@@ -25,7 +25,7 @@ contract XanV1UnitTest is Test {
         _xanProxy = XanV1(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV1.sol:XanV1",
-                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _governanceCouncil))
+                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _COUNCIL))
             })
         );
     }
@@ -36,7 +36,7 @@ contract XanV1UnitTest is Test {
         XanV1 proxy = XanV1(
             UnsafeUpgrades.deployUUPSProxy({
                 impl: impl,
-                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _governanceCouncil))
+                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _COUNCIL))
             })
         );
 
@@ -49,7 +49,7 @@ contract XanV1UnitTest is Test {
 
         assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), 0);
 
-        uninitializedProxy.initializeV1({initialMintRecipient: _defaultSender, council: _governanceCouncil});
+        uninitializedProxy.initializeV1({initialMintRecipient: _defaultSender, council: _COUNCIL});
 
         assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), uninitializedProxy.totalSupply());
     }
@@ -346,9 +346,8 @@ contract XanV1UnitTest is Test {
         _xanProxy.revokeVote(_IMPL);
     }
 
-    function test_startUpgradeDelay_starts_the_delay_if_locked_supply_and_quorum_are_met_and_the_impl_is_ranked_best()
-        public
-    {
+    function test_startVoterBodyUpgradeDelay_starts_the_delay_if_locked_supply_and_quorum_are_met_and_the_impl_is_ranked_best(
+    ) public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_IMPL);
@@ -366,7 +365,7 @@ contract XanV1UnitTest is Test {
         assertEq(_xanProxy.voterBodyDelayedUpgradeImplementation(), _IMPL);
     }
 
-    function test_startUpgradeDelay_emits_the_DelayStarted_event() public {
+    function test_startVoterBodyUpgradeDelay_emits_the_DelayStarted_event() public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(_xanProxy.totalSupply());
         _xanProxy.castVote(_IMPL);
@@ -382,7 +381,7 @@ contract XanV1UnitTest is Test {
         _xanProxy.startVoterBodyUpgradeDelay(_IMPL);
     }
 
-    function test_startUpgradeDelay_reverts_if_the_minimal_locked_supply_is_not_met() public {
+    function test_startVoterBodyUpgradeDelay_reverts_if_the_minimal_locked_supply_is_not_met() public {
         vm.startPrank(_defaultSender);
         // Lock first half.
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY - 1);
@@ -391,7 +390,7 @@ contract XanV1UnitTest is Test {
         _xanProxy.startVoterBodyUpgradeDelay(_IMPL);
     }
 
-    function test_startUpgradeDelay_reverts_if_quorum_is_not_met() public {
+    function test_startVoterBodyUpgradeDelay_reverts_if_quorum_is_not_met() public {
         uint256 quorumThreshold =
             (_xanProxy.totalSupply() * Parameters.QUORUM_RATIO_NUMERATOR) / Parameters.QUORUM_RATIO_DENOMINATOR;
 
@@ -409,7 +408,7 @@ contract XanV1UnitTest is Test {
         _xanProxy.startVoterBodyUpgradeDelay(_IMPL);
     }
 
-    function test_startUpgradeDelay_reverts_if_delay_has_already_been_started() public {
+    function test_startVoterBodyUpgradeDelay_reverts_if_delay_has_already_been_started() public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_IMPL);
@@ -423,7 +422,7 @@ contract XanV1UnitTest is Test {
         _xanProxy.startVoterBodyUpgradeDelay(_IMPL);
     }
 
-    function test_startUpgradeDelay_reverts_is_not_ranked_best() public {
+    function test_startVoterBodyUpgradeDelay_reverts_is_not_ranked_best() public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_IMPL);
@@ -439,7 +438,7 @@ contract XanV1UnitTest is Test {
         _xanProxy.startVoterBodyUpgradeDelay(_OTHER_IMPL);
     }
 
-    function test_resetUpgradeDelay_reverts_on_winning_implementation() public {
+    function test_resetVoterBodyUpgradeDelay_reverts_on_winning_implementation() public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_IMPL);
@@ -454,7 +453,7 @@ contract XanV1UnitTest is Test {
         _xanProxy.resetVoterBodyUpgradeDelay(_IMPL);
     }
 
-    function test_resetUpgradeDelay_emits_the_DelayReset_event() public {
+    function test_resetVoterBodyUpgradeDelay_emits_the_DelayReset_event() public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_IMPL);
@@ -477,7 +476,7 @@ contract XanV1UnitTest is Test {
         _xanProxy.resetVoterBodyUpgradeDelay(_IMPL);
     }
 
-    function test_resetUpgradeDelay_resets_the_delay() public {
+    function test_resetVoterBodyUpgradeDelay_resets_the_delay() public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_IMPL);
@@ -505,6 +504,16 @@ contract XanV1UnitTest is Test {
         // Check state change has happened
         assertEq(_xanProxy.voterBodyDelayEndTime(), 0);
         assertEq(_xanProxy.voterBodyDelayedUpgradeImplementation(), address(0));
+    }
+
+    function test_proposeCouncilUpgrade_reverts_if_the_caller_is_not_the_governance_council() public {
+        vm.expectRevert(abi.encodeWithSelector(XanV1.Wrong.selector), address(_xanProxy));
+        _xanProxy.proposeCouncilUpgrade(_OTHER_IMPL);
+    }
+
+    function test_upgradeToAndCall_reverts_for_an_upgrade_to_address_0() public {
+        vm.expectRevert(abi.encodeWithSelector(XanV1.ImplementationZero.selector), address(_xanProxy));
+        _xanProxy.upgradeToAndCall({newImplementation: address(0), data: ""});
     }
 
     function test_upgradeToAndCall_reverts_if_implementation_has_not_been_voted_on() public {
