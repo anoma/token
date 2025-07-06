@@ -149,7 +149,19 @@ contract XanV1CouncilTest is Test {
         assertEq(_xanProxy.councilProposedImplementation(), _NEW_IMPL);
     }
 
-    function test_councilProposedImplementation_returns_address_0_if_no_upgrade_delay_has_been_started() public view {
+    function test_councilDelayEndTime_returns_the_end_time_if_an_upgrade_delay_has_been_started() public {
+        uint256 expectedEndTime = block.timestamp + Parameters.DELAY_DURATION;
+        vm.prank(_COUNCIL);
+        _xanProxy.proposeCouncilUpgrade(_NEW_IMPL);
+
+        assertEq(_xanProxy.councilDelayEndTime(), expectedEndTime);
+    }
+
+    function test_councilProposedImplementation_returns_0_if_no_upgrade_delay_has_been_started() public view {
         assertEq(_xanProxy.councilProposedImplementation(), address(0));
+    }
+
+    function test_councilDelayEndTime_returns_0_if_no_upgrade_delay_has_been_started() public view {
+        assertEq(_xanProxy.councilDelayEndTime(), 0);
     }
 }

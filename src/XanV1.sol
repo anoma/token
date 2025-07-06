@@ -115,11 +115,11 @@ contract XanV1 is
     function castVote(address proposedImpl) external override {
         address voter = msg.sender;
 
-        Voting.Data storage $ = _getVotingData();
-        Voting.Ballot storage ballot = $.ballots[proposedImpl];
+        Voting.Data storage data = _getVotingData();
+        Voting.Ballot storage ballot = data.ballots[proposedImpl];
 
         if (!ballot.exists) {
-            $.assignWorstRank(proposedImpl);
+            data.assignWorstRank(proposedImpl);
         }
 
         // Cache the old votum of the voter.
@@ -147,7 +147,7 @@ contract XanV1 is
         ballot.totalVotes += delta;
 
         // Bubble the proposed implementation up in the ranking.
-        $.bubbleUp(proposedImpl);
+        data.bubbleUp(proposedImpl);
 
         emit VoteCast({voter: voter, implementation: proposedImpl, value: delta});
     }
@@ -156,8 +156,8 @@ contract XanV1 is
     function revokeVote(address proposedImpl) external override {
         address voter = msg.sender;
 
-        Voting.Data storage $ = _getVotingData();
-        Voting.Ballot storage ballot = $.ballots[proposedImpl];
+        Voting.Data storage data = _getVotingData();
+        Voting.Ballot storage ballot = data.ballots[proposedImpl];
 
         // Cache the old votum of the voter.
         uint256 oldVotum = ballot.vota[voter];
@@ -174,7 +174,7 @@ contract XanV1 is
         ballot.totalVotes -= oldVotum;
 
         // Bubble the proposed implementation down in the ranking.
-        $.bubbleDown(proposedImpl);
+        data.bubbleDown(proposedImpl);
 
         emit VoteRevoked({voter: voter, implementation: proposedImpl, value: oldVotum});
     }
@@ -184,24 +184,24 @@ contract XanV1 is
         // Check that all upgrade criteria are met before starting the delay.
         _checkVoterBodyUpgradeCriteria(proposedImpl);
 
-        Voting.Data storage $ = _getVotingData();
+        Voting.Data storage data = _getVotingData();
 
         uint48 currentTime = Time.timestamp();
 
         // Check that the delay period hasn't been started yet by
         // ensuring that no end time and implementation has been set.
-        if ($.delayEndTime != 0 && $.delayedUpgradeImpl != address(0)) {
-            revert DelayPeriodAlreadyStarted($.delayedUpgradeImpl);
+        if (data.delayEndTime != 0 && data.delayedUpgradeImpl != address(0)) {
+            revert DelayPeriodAlreadyStarted(data.delayedUpgradeImpl);
         }
 
         // Set the end time and emit the associated event.
-        $.delayEndTime = currentTime + Parameters.DELAY_DURATION;
-        $.delayedUpgradeImpl = proposedImpl;
+        data.delayEndTime = currentTime + Parameters.DELAY_DURATION;
+        data.delayedUpgradeImpl = proposedImpl;
 
         emit VoterBodyUpgradeDelayStarted({
             implementation: proposedImpl,
             startTime: currentTime,
-            endTime: $.delayEndTime
+            endTime: data.delayEndTime
         });
     }
 
@@ -383,18 +383,29 @@ contract XanV1 is
             revert ImplementationZero();
         }
 
-        // TODO optimize fetching? Data is also used in Criteria checks // No, happens only once.
-        address councilProposedImpl = _getCouncilData().proposedImpl;
+        Council.Data storage council = _getCouncilData();
+        Voting.Data storage voting = _getVotingData();
 
-        // TODO! What if the voter body votes for the same impl as the council?
+        // TODO REFACTOR
+        if (newImpl != council.proposedImpl) {
+            _checkVoterBodyDelayCriterion(newImpl);
+            _checkVoterBodyUpgradeCriteria(newImpl);
+            return;
+        }
 
-        if (newImpl == councilProposedImpl) {
-            _checkCouncilDelayCriterion( /*TODO! //councilProposedImpl*/ );
+        // TODO! rename delayedUpgradeImpl to scheduled impl!!!
+        if (newImpl != voting.delayedUpgradeImpl) {
+            _checkCouncilDelayCriterion();
+            _checkCouncilUpgradeCriteria(newImpl);
+            return;
+        }
 
-            _checkCouncilUpgradeCriteria(councilProposedImpl);
+        // The same implementation has been proposed by both
+        if (council.delayEndTime < voting.delayEndTime) {
+            _checkCouncilDelayCriterion();
+            _checkCouncilUpgradeCriteria(newImpl);
         } else {
             _checkVoterBodyDelayCriterion(newImpl);
-
             _checkVoterBodyUpgradeCriteria(newImpl);
         }
     }

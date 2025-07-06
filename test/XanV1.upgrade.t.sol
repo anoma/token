@@ -176,8 +176,10 @@ contract XanV1UpgradeTest is Test {
         vm.prank(_COUNCIL);
         _xanProxy.proposeCouncilUpgrade(_voterProposedImpl);
 
+        assertLt(_xanProxy.voterBodyDelayEndTime(), _xanProxy.councilDelayEndTime());
+
         // Advance time after the delay end of the implementation proposed by the voter body.
-        skip(_xanProxy.voterBodyDelayEndTime());
+        skip(_xanProxy.voterBodyDelayEndTime() - block.timestamp);
 
         _xanProxy.upgradeToAndCall({newImplementation: _voterProposedImpl, data: ""});
     }

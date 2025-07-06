@@ -369,16 +369,30 @@ contract XanV1VotingTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_NEW_IMPL);
-        _xanProxy.startVoterBodyUpgradeDelay(_NEW_IMPL);
         vm.stopPrank();
+
+        _xanProxy.startVoterBodyUpgradeDelay(_NEW_IMPL);
 
         assertEq(_xanProxy.voterBodyProposedImplementation(), _NEW_IMPL);
     }
 
-    function test_voterBodyProposedImplementation_returns_address_0_if_no_upgrade_delay_has_been_started()
-        public
-        view
-    {
+    function test_councilDelayEndTime_returns_the_end_time_if_an_upgrade_delay_has_been_started() public {
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
+        _xanProxy.castVote(_NEW_IMPL);
+        vm.stopPrank();
+
+        uint256 expectedEndTime = block.timestamp + Parameters.DELAY_DURATION;
+        _xanProxy.startVoterBodyUpgradeDelay(_NEW_IMPL);
+
+        assertEq(_xanProxy.voterBodyDelayEndTime(), expectedEndTime);
+    }
+
+    function test_voterBodyProposedImplementation_returns_0_if_no_upgrade_delay_has_been_started() public view {
         assertEq(_xanProxy.voterBodyProposedImplementation(), address(0));
+    }
+
+    function test_voterBodyDelayEndTime_returns_0_if_no_upgrade_delay_has_been_started() public view {
+        assertEq(_xanProxy.voterBodyDelayEndTime(), 0);
     }
 }
