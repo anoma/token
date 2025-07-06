@@ -57,13 +57,14 @@ contract XanV1 is
     error LockedBalanceInsufficient(address sender, uint256 lockedBalance);
     error NoVotesToRevoke(address sender, address proposedImpl);
     error ImplementationZero();
+    error ImplementationAlreadyProposed(address impl);
     error ImplementationRankNonExistent(uint48 limit, uint48 rank);
     error ImplementationNotRankedBest(address expected, address actual);
     error ImplementationNotDelayed(address expected, address actual);
     error UpgradeDelayNotResettable(address impl);
 
     error MinLockedSupplyNotReached();
-    error QuorumNowhereReached();
+    error QuorumNowhereReached(); // TODO remove?
     error QuorumNotReached(address proposedImpl);
     error QuorumReachedForVoterBodyProposedImplementation(address voterBodyProposedImpl);
     error DelayPeriodNotStarted();
@@ -87,7 +88,7 @@ contract XanV1 is
     /// @param initialMintRecipient The initial recipient of the minted tokens.
     /// @param council The address of the governance council contract.
     // solhint-disable-next-line comprehensive-interface
-    function initializeV1(address initialMintRecipient, address council) external virtual initializer {
+    function initializeV1(address initialMintRecipient, address council) external initializer {
         // Initialize inherited contracts
         __ERC20_init({name_: Parameters.NAME, symbol_: Parameters.SYMBOL});
         __ERC20Permit_init({name: Parameters.NAME});
@@ -100,18 +101,18 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
-    function lock(uint256 value) external virtual override {
+    function lock(uint256 value) external override {
         _lock({account: msg.sender, value: value});
     }
 
     /// @inheritdoc IXanV1
-    function transferAndLock(address to, uint256 value) external virtual override {
+    function transferAndLock(address to, uint256 value) external override {
         _transfer({from: msg.sender, to: to, value: value});
         _lock({account: to, value: value});
     }
 
     /// @inheritdoc IXanV1
-    function castVote(address proposedImpl) external virtual override {
+    function castVote(address proposedImpl) external override {
         address voter = msg.sender;
 
         Voting.Data storage $ = _getVotingData();
@@ -152,7 +153,7 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
-    function revokeVote(address proposedImpl) external virtual override {
+    function revokeVote(address proposedImpl) external override {
         address voter = msg.sender;
 
         Voting.Data storage $ = _getVotingData();
@@ -179,7 +180,7 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
-    function startVoterBodyUpgradeDelay(address proposedImpl) external virtual override {
+    function startVoterBodyUpgradeDelay(address proposedImpl) external override {
         // Check that all upgrade criteria are met before starting the delay.
         _checkVoterBodyUpgradeCriteria(proposedImpl);
 
@@ -222,10 +223,14 @@ contract XanV1 is
     }
 
     /// @notice @inheritdoc IXanV1
-    function proposeCouncilUpgrade(address proposedImpl) external virtual override onlyCouncil {
+    function proposeCouncilUpgrade(address proposedImpl) external override onlyCouncil {
         Council.Data storage data = _getCouncilData();
-        data.proposedImpl = proposedImpl;
 
+        if (data.proposedImpl == proposedImpl) {
+            revert ImplementationAlreadyProposed(proposedImpl);
+        }
+
+        data.proposedImpl = proposedImpl;
         uint48 currentTime = Time.timestamp();
         data.delayEndTime = currentTime + Parameters.DELAY_DURATION;
 
@@ -233,13 +238,13 @@ contract XanV1 is
     }
 
     /// @notice @inheritdoc IXanV1
-    function cancelCouncilUpgrade() external virtual override onlyCouncil {
+    function cancelCouncilUpgrade() external override onlyCouncil {
         emit CouncilUpgradeCancelled();
         _cancelCouncilUpgrade();
     }
 
     /// @notice @inheritdoc IXanV1
-    function vetoCouncilUpgrade() external virtual override {
+    function vetoCouncilUpgrade() external override {
         // Get the implementation with the most votes.
         address mostVotedImplementation = _getVotingData().ranking[0];
 
@@ -257,48 +262,47 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
-    function voterBodyDelayedUpgradeImplementation() external view virtual override returns (address delayedImpl) {
+    // TODO! RENAME,
+    function voterBodyProposedImplementation() external view override returns (address delayedImpl) {
         delayedImpl = _getVotingData().delayedUpgradeImpl;
     }
 
+    function councilProposedImplementation() external view override returns (address delayedImpl) {
+        delayedImpl = _getCouncilData().proposedImpl;
+    }
+
     /// @inheritdoc IXanV1
-    function votum(address proposedImpl) external view virtual override returns (uint256 votes) {
+    function votum(address proposedImpl) external view override returns (uint256 votes) {
         votes = _getVotingData().ballots[proposedImpl].vota[msg.sender];
     }
 
     /// @inheritdoc IXanV1
-    function voterBodyDelayEndTime() external view virtual override returns (uint48 endTime) {
+    function voterBodyDelayEndTime() external view override returns (uint48 endTime) {
         endTime = _getVotingData().delayEndTime;
     }
 
     /// @notice @inheritdoc IXanV1
-    function lockedSupply() public view virtual override returns (uint256 locked) {
+    function lockedSupply() public view override returns (uint256 locked) {
         locked = _getLockingData().lockedSupply;
     }
 
     /// @notice @inheritdoc IXanV1
-    function calculateQuorumThreshold() public view virtual override returns (uint256 threshold) {
+    function calculateQuorumThreshold() public view override returns (uint256 threshold) {
         threshold = (lockedSupply() * Parameters.QUORUM_RATIO_NUMERATOR) / Parameters.QUORUM_RATIO_DENOMINATOR;
     }
 
     /// @inheritdoc IXanV1
-    function totalVotes(address proposedImpl) public view virtual override returns (uint256 votes) {
+    function totalVotes(address proposedImpl) public view override returns (uint256 votes) {
         votes = _getVotingData().ballots[proposedImpl].totalVotes;
     }
 
     /// @notice @inheritdoc IXanV1
-    function implementation() public view virtual override returns (address thisImplementation) {
+    function implementation() public view override returns (address thisImplementation) {
         thisImplementation = ERC1967Utils.getImplementation();
     }
 
     /// @notice @inheritdoc IXanV1
-    function proposedImplementationByRank(uint48 rank)
-        public
-        view
-        virtual
-        override
-        returns (address rankedImplementation)
-    {
+    function proposedImplementationByRank(uint48 rank) public view override returns (address rankedImplementation) {
         Voting.Data storage $ = _getVotingData();
         uint48 implCount = $.implCount;
 
@@ -310,7 +314,7 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
-    function governanceCouncil() public view virtual override returns (address council) {
+    function governanceCouncil() public view override returns (address council) {
         council = _getCouncilData().council;
     }
 
@@ -369,7 +373,7 @@ contract XanV1 is
 
     /// @notice Authorizes an upgrade.
     /// @param newImpl The new implementation to authorize the upgrade to.
-    function _authorizeUpgrade(address newImpl) internal view virtual override {
+    function _authorizeUpgrade(address newImpl) internal view override {
         if (newImpl == address(0)) {
             revert ImplementationZero();
         }
@@ -391,7 +395,7 @@ contract XanV1 is
     }
 
     /// @notice Throws if the sender is not the governance council.
-    function _checkOnlyCouncil() internal view virtual {
+    function _checkOnlyCouncil() internal view {
         if (governanceCouncil() != msg.sender) {
             revert UnauthorizedCaller({caller: msg.sender});
         }
@@ -422,7 +426,7 @@ contract XanV1 is
     /// @notice Checks if the criteria to upgrade to the new implementation proposed by the governance council are met
     /// and reverts with errors if not.
     /// @param impl The implementation to check the upgrade criteria for.
-    function _checkCouncilUpgradeCriteria(address impl) internal view virtual {
+    function _checkCouncilUpgradeCriteria(address impl) internal view {
         // Get the implementation with the most votes.
         address voterBodyProposedImpl = _getVotingData().ranking[0];
 
@@ -437,19 +441,19 @@ contract XanV1 is
     /// @notice Returns `true` if the quorum is reached for a particular implementation.
     /// @param impl The implementation to check the quorum criteria for.
     /// @return isReached Whether the quorum is reached or not.
-    function _isQuorumReached(address impl) internal view virtual returns (bool isReached) {
+    function _isQuorumReached(address impl) internal view returns (bool isReached) {
         isReached = totalVotes(impl) > calculateQuorumThreshold();
     }
 
     /// @notice Returns `true` if the quorum is reached for a particular implementation.
     /// @return isReached Whether the minimum locked supply is reached or not.
-    function _isMinLockedSupplyReached() internal view virtual returns (bool isReached) {
+    function _isMinLockedSupplyReached() internal view returns (bool isReached) {
         isReached = lockedSupply() + 1 > Parameters.MIN_LOCKED_SUPPLY;
     }
 
     /// @notice Checks if the delay period has ended and reverts with errors if not.
     /// @param impl The implementation to check the quorum criteria for.
-    function _checkVoterBodyDelayCriterion(address impl) internal view virtual {
+    function _checkVoterBodyDelayCriterion(address impl) internal view {
         Voting.Data storage $ = _getVotingData();
 
         if ($.delayEndTime == 0) {
@@ -480,20 +484,20 @@ contract XanV1 is
 
     /// @notice Returns the locking data for the current implementation from the contract storage location.
     /// @return lockingData The data associated with locked tokens.
-    function _getLockingData() internal view virtual returns (Locking.Data storage lockingData) {
+    function _getLockingData() internal view returns (Locking.Data storage lockingData) {
         lockingData = _getXanV1Storage().implementationSpecificData[implementation()].lockingData;
     }
 
     /// @notice Returns the proposed upgrades from the current implementation from the contract storage location.
     /// @return votingData The data associated with proposed upgrades from the current implementation.
-    function _getVotingData() internal view virtual returns (Voting.Data storage votingData) {
+    function _getVotingData() internal view returns (Voting.Data storage votingData) {
         votingData = _getXanV1Storage().implementationSpecificData[implementation()].votingData;
     }
 
     /// @notice Returns the data of the upgrade proposed by the council from the current implementation
     /// from the contract storage location.
     /// @return proposedUpgrade The data associated with upgrade proposed by the council from the current implementation.
-    function _getCouncilData() internal view virtual returns (Council.Data storage proposedUpgrade) {
+    function _getCouncilData() internal view returns (Council.Data storage proposedUpgrade) {
         proposedUpgrade = _getXanV1Storage().implementationSpecificData[implementation()].councilData;
     }
 

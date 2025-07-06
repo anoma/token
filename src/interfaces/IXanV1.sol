@@ -108,10 +108,19 @@ interface IXanV1 {
     /// @param locked The locked supply.
     function lockedSupply() external view returns (uint256 locked);
 
-    // TODO improve naming
-    /// @notice Returns the implementation for which the delay was started.
-    /// @return delayedImpl The implementation the delay was started for.
-    function voterBodyDelayedUpgradeImplementation() external view returns (address delayedImpl);
+    // TODO Revisits `address(0)` case.
+    /// @notice Returns the implementation proposed by the voter body or `address(0)` if no implementation has reached
+    /// quorum yet.
+    /// @return proposedImpl The implementation proposed by the voter body or `address(0)` if no implementation has
+    /// reached quorum yet.
+    function voterBodyProposedImplementation() external view returns (address proposedImpl);
+
+    // TODO Revisits `address(0)` case.
+    /// @notice Returns the implementation proposed by the council or `address(0)` if no implementation has reached
+    /// quorum yet.
+    /// @return proposedImpl The implementation proposed byh the council or `address(0)` if no implementation has
+    // reached quorum yet.
+    function councilProposedImplementation() external view returns (address proposedImpl);
 
     /// @notice Returns the delay end time of the implementation proposed by the voter body.
     /// @return endTime The delay end time.
