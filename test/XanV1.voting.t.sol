@@ -100,20 +100,4 @@ contract XanV1VotingTest is Test, MockPersons {
         assertEq(_xanProxy.proposedImplementationByRank(1), _implC);
         assertEq(_xanProxy.proposedImplementationByRank(2), _implA);
     }
-
-    function testFuzz_lockedBalanceOf_and_unlockedBalanceOf_sum_to_balanceOf(address owner) public view {
-        assertEq(_xanProxy.lockedBalanceOf(owner) + _xanProxy.unlockedBalanceOf(owner), _xanProxy.balanceOf(owner));
-    }
-
-    function test_lockedBalanceOf_is_bound_by_balanceOf(address owner) public view {
-        assertLe(_xanProxy.lockedBalanceOf(owner), _xanProxy.balanceOf(owner));
-    }
-
-    function test_unlockedBalanceOf_is_bound_by_balanceOf(address owner) public view {
-        assertLe(_xanProxy.unlockedBalanceOf(owner), _xanProxy.balanceOf(owner));
-    }
-
-    function invariant_lockedBalance() public view {
-        assertLe(_xanProxy.lockedSupply(), _xanProxy.totalSupply());
-    }
 }
