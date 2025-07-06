@@ -364,4 +364,11 @@ contract XanV1VotingTest is Test {
         assertEq(_xanProxy.voterBodyDelayEndTime(), 0);
         assertEq(_xanProxy.voterBodyProposedImplementation(), address(0));
     }
+
+    function test_voterBodyProposedImplementation_returns_address_0_if_no_upgrade_delay_has_been_started()
+        public
+        view
+    {
+        assertEq(_xanProxy.voterBodyProposedImplementation(), address(0));
+    }
 }

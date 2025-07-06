@@ -234,13 +234,6 @@ contract XanV1UnitTest is Test {
         _xanProxy.upgradeToAndCall({newImplementation: _NEW_IMPL, data: ""});
     }
 
-    function test_voterBodyProposedImplementation_returns_address_0_if_no_upgrade_delay_has_been_started()
-        public
-        view
-    {
-        assertEq(_xanProxy.voterBodyProposedImplementation(), address(0));
-    }
-
     function test_councilProposedImplementation_returns_address_0_if_no_upgrade_delay_has_been_started() public view {
         assertEq(_xanProxy.councilProposedImplementation(), address(0));
     }
