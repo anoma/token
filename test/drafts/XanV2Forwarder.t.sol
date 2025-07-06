@@ -6,9 +6,9 @@ import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {XanV2} from "../src/drafts/XanV2.sol";
-import {XanV2Forwarder} from "../src/drafts/XanV2Forwarder.sol";
-import {MockProtocolAdapter} from "../test/mocks/ProtocolAdapter.m.sol";
+import {XanV2} from "../../src/drafts/XanV2.sol";
+import {XanV2Forwarder} from "../../src/drafts/XanV2Forwarder.sol";
+import {MockProtocolAdapter} from "../../test/mocks/ProtocolAdapter.m.sol";
 
 contract XanV2ForwarderUnitTest is Test {
     address internal _defaultSender;

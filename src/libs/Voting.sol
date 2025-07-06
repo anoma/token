@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
-library Ranking {
-    using Ranking for ProposedUpgrades;
+library Voting {
+    using Voting for Data;
 
     /// @notice A struct containing data associated with a current implementation and proposed upgrades from it.
-    /// @param lockedBalances The locked balances associated with the current implementation.
-    /// @param lockedSupply The locked total supply associated with the current implementation.
     /// @param ballots The ballots of proposed implementations to upgrade to.
     /// @param ranking The proposed implementations ranking.
     /// @param implCount The count of proposed implementations.
-    struct ProposedUpgrades {
-        mapping(address owner => uint256) lockedBalances;
-        uint256 lockedSupply;
+    /// @param delayEndTime The end time of the delay period.
+    /// @param delayedUpgradeImpl The implementation for which the delay has been started. //TODO consider renaming.
+    struct Data {
         mapping(address proposedImpl => Ballot) ballots;
         mapping(uint48 rank => address proposedImpl) ranking;
         uint48 implCount;
@@ -24,7 +22,6 @@ library Ranking {
     /// @param vota The vota of the individual identities.
     /// @param totalVotes The total votes casted.
     /// @param rank The voting rank of the implementation
-    /// @param  delayEndTime The end time of the delay period.
     /// @param exists Whether the implementation was proposed or not.
     struct Ballot {
         mapping(address voter => uint256 votes) vota;
@@ -36,7 +33,7 @@ library Ranking {
     /// @notice Assigns the highest rank to a proposed implementation.
     /// @param $ The storage containing the proposed upgrades.
     /// @param proposedImpl The proposed implementation to assign the highest rank to.
-    function assignWorstRank(ProposedUpgrades storage $, address proposedImpl) internal {
+    function assignWorstRank(Data storage $, address proposedImpl) internal {
         Ballot storage ballot = $.ballots[proposedImpl];
         ballot.exists = true;
         ballot.rank = $.implCount;
@@ -49,7 +46,7 @@ library Ranking {
     /// @notice Bubble the proposed implementation up in the ranking.
     /// @param $ The storage containing the ballots for proposed upgrades.
     /// @param proposedImpl The proposed implementation.
-    function bubbleUp(ProposedUpgrades storage $, address proposedImpl) internal {
+    function bubbleUp(Data storage $, address proposedImpl) internal {
         Ballot storage ballot = $.ballots[proposedImpl];
         uint48 rank = ballot.rank;
         uint256 votes = ballot.totalVotes;
@@ -76,7 +73,7 @@ library Ranking {
     /// @notice Bubble the proposed implementation down in the ranking.
     /// @param $ The storage containing the ballots for proposed upgrades.
     /// @param proposedImpl The proposed implementation.
-    function bubbleDown(ProposedUpgrades storage $, address proposedImpl) internal {
+    function bubbleDown(Data storage $, address proposedImpl) internal {
         Ballot storage ballot = $.ballots[proposedImpl];
         uint48 rank = ballot.rank;
         uint256 votes = ballot.totalVotes;
@@ -107,7 +104,7 @@ library Ranking {
     /// @param rankA The rank of implementation A before the swap.
     /// @param implB Implementation B.
     /// @param rankB The rank of implementation B before the swap.
-    function _swapRank(ProposedUpgrades storage $, address implA, uint48 rankA, address implB, uint48 rankB) private {
+    function _swapRank(Data storage $, address implA, uint48 rankA, address implB, uint48 rankB) private {
         $.ranking[rankA] = implB;
         $.ranking[rankB] = implA;
 

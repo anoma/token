@@ -52,4 +52,6 @@ contract XanV1UpgradeTest is Test {
             data: abi.encodeCall(XanV2.reinitializeFromV1, (address(uint160(1))))
         });
     }
+
+    function test_upgradeProxy_allow_upgradeing_to_the_same_implementation() public {}
 }

@@ -6,11 +6,11 @@ import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {Upgrades, UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {XanV2} from "../src/drafts/XanV2.sol";
-import {XanV2Forwarder} from "../src/drafts/XanV2Forwarder.sol";
-import {Parameters} from "../src/libs/Parameters.sol";
-import {XanV1} from "../src/XanV1.sol";
-import {MockProtocolAdapter} from "../test/mocks/ProtocolAdapter.m.sol";
+import {XanV2} from "../../src/drafts/XanV2.sol";
+import {XanV2Forwarder} from "../../src/drafts/XanV2Forwarder.sol";
+import {Parameters} from "../../src/libs/Parameters.sol";
+import {XanV1} from "../../src/XanV1.sol";
+import {MockProtocolAdapter} from "../../test/mocks/ProtocolAdapter.m.sol";
 
 contract XanV2UnitTest is Test {
     XanV1 internal _xanV1Proxy;
