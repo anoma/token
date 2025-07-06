@@ -40,7 +40,7 @@ contract XanV1UpgradeTest is Test {
         vm.stopPrank();
     }
 
-    function test_upgradeProxy_emits_the_Upgraded_event() public {
+    function test_upgradeToAndCall_emits_the_Upgraded_event() public {
         //! TODO use gov council for testing
 
         vm.prank(_defaultSender);
@@ -58,7 +58,28 @@ contract XanV1UpgradeTest is Test {
         });
     }
 
-    function test_upgradeProxy_allows_upgrade_to_the_same_implementation() public {
+    function test_upgradeToAndCall_resets_the_governance_council_address() public {
+        //! TODO use gov council for testing
+
+        vm.prank(_defaultSender);
+        _xanProxy.castVote(_newImpl);
+        _xanProxy.startVoterBodyUpgradeDelay(_newImpl);
+
+        skip(Parameters.DELAY_DURATION);
+
+        vm.expectEmit(address(_xanProxy));
+        emit IERC1967.Upgraded(_newImpl);
+
+        address(_xanProxy).upgradeProxy({
+            newImpl: _newImpl,
+            data: abi.encodeCall(XanV2.reinitializeFromV1, (address(uint160(1))))
+        });
+
+        // TODO! ASK CHRIS: Is this desired?
+        assertEq(_xanProxy.governanceCouncil(), address(0));
+    }
+
+    function test_upgradeToAndCall_allows_upgrade_to_the_same_implementation() public {
         //! TODO use gov council for testing
         address sameImpl = _xanProxy.implementation();
 
@@ -73,7 +94,7 @@ contract XanV1UpgradeTest is Test {
         address(_xanProxy).upgradeProxy({newImpl: sameImpl, data: ""});
     }
 
-    function test_upgradeProxy_reverts_upgrade_to_address_0() public {
+    function test_upgradeToAndCall_reverts_for_an_upgrade_to_address_0() public {
         //! TODO use gov council for testing
 
         address addr0 = address(0);

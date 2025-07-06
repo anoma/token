@@ -63,6 +63,7 @@ contract XanV1 is
     error UpgradeDelayNotResettable(address impl);
 
     error MinLockedSupplyNotReached();
+    error QuorumNowhereReached();
     error QuorumNotReached(address proposedImpl);
     error QuorumReachedForVoterBodyProposedImplementation(address voterBodyProposedImpl);
     error DelayPeriodNotStarted();
@@ -228,30 +229,31 @@ contract XanV1 is
         uint48 currentTime = Time.timestamp();
         data.delayEndTime = currentTime + Parameters.DELAY_DURATION;
 
-        emit CouncilUpgradeDelayStarted({
-            implementation: proposedImpl,
-            startTime: currentTime,
-            endTime: data.delayEndTime
-        });
+        emit CouncilUpgradeProposed({implementation: proposedImpl, startTime: currentTime, endTime: data.delayEndTime});
     }
 
     /// @notice @inheritdoc IXanV1
     function cancelCouncilUpgrade() external virtual override onlyGovernanceCouncil {
-        Council.Data storage data = _getCouncilData();
-
-        emit CouncilUpgradeDelayReset({implementation: data.proposedImpl});
-
-        data.proposedImpl = address(0);
-        data.delayEndTime = 0;
+        emit CouncilUpgradeCancelled();
+        _cancelCouncilUpgrade();
     }
 
     /// @notice @inheritdoc IXanV1
     function vetoCouncilUpgrade() external virtual override {
-        // TODO! if there has been a quorum of votes for another impl, mark the council upgrade as failed.
-        // TODO! For the voter body to stop a council upgrade, they can vote for a different impl, even the current one.
-        // If this is winning, the council upgrade can be cancelled (without waiting / 2 week delay).
+        // Get the implementation with the most votes.
+        address mostVotedImplementation = _getVotingData().ranking[0];
 
-        revert("NOT IMPLEMENTED");
+        // Check if the most voted implementation has reached quorum.
+        if (!_isQuorumReached(mostVotedImplementation)) {
+            // The voter body has not reached quorum on any implementation.
+            // This means that vetoing the council is not possible.
+            revert QuorumNowhereReached();
+        }
+
+        emit CouncilUpgradeVetoed();
+
+        // Cancel the council upgrade
+        _cancelCouncilUpgrade();
     }
 
     /// @inheritdoc IXanV1
@@ -355,6 +357,14 @@ contract XanV1 is
         $.lockedBalances[account] += value;
 
         emit Locked({account: account, value: value});
+    }
+
+    /// @notice Cancels the council upgrade by resetting the proposed implementation and delay end time to 0.
+    function _cancelCouncilUpgrade() internal {
+        Council.Data storage data = _getCouncilData();
+
+        data.proposedImpl = address(0);
+        data.delayEndTime = 0;
     }
 
     /// @notice Authorizes an upgrade.

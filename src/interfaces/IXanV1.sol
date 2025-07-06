@@ -29,15 +29,17 @@ interface IXanV1 {
     /// @param implementation The implementation the delay is reset for.
     event VoterBodyUpgradeDelayReset(address indexed implementation);
 
-    /// @notice Emitted when the upgrade delay period for a new implementation proposed by the council is started.
+    /// @notice Emitted when an upgrade is proposed by the governance council.
     /// @param implementation The implementation the delay is started for.
     /// @param startTime The start time.
     /// @param endTime The end time.
-    event CouncilUpgradeDelayStarted(address indexed implementation, uint48 startTime, uint48 endTime);
+    event CouncilUpgradeProposed(address indexed implementation, uint48 startTime, uint48 endTime);
 
-    /// @notice Emitted when the upgrade delay period for a new implementation proposed by the council is reset.
-    /// @param implementation The implementation the delay is reset for.
-    event CouncilUpgradeDelayReset(address indexed implementation);
+    /// @notice Emitted when the upgrade delay period for a new implementation proposed by the council is cancelled.
+    event CouncilUpgradeCancelled();
+
+    /// @notice Emitted when the upgrade delay period for a new implementation proposed by the council is vetoed.
+    event CouncilUpgradeVetoed();
 
     /// @notice Permanently locks tokens for the current implementation until it gets upgraded.
     /// @param value The value to be locked.
