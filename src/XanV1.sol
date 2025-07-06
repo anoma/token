@@ -28,16 +28,26 @@ contract XanV1 is
 {
     using Voting for Voting.Data;
 
+    /// @notice A struct containing data associated with a current implementation.
+    /// @param lockingData The state associated with the locking mechanism for the current implementation.
+    /// @param votingData  The state associated with the voting mechanism for the current implementation.
+    /// @param councilData The state associated with the governance council for the current implementation.
+    struct ImplementationData {
+        Locking.Data lockingData;
+        Voting.Data votingData;
+        // TODO! Revisit if the council data should also be reset.
+        // This means that after an upgrade, the governance council is set to 0x.
+        Council.Data councilData;
+    }
+
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.
     /// @custom:storage-location erc7201:anoma.storage.Xan.v1
-    /// @param lockingData The state associated with the locking mechanism for the current implementation. // TODO! Revisit
-    /// @param votingData  The state associated with the voting mechanism for the current implementation. // TODO! Revisit
-    /// @param councilData The state associated with the governance council for the current implementation. // TODO! Revisit
+    /// @param lockingData The state associated with the locking mechanism for the current implementation.
+    /// @param votingData  The state associated with the voting mechanism for the current implementation.
+    /// @param councilData The state associated with the governance council for the current implementation.
     struct XanV1Storage {
-        // TODO! Refactor into one mapping or drop the `current`
-        mapping(address current => Locking.Data) lockingData;
-        mapping(address current => Voting.Data) votingData;
-        mapping(address current => Council.Data) councilData;
+        // TODO! Revisit
+        mapping(address current => ImplementationData) implementationSpecificData;
     }
 
     /// @notice The ERC-7201 storage location of the Xan V1 contract (see https://eips.ethereum.org/EIPS/eip-7201).
@@ -87,7 +97,7 @@ contract XanV1 is
 
         // Initialize the XanV1 contract
         _mint(initialMintRecipient, Parameters.SUPPLY);
-        _getGovernanceCouncilData().council = council;
+        _getCouncilData().council = council;
     }
 
     /// @inheritdoc IXanV1
@@ -208,6 +218,20 @@ contract XanV1 is
         emit DelayReset({implementation: losingImpl});
     }
 
+    /// @notice @inheritdoc IXanV1
+    function proposeCouncilUpgrade(address proposedImpl) external virtual override onlyGovernanceCouncil {
+        _getCouncilData().proposedImpl = proposedImpl;
+    }
+
+    /// @notice @inheritdoc IXanV1
+    function vetoCouncilUpgrade() external virtual override {
+        // TODO! if there has been a quorum of votes for another impl, mark the council upgrade as failed.
+        // TODO! For the voter body to stop a council upgrade, they can vote for a different impl, even the current one.
+        // If this is winning, the council upgrade can be cancelled (without waiting / 2 week delay).
+
+        revert("NOT IMPLEMENTED");
+    }
+
     /// @inheritdoc IXanV1
     function delayedUpgradeImplementation() external view virtual override returns (address delayedImpl) {
         delayedImpl = _getVotingData().delayedUpgradeImpl;
@@ -226,19 +250,6 @@ contract XanV1 is
     /// @notice @inheritdoc IXanV1
     function lockedSupply() public view virtual override returns (uint256 locked) {
         locked = _getLockingData().lockedSupply;
-    }
-
-    /// @notice @inheritdoc IXanV1
-    function proposeCouncilUpgrade(address proposedImpl) external virtual override onlyGovernanceCouncil {
-        // TODO
-    }
-
-    /// @notice @inheritdoc IXanV1
-    function vetoCouncilUpgrade() external virtual override {
-        // TODO! if there has been a quorum of votes for another impl, mark the council upgrade as failed.
-        // TODO! For the voter body to stop a council upgrade, they can vote for a different impl, even the current one. If this is winning, the council upgrade can be cancelled (without waiting / 2 week delay).
-
-        revert("NOT IMPLEMENTED");
     }
 
     /// @notice @inheritdoc IXanV1
@@ -281,7 +292,7 @@ contract XanV1 is
 
     /// @inheritdoc IXanV1
     function governanceCouncil() public view virtual override returns (address council) {
-        council = _getGovernanceCouncilData().council;
+        council = _getCouncilData().council;
     }
 
     /// @inheritdoc IXanV1
@@ -332,8 +343,8 @@ contract XanV1 is
     /// @notice Authorizes an upgrade.
     /// @param newImpl The new implementation to authorize the upgrade to.
     function _authorizeUpgrade(address newImpl) internal view virtual override {
-        // TODO optimize fetching? Data is also used in Criteria checks
-        address councilProposedImpl = _getGovernanceCouncilData().proposedImpl;
+        // TODO optimize fetching? Data is also used in Criteria checks // No, happens only once.
+        address councilProposedImpl = _getCouncilData().proposedImpl;
 
         if (newImpl == councilProposedImpl) {
             _checkCouncilDelayCriterion( /*TODO! //councilProposedImpl*/ );
@@ -417,7 +428,7 @@ contract XanV1 is
 
     /// @notice Checks if the delay period has ended and reverts with errors if not.
     function _checkCouncilDelayCriterion() internal view {
-        Council.Data storage $ = _getGovernanceCouncilData();
+        Council.Data storage $ = _getCouncilData();
 
         if ($.delayEndTime == 0) {
             revert DelayPeriodNotStarted();
@@ -431,19 +442,20 @@ contract XanV1 is
     /// @notice Returns the locking data for the current implementation from the contract storage location.
     /// @return lockingData The data associated with locked tokens.
     function _getLockingData() internal view virtual returns (Locking.Data storage lockingData) {
-        lockingData = _getXanV1Storage().lockingData[implementation()];
+        lockingData = _getXanV1Storage().implementationSpecificData[implementation()].lockingData;
     }
 
     /// @notice Returns the proposed upgrades from the current implementation from the contract storage location.
     /// @return votingData The data associated with proposed upgrades from the current implementation.
     function _getVotingData() internal view virtual returns (Voting.Data storage votingData) {
-        votingData = _getXanV1Storage().votingData[implementation()];
+        votingData = _getXanV1Storage().implementationSpecificData[implementation()].votingData;
     }
 
-    /// @notice Returns the data of the upgrade proposed by the council from the current implementation from the contract storage location.
+    /// @notice Returns the data of the upgrade proposed by the council from the current implementation
+    /// from the contract storage location.
     /// @return proposedUpgrade The data associated with upgrade proposed by the council from the current implementation.
-    function _getGovernanceCouncilData() internal view virtual returns (Council.Data storage proposedUpgrade) {
-        proposedUpgrade = _getXanV1Storage().councilData[implementation()];
+    function _getCouncilData() internal view virtual returns (Council.Data storage proposedUpgrade) {
+        proposedUpgrade = _getXanV1Storage().implementationSpecificData[implementation()].councilData;
     }
 
     /// @notice Returns the storage from the Xan V1 storage location.

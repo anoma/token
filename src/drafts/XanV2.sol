@@ -46,7 +46,7 @@ contract XanV2 is IXanV2, XanV1 {
 
         // Initialize the XanV1 contract
         _mint(initialMintRecipient, Parameters.SUPPLY);
-        _getGovernanceCouncilData().council = council;
+        _getCouncilData().council = council;
 
         // Initialize the XanV2 contract
         _getXanV2Storage().forwarder = xanV2Forwarder;

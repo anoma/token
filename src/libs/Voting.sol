@@ -31,23 +31,23 @@ library Voting {
     }
 
     /// @notice Assigns the highest rank to a proposed implementation.
-    /// @param $ The storage containing the proposed upgrades.
+    /// @param data The voting data containing the proposed upgrades.
     /// @param proposedImpl The proposed implementation to assign the highest rank to.
-    function assignWorstRank(Data storage $, address proposedImpl) internal {
-        Ballot storage ballot = $.ballots[proposedImpl];
+    function assignWorstRank(Data storage data, address proposedImpl) internal {
+        Ballot storage ballot = data.ballots[proposedImpl];
         ballot.exists = true;
-        ballot.rank = $.implCount;
+        ballot.rank = data.implCount;
 
         // Set the worst rank.
-        $.ranking[$.implCount] = proposedImpl;
-        ++$.implCount;
+        data.ranking[data.implCount] = proposedImpl;
+        ++data.implCount;
     }
 
     /// @notice Bubble the proposed implementation up in the ranking.
-    /// @param $ The storage containing the ballots for proposed upgrades.
+    /// @param data The voting data containing the ballots for proposed upgrades.
     /// @param proposedImpl The proposed implementation.
-    function bubbleUp(Data storage $, address proposedImpl) internal {
-        Ballot storage ballot = $.ballots[proposedImpl];
+    function bubbleUp(Data storage data, address proposedImpl) internal {
+        Ballot storage ballot = data.ballots[proposedImpl];
         uint48 rank = ballot.rank;
         uint256 votes = ballot.totalVotes;
 
@@ -59,26 +59,26 @@ library Voting {
                 nextBetterRank = rank - 1;
             }
 
-            address nextBetterImpl = $.ranking[nextBetterRank];
-            uint256 nextBetterVotes = $.ballots[nextBetterImpl].totalVotes;
+            address nextBetterImpl = data.ranking[nextBetterRank];
+            uint256 nextBetterVotes = data.ballots[nextBetterImpl].totalVotes;
 
             if (votes < nextBetterVotes + 1) break;
 
-            _swapRank({$: $, implA: proposedImpl, rankA: rank, implB: nextBetterImpl, rankB: nextBetterRank});
+            _swapRank({data: data, implA: proposedImpl, rankA: rank, implB: nextBetterImpl, rankB: nextBetterRank});
             // Update the cached rank after the swap.
             rank = nextBetterRank;
         }
     }
 
     /// @notice Bubble the proposed implementation down in the ranking.
-    /// @param $ The storage containing the ballots for proposed upgrades.
+    /// @param data The voting data containing the ballots for proposed upgrades.
     /// @param proposedImpl The proposed implementation.
-    function bubbleDown(Data storage $, address proposedImpl) internal {
-        Ballot storage ballot = $.ballots[proposedImpl];
+    function bubbleDown(Data storage data, address proposedImpl) internal {
+        Ballot storage ballot = data.ballots[proposedImpl];
         uint48 rank = ballot.rank;
         uint256 votes = ballot.totalVotes;
 
-        uint48 worstRank = $.implCount - 1;
+        uint48 worstRank = data.implCount - 1;
 
         while (rank < worstRank) {
             uint48 nextWorseRank;
@@ -86,12 +86,12 @@ library Voting {
                 nextWorseRank = rank + 1;
             }
 
-            address nextWorseImpl = $.ranking[nextWorseRank];
-            uint256 nextWorseVotes = $.ballots[nextWorseImpl].totalVotes;
+            address nextWorseImpl = data.ranking[nextWorseRank];
+            uint256 nextWorseVotes = data.ballots[nextWorseImpl].totalVotes;
 
             if (votes > nextWorseVotes) break;
 
-            _swapRank({$: $, implA: proposedImpl, rankA: rank, implB: nextWorseImpl, rankB: nextWorseRank});
+            _swapRank({data: data, implA: proposedImpl, rankA: rank, implB: nextWorseImpl, rankB: nextWorseRank});
 
             // Update the cached rank after the swap.
             rank = nextWorseRank;
@@ -99,16 +99,16 @@ library Voting {
     }
 
     /// @notice Swaps the rank of two implementations A and B.
-    /// @param $ The storage containing the ballots for proposed upgrades.
+    /// @param data The storage containing the ballots for proposed upgrades.
     /// @param implA Implementation A.
     /// @param rankA The rank of implementation A before the swap.
     /// @param implB Implementation B.
     /// @param rankB The rank of implementation B before the swap.
-    function _swapRank(Data storage $, address implA, uint48 rankA, address implB, uint48 rankB) private {
-        $.ranking[rankA] = implB;
-        $.ranking[rankB] = implA;
+    function _swapRank(Data storage data, address implA, uint48 rankA, address implB, uint48 rankB) private {
+        data.ranking[rankA] = implB;
+        data.ranking[rankB] = implA;
 
-        $.ballots[implA].rank = rankB;
-        $.ballots[implB].rank = rankA;
+        data.ballots[implA].rank = rankB;
+        data.ballots[implB].rank = rankA;
     }
 }
