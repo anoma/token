@@ -130,14 +130,8 @@ contract XanV1UpgradeTest is Test {
     }
 
     function test_upgradeToAndCall_emits_the_Upgraded_event() public {
-        //! TODO use gov council for testing
-
-        vm.startPrank(_defaultSender);
-        _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));
-        _xanProxy.castVote(_newImpl);
-        vm.stopPrank();
-
-        _xanProxy.startVoterBodyUpgradeDelay(_newImpl);
+        vm.prank(_COUNCIL);
+        _xanProxy.proposeCouncilUpgrade(_newImpl);
 
         skip(Parameters.DELAY_DURATION);
 
@@ -151,14 +145,8 @@ contract XanV1UpgradeTest is Test {
     }
 
     function test_upgradeToAndCall_resets_the_governance_council_address() public {
-        //! TODO use gov council for testing
-
-        vm.startPrank(_defaultSender);
-        _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));
-        _xanProxy.castVote(_newImpl);
-        vm.stopPrank();
-
-        _xanProxy.startVoterBodyUpgradeDelay(_newImpl);
+        vm.prank(_COUNCIL);
+        _xanProxy.proposeCouncilUpgrade(_newImpl);
 
         skip(Parameters.DELAY_DURATION);
 
@@ -175,15 +163,10 @@ contract XanV1UpgradeTest is Test {
     }
 
     function test_upgradeToAndCall_allows_upgrade_to_the_same_implementation() public {
-        //! TODO use gov council for testing
         address sameImpl = _xanProxy.implementation();
 
-        vm.startPrank(_defaultSender);
-        _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));
-        _xanProxy.castVote(sameImpl);
-        vm.stopPrank();
-
-        _xanProxy.startVoterBodyUpgradeDelay(sameImpl);
+        vm.prank(_COUNCIL);
+        _xanProxy.proposeCouncilUpgrade(sameImpl);
 
         skip(Parameters.DELAY_DURATION);
 
