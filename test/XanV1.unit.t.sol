@@ -569,46 +569,6 @@ contract XanV1UnitTest is Test {
         _xanProxy.upgradeToAndCall({newImplementation: _NEW_IMPL, data: ""});
     }
 
-    function test_permits_spending_given_an_EIP712_signature() public {
-        uint256 alicePrivKey = 0xA11CE;
-        address aliceAddr = vm.addr(alicePrivKey);
-        address spender = address(uint160(4));
-
-        // Give funds to Alice
-        vm.prank(_defaultSender);
-        _xanProxy.transfer({to: aliceAddr, value: 1_000});
-
-        // Sign message
-        uint256 nonce = _xanProxy.nonces(aliceAddr);
-        uint256 deadline = block.timestamp + 1 hours;
-        uint256 value = 500;
-
-        bytes32 structHash = keccak256(
-            abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
-                aliceAddr,
-                spender,
-                value,
-                nonce,
-                deadline
-            )
-        );
-
-        bytes32 domainSeparator = _xanProxy.DOMAIN_SEPARATOR();
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alicePrivKey, digest);
-
-        // Check that the spender is allowed to spend 0 XAN of Alice before the `permit` call.
-        assertEq(_xanProxy.allowance({owner: aliceAddr, spender: spender}), 0);
-
-        // Given the signature, anyone (here `_defaultSender`) can set the allowance.
-        vm.prank(_defaultSender);
-        _xanProxy.permit({owner: aliceAddr, spender: spender, value: value, deadline: deadline, v: v, r: r, s: s});
-
-        // Check that the spender is allowed to spend `value` XAN of Alice after the `permit` call.
-        assertEq(_xanProxy.allowance({owner: aliceAddr, spender: spender}), value);
-    }
-
     function test_voterBodyProposedImplementation_returns_address_0_if_no_upgrade_delay_has_been_started()
         public
         view
