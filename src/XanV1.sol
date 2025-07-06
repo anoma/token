@@ -42,9 +42,6 @@ contract XanV1 is
 
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.
     /// @custom:storage-location erc7201:anoma.storage.Xan.v1
-    /// @param lockingData The state associated with the locking mechanism for the current implementation.
-    /// @param votingData  The state associated with the voting mechanism for the current implementation.
-    /// @param councilData The state associated with the governance council for the current implementation.
     struct XanV1Storage {
         // TODO! Revisit
         mapping(address current => ImplementationData) implementationSpecificData;
@@ -59,6 +56,7 @@ contract XanV1 is
     error UnlockedBalanceInsufficient(address sender, uint256 unlockedBalance, uint256 valueToLock);
     error LockedBalanceInsufficient(address sender, uint256 lockedBalance);
     error NoVotesToRevoke(address sender, address proposedImpl);
+    error ImplementationZero();
     error ImplementationRankNonExistent(uint48 limit, uint48 rank);
     error ImplementationNotRankedBest(address expected, address actual);
     error ImplementationNotDelayed(address expected, address actual);
@@ -66,7 +64,7 @@ contract XanV1 is
 
     error MinLockedSupplyNotReached();
     error QuorumNotReached(address proposedImpl);
-    error QuorumReachedForVotingProposedImplementation(address voterBodyProposedImpl);
+    error QuorumReachedForVoterBodyProposedImplementation(address voterBodyProposedImpl);
     error DelayPeriodNotStarted();
     error DelayPeriodAlreadyStarted(address delayedUpgradeImpl);
     error DelayPeriodNotEnded();
@@ -180,9 +178,9 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
-    function startUpgradeDelay(address proposedImpl) external virtual override {
+    function startVoterBodyUpgradeDelay(address proposedImpl) external virtual override {
         // Check that all upgrade criteria are met before starting the delay.
-        _checkUpgradeCriteria(proposedImpl);
+        _checkVoterBodyUpgradeCriteria(proposedImpl);
 
         Voting.Data storage $ = _getVotingData();
 
@@ -198,12 +196,16 @@ contract XanV1 is
         $.delayEndTime = currentTime + Parameters.DELAY_DURATION;
         $.delayedUpgradeImpl = proposedImpl;
 
-        emit DelayStarted({implementation: proposedImpl, startTime: currentTime, endTime: $.delayEndTime});
+        emit VoterBodyUpgradeDelayStarted({
+            implementation: proposedImpl,
+            startTime: currentTime,
+            endTime: $.delayEndTime
+        });
     }
 
     /// @inheritdoc IXanV1
-    function resetUpgradeDelay(address losingImpl) external override {
-        _checkDelayCriterion(losingImpl);
+    function resetVoterBodyUpgradeDelay(address losingImpl) external override {
+        _checkVoterBodyDelayCriterion(losingImpl);
 
         Voting.Data storage $ = _getVotingData();
 
@@ -215,12 +217,32 @@ contract XanV1 is
         $.delayEndTime = 0;
         $.delayedUpgradeImpl = address(0);
 
-        emit DelayReset({implementation: losingImpl});
+        emit VoterBodyUpgradeDelayReset({implementation: losingImpl});
     }
 
     /// @notice @inheritdoc IXanV1
     function proposeCouncilUpgrade(address proposedImpl) external virtual override onlyGovernanceCouncil {
-        _getCouncilData().proposedImpl = proposedImpl;
+        Council.Data storage data = _getCouncilData();
+        data.proposedImpl = proposedImpl;
+
+        uint48 currentTime = Time.timestamp();
+        data.delayEndTime = currentTime + Parameters.DELAY_DURATION;
+
+        emit CouncilUpgradeDelayStarted({
+            implementation: proposedImpl,
+            startTime: currentTime,
+            endTime: data.delayEndTime
+        });
+    }
+
+    /// @notice @inheritdoc IXanV1
+    function cancelCouncilUpgrade() external virtual override onlyGovernanceCouncil {
+        Council.Data storage data = _getCouncilData();
+
+        emit CouncilUpgradeDelayReset({implementation: data.proposedImpl});
+
+        data.proposedImpl = address(0);
+        data.delayEndTime = 0;
     }
 
     /// @notice @inheritdoc IXanV1
@@ -233,7 +255,7 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
-    function delayedUpgradeImplementation() external view virtual override returns (address delayedImpl) {
+    function voterBodyDelayedUpgradeImplementation() external view virtual override returns (address delayedImpl) {
         delayedImpl = _getVotingData().delayedUpgradeImpl;
     }
 
@@ -243,18 +265,13 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
-    function delayEndTime() external view virtual override returns (uint48 endTime) {
+    function voterBodyDelayEndTime() external view virtual override returns (uint48 endTime) {
         endTime = _getVotingData().delayEndTime;
     }
 
     /// @notice @inheritdoc IXanV1
     function lockedSupply() public view virtual override returns (uint256 locked) {
         locked = _getLockingData().lockedSupply;
-    }
-
-    /// @notice @inheritdoc IXanV1
-    function cancelCouncilUpgrade() external virtual override onlyGovernanceCouncil {
-        revert("NOT IMPLEMENTED");
     }
 
     /// @notice @inheritdoc IXanV1
@@ -343,17 +360,23 @@ contract XanV1 is
     /// @notice Authorizes an upgrade.
     /// @param newImpl The new implementation to authorize the upgrade to.
     function _authorizeUpgrade(address newImpl) internal view virtual override {
+        if (newImpl == address(0)) {
+            revert ImplementationZero();
+        }
+
         // TODO optimize fetching? Data is also used in Criteria checks // No, happens only once.
         address councilProposedImpl = _getCouncilData().proposedImpl;
+
+        // TODO! What if the voter body votes for the same impl as the council?
 
         if (newImpl == councilProposedImpl) {
             _checkCouncilDelayCriterion( /*TODO! //councilProposedImpl*/ );
 
             _checkCouncilUpgradeCriteria(councilProposedImpl);
         } else {
-            _checkDelayCriterion(newImpl);
+            _checkVoterBodyDelayCriterion(newImpl);
 
-            _checkUpgradeCriteria(newImpl);
+            _checkVoterBodyUpgradeCriteria(newImpl);
         }
     }
 
@@ -364,9 +387,10 @@ contract XanV1 is
         }
     }
 
-    /// @notice Checks if the criteria to upgrade to the new implementation are met and reverts with errors if not.
+    /// @notice Checks if the criteria to upgrade to the new implementation proposed by the voter body are met
+    /// and reverts with errors if not.
     /// @param impl The implementation to check the upgrade criteria for.
-    function _checkUpgradeCriteria(address impl) internal view virtual {
+    function _checkVoterBodyUpgradeCriteria(address impl) internal view {
         // Check that the minimal required supply has been locked.
         if (!_isMinLockedSupplyReached()) {
             revert MinLockedSupplyNotReached();
@@ -385,32 +409,37 @@ contract XanV1 is
         }
     }
 
-    function _checkCouncilUpgradeCriteria(address councilProposedImpl) internal view virtual {
-        // No other impl. has reached quorum (does not need to be winning!).
-
+    /// @notice Checks if the criteria to upgrade to the new implementation proposed by the governance council are met
+    /// and reverts with errors if not.
+    /// @param impl The implementation to check the upgrade criteria for.
+    function _checkCouncilUpgradeCriteria(address impl) internal view virtual {
+        // Get the implementation with the most votes.
         address voterBodyProposedImpl = _getVotingData().ranking[0];
 
-        if (councilProposedImpl == voterBodyProposedImpl) return; // TODO ! Test this logic carefully
+        // Check if it matches the
+        if (impl == voterBodyProposedImpl) return; // TODO! Test this logic carefully
 
         if (_isQuorumReached(voterBodyProposedImpl)) {
-            revert QuorumReachedForVotingProposedImplementation(voterBodyProposedImpl);
+            revert QuorumReachedForVoterBodyProposedImplementation(voterBodyProposedImpl);
         }
     }
 
     /// @notice Returns `true` if the quorum is reached for a particular implementation.
     /// @param impl The implementation to check the quorum criteria for.
+    /// @return isReached Whether the quorum is reached or not.
     function _isQuorumReached(address impl) internal view virtual returns (bool isReached) {
         isReached = totalVotes(impl) > calculateQuorumThreshold();
     }
 
     /// @notice Returns `true` if the quorum is reached for a particular implementation.
+    /// @return isReached Whether the minimum locked supply is reached or not.
     function _isMinLockedSupplyReached() internal view virtual returns (bool isReached) {
         isReached = lockedSupply() + 1 > Parameters.MIN_LOCKED_SUPPLY;
     }
 
     /// @notice Checks if the delay period has ended and reverts with errors if not.
     /// @param impl The implementation to check the quorum criteria for.
-    function _checkDelayCriterion(address impl) internal view virtual {
+    function _checkVoterBodyDelayCriterion(address impl) internal view virtual {
         Voting.Data storage $ = _getVotingData();
 
         if ($.delayEndTime == 0) {

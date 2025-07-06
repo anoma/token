@@ -167,7 +167,7 @@ contract XanV2UnitTest is Test {
         vm.startPrank(_defaultSender);
         xanV1Proxy.lock(xanV1Proxy.unlockedBalanceOf(_defaultSender));
         xanV1Proxy.castVote(_xanV2Impl);
-        xanV1Proxy.startUpgradeDelay(_xanV2Impl);
+        xanV1Proxy.startVoterBodyUpgradeDelay(_xanV2Impl);
         vm.stopPrank();
         skip(Parameters.DELAY_DURATION);
     }

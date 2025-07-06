@@ -360,10 +360,10 @@ contract XanV1UnitTest is Test {
         assertEq(_xanProxy.proposedImplementationByRank(0), _IMPL);
 
         uint48 currentTime = Time.timestamp();
-        _xanProxy.startUpgradeDelay(_IMPL);
+        _xanProxy.startVoterBodyUpgradeDelay(_IMPL);
 
-        assertEq(_xanProxy.delayEndTime(), currentTime + Parameters.DELAY_DURATION);
-        assertEq(_xanProxy.delayedUpgradeImplementation(), _IMPL);
+        assertEq(_xanProxy.voterBodyDelayEndTime(), currentTime + Parameters.DELAY_DURATION);
+        assertEq(_xanProxy.voterBodyDelayedUpgradeImplementation(), _IMPL);
     }
 
     function test_startUpgradeDelay_emits_the_DelayStarted_event() public {
@@ -374,12 +374,12 @@ contract XanV1UnitTest is Test {
 
         uint48 currentTime = Time.timestamp();
         vm.expectEmit(address(_xanProxy));
-        emit IXanV1.DelayStarted({
+        emit IXanV1.VoterBodyUpgradeDelayStarted({
             implementation: _IMPL,
             startTime: currentTime,
             endTime: currentTime + Parameters.DELAY_DURATION
         });
-        _xanProxy.startUpgradeDelay(_IMPL);
+        _xanProxy.startVoterBodyUpgradeDelay(_IMPL);
     }
 
     function test_startUpgradeDelay_reverts_if_the_minimal_locked_supply_is_not_met() public {
@@ -388,7 +388,7 @@ contract XanV1UnitTest is Test {
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY - 1);
 
         vm.expectRevert(abi.encodeWithSelector(XanV1.MinLockedSupplyNotReached.selector), address(_xanProxy));
-        _xanProxy.startUpgradeDelay(_IMPL);
+        _xanProxy.startVoterBodyUpgradeDelay(_IMPL);
     }
 
     function test_startUpgradeDelay_reverts_if_quorum_is_not_met() public {
@@ -406,7 +406,7 @@ contract XanV1UnitTest is Test {
         vm.stopPrank();
 
         vm.expectRevert(abi.encodeWithSelector(XanV1.QuorumNotReached.selector, _IMPL), address(_xanProxy));
-        _xanProxy.startUpgradeDelay(_IMPL);
+        _xanProxy.startVoterBodyUpgradeDelay(_IMPL);
     }
 
     function test_startUpgradeDelay_reverts_if_delay_has_already_been_started() public {
@@ -416,11 +416,11 @@ contract XanV1UnitTest is Test {
         vm.stopPrank();
 
         // Start the delay
-        _xanProxy.startUpgradeDelay(_IMPL);
+        _xanProxy.startVoterBodyUpgradeDelay(_IMPL);
 
         // Try to start the delay again.
         vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodAlreadyStarted.selector, _IMPL), address(_xanProxy));
-        _xanProxy.startUpgradeDelay(_IMPL);
+        _xanProxy.startVoterBodyUpgradeDelay(_IMPL);
     }
 
     function test_startUpgradeDelay_reverts_is_not_ranked_best() public {
@@ -436,7 +436,7 @@ contract XanV1UnitTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(XanV1.ImplementationNotRankedBest.selector, _IMPL, _OTHER_IMPL), address(_xanProxy)
         );
-        _xanProxy.startUpgradeDelay(_OTHER_IMPL);
+        _xanProxy.startVoterBodyUpgradeDelay(_OTHER_IMPL);
     }
 
     function test_resetUpgradeDelay_reverts_on_winning_implementation() public {
@@ -445,20 +445,20 @@ contract XanV1UnitTest is Test {
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
 
-        _xanProxy.startUpgradeDelay(_IMPL);
+        _xanProxy.startVoterBodyUpgradeDelay(_IMPL);
 
         // Skip the delay period.
         skip(Parameters.DELAY_DURATION);
 
         vm.expectRevert(abi.encodeWithSelector(XanV1.UpgradeDelayNotResettable.selector, _IMPL), address(_xanProxy));
-        _xanProxy.resetUpgradeDelay(_IMPL);
+        _xanProxy.resetVoterBodyUpgradeDelay(_IMPL);
     }
 
     function test_resetUpgradeDelay_emits_the_DelayReset_event() public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_IMPL);
-        _xanProxy.startUpgradeDelay(_IMPL);
+        _xanProxy.startVoterBodyUpgradeDelay(_IMPL);
 
         // Vote with more weight for another implementation
         _xanProxy.lock(1);
@@ -473,20 +473,20 @@ contract XanV1UnitTest is Test {
 
         // Reset the delay
         vm.expectEmit(address(_xanProxy));
-        emit IXanV1.DelayReset({implementation: _IMPL});
-        _xanProxy.resetUpgradeDelay(_IMPL);
+        emit IXanV1.VoterBodyUpgradeDelayReset({implementation: _IMPL});
+        _xanProxy.resetVoterBodyUpgradeDelay(_IMPL);
     }
 
     function test_resetUpgradeDelay_resets_the_delay() public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_IMPL);
-        _xanProxy.startUpgradeDelay(_IMPL);
+        _xanProxy.startVoterBodyUpgradeDelay(_IMPL);
 
         uint48 currentTime = Time.timestamp();
 
-        assertEq(_xanProxy.delayEndTime(), currentTime + Parameters.DELAY_DURATION);
-        assertEq(_xanProxy.delayedUpgradeImplementation(), _IMPL);
+        assertEq(_xanProxy.voterBodyDelayEndTime(), currentTime + Parameters.DELAY_DURATION);
+        assertEq(_xanProxy.voterBodyDelayedUpgradeImplementation(), _IMPL);
 
         // Vote with more weight for another implementation
         _xanProxy.lock(1);
@@ -500,11 +500,11 @@ contract XanV1UnitTest is Test {
         skip(Parameters.DELAY_DURATION);
 
         // Reset the delay
-        _xanProxy.resetUpgradeDelay(_IMPL);
+        _xanProxy.resetVoterBodyUpgradeDelay(_IMPL);
 
         // Check state change has happened
-        assertEq(_xanProxy.delayEndTime(), 0);
-        assertEq(_xanProxy.delayedUpgradeImplementation(), address(0));
+        assertEq(_xanProxy.voterBodyDelayEndTime(), 0);
+        assertEq(_xanProxy.voterBodyDelayedUpgradeImplementation(), address(0));
     }
 
     function test_upgradeToAndCall_reverts_if_implementation_has_not_been_voted_on() public {
@@ -518,7 +518,7 @@ contract XanV1UnitTest is Test {
         _xanProxy.castVote(_OTHER_IMPL);
         vm.stopPrank();
 
-        _xanProxy.startUpgradeDelay(_OTHER_IMPL);
+        _xanProxy.startVoterBodyUpgradeDelay(_OTHER_IMPL);
         skip(Parameters.DELAY_DURATION);
 
         vm.expectRevert(
@@ -543,7 +543,7 @@ contract XanV1UnitTest is Test {
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
 
-        _xanProxy.startUpgradeDelay(_IMPL);
+        _xanProxy.startVoterBodyUpgradeDelay(_IMPL);
 
         vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotEnded.selector), address(_xanProxy));
         _xanProxy.upgradeToAndCall({newImplementation: _IMPL, data: ""});
@@ -555,7 +555,7 @@ contract XanV1UnitTest is Test {
         _xanProxy.castVote(_IMPL);
         vm.stopPrank();
 
-        _xanProxy.startUpgradeDelay(_IMPL);
+        _xanProxy.startVoterBodyUpgradeDelay(_IMPL);
         skip(Parameters.DELAY_DURATION);
 
         vm.prank(_defaultSender);
@@ -576,7 +576,7 @@ contract XanV1UnitTest is Test {
         _xanProxy.castVote(_IMPL);
         assertEq(_xanProxy.proposedImplementationByRank(0), _IMPL);
 
-        _xanProxy.startUpgradeDelay(_IMPL);
+        _xanProxy.startVoterBodyUpgradeDelay(_IMPL);
         _xanProxy.lock(1);
         _xanProxy.castVote(_OTHER_IMPL);
         vm.stopPrank();

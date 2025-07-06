@@ -19,15 +19,25 @@ interface IXanV1 {
     /// @param value The number of votes revoked.
     event VoteRevoked(address indexed voter, address indexed implementation, uint256 value);
 
-    /// @notice Emitted when the upgrade delay period for a new implementation is started.
-    /// @param implementation The implementation to start the delay for.
+    /// @notice Emitted when the upgrade delay period for a new implementation proposed by the voter body is started.
+    /// @param implementation The implementation the delay is started for.
     /// @param startTime The start time.
     /// @param endTime The end time.
-    event DelayStarted(address indexed implementation, uint48 startTime, uint48 endTime);
+    event VoterBodyUpgradeDelayStarted(address indexed implementation, uint48 startTime, uint48 endTime);
 
-    /// @notice Emitted when the upgrade delay period for a new implementation is reset.
-    /// @param implementation The implementation to reset the delay for.
-    event DelayReset(address indexed implementation);
+    /// @notice Emitted when the upgrade delay period for a new implementation proposed by the voter body is reset.
+    /// @param implementation The implementation the delay is reset for.
+    event VoterBodyUpgradeDelayReset(address indexed implementation);
+
+    /// @notice Emitted when the upgrade delay period for a new implementation proposed by the council is started.
+    /// @param implementation The implementation the delay is started for.
+    /// @param startTime The start time.
+    /// @param endTime The end time.
+    event CouncilUpgradeDelayStarted(address indexed implementation, uint48 startTime, uint48 endTime);
+
+    /// @notice Emitted when the upgrade delay period for a new implementation proposed by the council is reset.
+    /// @param implementation The implementation the delay is reset for.
+    event CouncilUpgradeDelayReset(address indexed implementation);
 
     /// @notice Permanently locks tokens for the current implementation until it gets upgraded.
     /// @param value The value to be locked.
@@ -50,21 +60,23 @@ interface IXanV1 {
 
     /// @notice Starts the delay period for the winning implementation.
     /// @param winningImpl The winning implementation to activate the delay period for.
-    function startUpgradeDelay(address winningImpl) external;
+    function startVoterBodyUpgradeDelay(address winningImpl) external;
 
     /// @notice Resets the delay period for a losing implementation.
     /// @param losingImpl The losing implementation to reset the delay period for.
-    function resetUpgradeDelay(address losingImpl) external;
+    function resetVoterBodyUpgradeDelay(address losingImpl) external;
 
     /// @notice Proposes an implementation to upgrade. This is only callable by the council.
     /// @param proposedImpl The implementation proposed by the council.
     function proposeCouncilUpgrade(address proposedImpl) external;
 
-    /// @notice Marks the council upgrade as failed if there is any .
-    function vetoCouncilUpgrade() external;
-
+    // TODO Improve natespec.
     /// @notice Cancel the upgrade to the implementation proposed by the governance council. This is only callable by the council.
     function cancelCouncilUpgrade() external;
+
+    // TODO Improve natespec.
+    /// @notice Marks the council upgrade as failed if there is any other implementation that has reached quorum.
+    function vetoCouncilUpgrade() external;
 
     /// @notice Calculates the quorum based on the current locked supply.
     /// @return threshold The calculated quorum threshold.
@@ -94,13 +106,14 @@ interface IXanV1 {
     /// @param locked The locked supply.
     function lockedSupply() external view returns (uint256 locked);
 
+    // TODO improve naming
     /// @notice Returns the implementation for which the delay was started.
     /// @return delayedImpl The implementation the delay was started for.
-    function delayedUpgradeImplementation() external view returns (address delayedImpl);
+    function voterBodyDelayedUpgradeImplementation() external view returns (address delayedImpl);
 
-    /// @notice Returns the delay end time.
+    /// @notice Returns the delay end time of the implementation proposed by the voter body.
     /// @return endTime The delay end time.
-    function delayEndTime() external view returns (uint48 endTime);
+    function voterBodyDelayEndTime() external view returns (uint48 endTime);
 
     /// @notice Returns the current implementation
     /// @return current The current implementation.
