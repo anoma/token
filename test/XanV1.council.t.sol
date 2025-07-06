@@ -49,13 +49,6 @@ contract XanV1CouncilTest is Test {
     function test_proposeCouncilUpgrade_proposes_an_upgrade_to_the_same_implementation() public {
         vm.startPrank(_COUNCIL);
         _xanProxy.proposeCouncilUpgrade(_NEW_IMPL);
-
-        /*
-         * Multisig can propose upgrades which will pass by default in the period (e.g. 2 weeks) if no quorum is reached for another upgrade (which could be just to stay with the current token implementation).
-         */
-        // TODO! Ask Chris
-        // 1. Why do we want this?
-        // 2. Should the upgrade reset all the votes?
     }
 
     function test_proposeCouncilUpgrade_proposes_an_upgrade() public {
