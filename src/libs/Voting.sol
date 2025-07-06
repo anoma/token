@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
+import {IXanV1} from "../interfaces/IXanV1.sol";
+
 library Voting {
     using Voting for Data;
 
@@ -8,14 +10,12 @@ library Voting {
     /// @param ballots The ballots of proposed implementations to upgrade to.
     /// @param ranking The proposed implementations ranking.
     /// @param implCount The count of proposed implementations.
-    /// @param delayEndTime The end time of the delay period.
-    /// @param delayedUpgradeImpl The implementation for which the delay has been started. //TODO consider renaming.
+    /// @param scheduledUpgrade An upgrade scheduled by the voting body.
     struct Data {
         mapping(address proposedImpl => Ballot) ballots;
         mapping(uint48 rank => address proposedImpl) ranking;
         uint48 implCount;
-        uint48 delayEndTime;
-        address delayedUpgradeImpl;
+        IXanV1.ScheduledUpgrade scheduledUpgrade;
     }
 
     /// @notice The vote data of a proposed implementation.

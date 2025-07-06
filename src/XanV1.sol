@@ -35,8 +35,7 @@ contract XanV1 is
     struct ImplementationData {
         Locking.Data lockingData;
         Voting.Data votingData;
-        // TODO! Revisit if the council data should also be reset.
-        // This means that after an upgrade, the governance council is set to 0x.
+        // TODO! Revisit if the council data should also be reset (Issue #).
         Council.Data councilData;
     }
 
@@ -61,14 +60,16 @@ contract XanV1 is
     error ImplementationRankNonExistent(uint48 limit, uint48 rank);
     error ImplementationNotRankedBest(address expected, address actual);
     error ImplementationNotDelayed(address expected, address actual);
-    error UpgradeDelayNotResettable(address impl);
+
+    error UpgradeCancellationInvalid(ScheduledUpgrade scheduledImpl);
+    error UpgradeAlreadyScheduled(ScheduledUpgrade scheduledImpl);
 
     error MinLockedSupplyNotReached();
     error QuorumNowhereReached(); // TODO remove?
     error QuorumNotReached(address proposedImpl);
     error QuorumReachedForVoterBodyProposedImplementation(address voterBodyProposedImpl);
     error DelayPeriodNotStarted();
-    error DelayPeriodAlreadyStarted(address delayedUpgradeImpl);
+
     error DelayPeriodNotEnded();
 
     error UnauthorizedCaller(address caller);
@@ -180,61 +181,54 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
-    function startVoterBodyUpgradeDelay(address proposedImpl) external override {
+    function scheduleVoterBodyUpgrade(address proposedImpl) external override {
         // Check that all upgrade criteria are met before starting the delay.
         _checkVoterBodyUpgradeCriteria(proposedImpl);
 
         Voting.Data storage data = _getVotingData();
 
-        uint48 currentTime = Time.timestamp();
-
         // Check that the delay period hasn't been started yet by
         // ensuring that no end time and implementation has been set.
-        if (data.delayEndTime != 0 && data.delayedUpgradeImpl != address(0)) {
-            revert DelayPeriodAlreadyStarted(data.delayedUpgradeImpl);
+        if (data.scheduledUpgrade.endTime != 0 && data.scheduledUpgrade.impl != address(0)) {
+            revert UpgradeAlreadyScheduled(data.scheduledUpgrade);
         }
 
-        // Set the end time and emit the associated event.
-        data.delayEndTime = currentTime + Parameters.DELAY_DURATION;
-        data.delayedUpgradeImpl = proposedImpl;
+        // Schedule the upgrade and emit the associated event.
+        data.scheduledUpgrade =
+            ScheduledUpgrade({impl: proposedImpl, endTime: Time.timestamp() + Parameters.DELAY_DURATION});
 
-        emit VoterBodyUpgradeDelayStarted({
-            implementation: proposedImpl,
-            startTime: currentTime,
-            endTime: data.delayEndTime
-        });
+        emit VoterBodyUpgradeScheduled(data.scheduledUpgrade);
     }
 
     /// @inheritdoc IXanV1
-    function resetVoterBodyUpgradeDelay(address losingImpl) external override {
+    function cancelVoterBodyUpgrade(address losingImpl) external override {
         _checkVoterBodyDelayCriterion(losingImpl);
 
-        Voting.Data storage $ = _getVotingData();
+        Voting.Data storage data = _getVotingData();
 
         // Check that the quorum for the new implementation is reached.
-        if (_isQuorumReached(losingImpl) && losingImpl == $.ranking[0]) {
-            revert UpgradeDelayNotResettable(losingImpl);
+        if (_isQuorumReached(losingImpl) && losingImpl == data.ranking[0]) {
+            revert UpgradeCancellationInvalid(data.scheduledUpgrade); //TODO rename
         }
-        // Reset the delay
-        $.delayEndTime = 0;
-        $.delayedUpgradeImpl = address(0);
 
-        emit VoterBodyUpgradeDelayReset({implementation: losingImpl});
+        emit VoterBodyUpgradeCancelled(data.scheduledUpgrade);
+
+        // Reset the delay
+        data.scheduledUpgrade = ScheduledUpgrade({impl: address(0), endTime: 0});
     }
 
     /// @notice @inheritdoc IXanV1
-    function proposeCouncilUpgrade(address proposedImpl) external override onlyCouncil {
+    function scheduleCouncilUpgrade(address proposedImpl) external override onlyCouncil {
         Council.Data storage data = _getCouncilData();
 
-        if (data.proposedImpl == proposedImpl) {
+        if (data.scheduledUpgrade.impl == proposedImpl) {
             revert ImplementationAlreadyProposed(proposedImpl);
         }
 
-        data.proposedImpl = proposedImpl;
-        uint48 currentTime = Time.timestamp();
-        data.delayEndTime = currentTime + Parameters.DELAY_DURATION;
+        data.scheduledUpgrade =
+            ScheduledUpgrade({impl: proposedImpl, endTime: Time.timestamp() + Parameters.DELAY_DURATION});
 
-        emit CouncilUpgradeProposed({implementation: proposedImpl, startTime: currentTime, endTime: data.delayEndTime});
+        emit CouncilUpgradeScheduled(data.scheduledUpgrade);
     }
 
     /// @notice @inheritdoc IXanV1
@@ -262,28 +256,8 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
-    function voterBodyProposedImplementation() external view override returns (address delayedImpl) {
-        delayedImpl = _getVotingData().delayedUpgradeImpl;
-    }
-
-    /// @inheritdoc IXanV1
     function votum(address proposedImpl) external view override returns (uint256 votes) {
         votes = _getVotingData().ballots[proposedImpl].vota[msg.sender];
-    }
-
-    /// @inheritdoc IXanV1
-    function voterBodyDelayEndTime() external view override returns (uint48 endTime) {
-        endTime = _getVotingData().delayEndTime;
-    }
-
-    /// @inheritdoc IXanV1
-    function councilProposedImplementation() external view override returns (address delayedImpl) {
-        delayedImpl = _getCouncilData().proposedImpl;
-    }
-
-    /// @inheritdoc IXanV1
-    function councilDelayEndTime() external view override returns (uint48 endTime) {
-        endTime = _getCouncilData().delayEndTime;
     }
 
     /// @notice @inheritdoc IXanV1
@@ -316,6 +290,16 @@ contract XanV1 is
         }
 
         rankedImplementation = $.ranking[rank];
+    }
+
+    /// @inheritdoc IXanV1
+    function scheduledVoterBodyUpgrade() public view override returns (ScheduledUpgrade memory scheduledUpgrade) {
+        scheduledUpgrade = _getVotingData().scheduledUpgrade;
+    }
+
+    /// @inheritdoc IXanV1
+    function scheduledCouncilUpgrade() public view override returns (ScheduledUpgrade memory scheduledUpgrade) {
+        scheduledUpgrade = _getCouncilData().scheduledUpgrade;
     }
 
     /// @inheritdoc IXanV1
@@ -368,12 +352,9 @@ contract XanV1 is
         emit Locked({account: account, value: value});
     }
 
-    /// @notice Cancels the council upgrade by resetting the proposed implementation and delay end time to 0.
+    /// @notice Cancels the scheduled upgrade by the council by resetting it to 0.
     function _cancelCouncilUpgrade() internal {
-        Council.Data storage data = _getCouncilData();
-
-        data.proposedImpl = address(0);
-        data.delayEndTime = 0;
+        _getCouncilData().scheduledUpgrade = ScheduledUpgrade({impl: address(0), endTime: 0});
     }
 
     /// @notice Authorizes an upgrade.
@@ -383,25 +364,26 @@ contract XanV1 is
             revert ImplementationZero();
         }
 
-        Council.Data storage council = _getCouncilData();
-        Voting.Data storage voting = _getVotingData();
+        ScheduledUpgrade memory councilUpgrade = scheduledCouncilUpgrade();
+        ScheduledUpgrade memory voterBodyUpgrade = scheduledVoterBodyUpgrade();
+
+        // TODO! What if zero upgade ?
 
         // TODO REFACTOR
-        if (newImpl != council.proposedImpl) {
+        if (newImpl != councilUpgrade.impl) {
             _checkVoterBodyDelayCriterion(newImpl);
             _checkVoterBodyUpgradeCriteria(newImpl);
             return;
         }
 
-        // TODO! rename delayedUpgradeImpl to scheduled impl!!!
-        if (newImpl != voting.delayedUpgradeImpl) {
+        if (newImpl != voterBodyUpgrade.impl) {
             _checkCouncilDelayCriterion();
             _checkCouncilUpgradeCriteria(newImpl);
             return;
         }
 
-        // The same implementation has been proposed by both
-        if (council.delayEndTime < voting.delayEndTime) {
+        // The same implementation has been proposed by both, the council and the voter body.
+        if (councilUpgrade.endTime < voterBodyUpgrade.endTime) {
             _checkCouncilDelayCriterion();
             _checkCouncilUpgradeCriteria(newImpl);
         } else {
@@ -442,6 +424,7 @@ contract XanV1 is
     /// @notice Checks if the criteria to upgrade to the new implementation proposed by the governance council are met
     /// and reverts with errors if not.
     /// @param impl The implementation to check the upgrade criteria for.
+    // TODO! Change input args.
     function _checkCouncilUpgradeCriteria(address impl) internal view {
         // Get the implementation with the most votes.
         address voterBodyProposedImpl = _getVotingData().ranking[0];
@@ -470,18 +453,20 @@ contract XanV1 is
     /// @notice Checks if the delay period has ended and reverts with errors if not.
     /// @param impl The implementation to check the quorum criteria for.
     function _checkVoterBodyDelayCriterion(address impl) internal view {
+        // TODO! Refactor
         Voting.Data storage $ = _getVotingData();
 
-        if ($.delayEndTime == 0) {
+        if ($.scheduledUpgrade.endTime == 0) {
             revert DelayPeriodNotStarted();
         }
 
-        if (Time.timestamp() < $.delayEndTime) {
+        if (Time.timestamp() < $.scheduledUpgrade.endTime) {
             revert DelayPeriodNotEnded();
         }
 
-        if (impl != $.delayedUpgradeImpl) {
-            revert ImplementationNotDelayed({expected: $.delayedUpgradeImpl, actual: impl});
+        // TODO move out
+        if (impl != $.scheduledUpgrade.impl) {
+            revert ImplementationNotDelayed({expected: $.scheduledUpgrade.impl, actual: impl});
         }
     }
 
@@ -489,11 +474,11 @@ contract XanV1 is
     function _checkCouncilDelayCriterion() internal view {
         Council.Data storage $ = _getCouncilData();
 
-        if ($.delayEndTime == 0) {
+        if ($.scheduledUpgrade.endTime == 0) {
             revert DelayPeriodNotStarted();
         }
 
-        if (Time.timestamp() < $.delayEndTime) {
+        if (Time.timestamp() < $.scheduledUpgrade.endTime) {
             revert DelayPeriodNotEnded();
         }
     }
