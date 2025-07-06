@@ -8,12 +8,11 @@ import {XanV1} from "../src/XanV1.sol";
 
 import {MockPersons} from "./mocks/Persons.m.sol";
 
-contract XanV1RankingTest is Test, MockPersons {
+contract XanV1VotingTest is Test, MockPersons {
+    address internal constant _COUNCIL = address(uint160(1));
+
     XanV1 internal _xanProxy;
-
     string[4] internal _census;
-
-    address internal _governanceCouncil;
     address internal _implA;
     address internal _implB;
     address internal _implC;
@@ -24,7 +23,7 @@ contract XanV1RankingTest is Test, MockPersons {
         _xanProxy = XanV1(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV1.sol:XanV1",
-                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _governanceCouncil))
+                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _COUNCIL))
             })
         );
 
