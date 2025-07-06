@@ -142,6 +142,13 @@ contract XanV1CouncilTest is Test {
         _xanProxy.vetoCouncilUpgrade();
     }
 
+    function test_councilProposedImplementation_returns_the_address_if_an_upgrade_delay_has_been_started() public {
+        vm.prank(_COUNCIL);
+        _xanProxy.proposeCouncilUpgrade(_NEW_IMPL);
+
+        assertEq(_xanProxy.councilProposedImplementation(), _NEW_IMPL);
+    }
+
     function test_councilProposedImplementation_returns_address_0_if_no_upgrade_delay_has_been_started() public view {
         assertEq(_xanProxy.councilProposedImplementation(), address(0));
     }
