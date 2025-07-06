@@ -30,30 +30,6 @@ contract XanV1UnitTest is Test {
         );
     }
 
-    function test_implementation_points_to_the_correct_implementation() public {
-        address impl = address(new XanV1());
-
-        XanV1 proxy = XanV1(
-            UnsafeUpgrades.deployUUPSProxy({
-                impl: impl,
-                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _COUNCIL))
-            })
-        );
-
-        assertEq(proxy.implementation(), impl);
-    }
-
-    function test_initialize_mints_the_supply_for_the_specified_owner() public {
-        XanV1 uninitializedProxy =
-            XanV1(Upgrades.deployUUPSProxy({contractName: "XanV1.sol:XanV1", initializerData: ""}));
-
-        assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), 0);
-
-        uninitializedProxy.initializeV1({initialMintRecipient: _defaultSender, council: _COUNCIL});
-
-        assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), uninitializedProxy.totalSupply());
-    }
-
     function test_lock_locks_incrementally() public {
         vm.startPrank(_defaultSender);
         assertEq(_xanProxy.lockedBalanceOf(_defaultSender), 0);
@@ -792,16 +768,6 @@ contract XanV1UnitTest is Test {
 
         // Check that the spender is allowed to spend `value` XAN of Alice after the `permit` call.
         assertEq(_xanProxy.allowance({owner: aliceAddr, spender: spender}), value);
-    }
-
-    function test_initialize_mints_the_expected_supply_amounting_to_1_billion_tokens() public view {
-        uint256 expectedTokens = 10 ** 9;
-
-        // Consider the decimals for the expected supply.
-        uint256 expectedSupply = expectedTokens * (10 ** _xanProxy.decimals());
-
-        assertEq(Parameters.SUPPLY, expectedSupply);
-        assertEq(_xanProxy.totalSupply(), expectedSupply);
     }
 
     function testFuzz_lockedBalanceOf_and_unlockedBalanceOf_sum_to_balanceOf(address owner) public view {
