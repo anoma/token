@@ -2,13 +2,14 @@
 pragma solidity ^0.8.30;
 
 import {IERC1967} from "@openzeppelin/contracts/interfaces/IERC1967.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
 import {Upgrades, UnsafeUpgrades, Options} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {XanV2} from "../src/drafts/XanV2.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
-import {XanV1} from "../src/XanV1.sol";
+import {IXanV1, XanV1} from "../src/XanV1.sol";
 
 contract XanV1UpgradeTest is Test {
     using UnsafeUpgrades for address;
@@ -46,7 +47,9 @@ contract XanV1UpgradeTest is Test {
     }
 
     function test_authorizeUpgrade_reverts_voter_body_upgrade_if_implementation_has_not_been_voted_on() public {
-        vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotStarted.selector), address(_xanProxy));
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV1.UpgradeNotScheduled.selector, _voterProposedImpl), address(_xanProxy)
+        );
         _xanProxy.upgradeToAndCall({newImplementation: _voterProposedImpl, data: ""});
     }
 
@@ -61,8 +64,7 @@ contract XanV1UpgradeTest is Test {
         skip(Parameters.DELAY_DURATION);
 
         vm.expectRevert(
-            abi.encodeWithSelector(XanV1.ImplementationNotDelayed.selector, _voterProposedImpl2, _voterProposedImpl),
-            address(_xanProxy)
+            abi.encodeWithSelector(XanV1.UpgradeNotScheduled.selector, _voterProposedImpl), address(_xanProxy)
         );
         _xanProxy.upgradeToAndCall({newImplementation: _voterProposedImpl, data: ""});
     }
@@ -73,7 +75,9 @@ contract XanV1UpgradeTest is Test {
         _xanProxy.castVote(_voterProposedImpl);
         vm.stopPrank();
 
-        vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotStarted.selector), address(_xanProxy));
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV1.UpgradeNotScheduled.selector, _voterProposedImpl), address(_xanProxy)
+        );
         _xanProxy.upgradeToAndCall({newImplementation: _voterProposedImpl, data: ""});
     }
 
@@ -83,9 +87,16 @@ contract XanV1UpgradeTest is Test {
         _xanProxy.castVote(_voterProposedImpl);
         vm.stopPrank();
 
+        uint48 endTime = Time.timestamp() + Parameters.DELAY_DURATION;
         _xanProxy.scheduleVoterBodyUpgrade(_voterProposedImpl);
 
-        vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotEnded.selector), address(_xanProxy));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                XanV1.DelayPeriodNotEnded.selector,
+                IXanV1.ScheduledUpgrade({impl: _voterProposedImpl, endTime: endTime})
+            ),
+            address(_xanProxy)
+        );
         _xanProxy.upgradeToAndCall({newImplementation: _voterProposedImpl, data: ""});
     }
 
@@ -179,7 +190,7 @@ contract XanV1UpgradeTest is Test {
         assertLt(_xanProxy.scheduledVoterBodyUpgrade().endTime, _xanProxy.scheduledCouncilUpgrade().endTime);
 
         // Advance time after the end time of the scheduled voter body upgrade.
-        skip(_xanProxy.scheduledVoterBodyUpgrade().endTime - block.timestamp);
+        skip(_xanProxy.scheduledVoterBodyUpgrade().endTime - Time.timestamp());
 
         _xanProxy.upgradeToAndCall({newImplementation: _voterProposedImpl, data: ""});
     }

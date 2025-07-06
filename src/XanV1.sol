@@ -35,7 +35,6 @@ contract XanV1 is
     struct ImplementationData {
         Locking.Data lockingData;
         Voting.Data votingData;
-        // TODO! Revisit if the council data should also be reset (Issue #).
         Council.Data councilData;
     }
 
@@ -61,16 +60,17 @@ contract XanV1 is
     error ImplementationNotRankedBest(address expected, address actual);
     error ImplementationNotDelayed(address expected, address actual);
 
-    error UpgradeCancellationInvalid(ScheduledUpgrade scheduledImpl);
+    error UpgradeNotScheduled(address impl);
     error UpgradeAlreadyScheduled(ScheduledUpgrade scheduledImpl);
+    error UpgradeCancellationInvalid(ScheduledUpgrade scheduledImpl);
 
     error MinLockedSupplyNotReached();
     error QuorumNowhereReached(); // TODO remove?
     error QuorumNotReached(address proposedImpl);
     error QuorumReachedForVoterBodyProposedImplementation(address voterBodyProposedImpl);
-    error DelayPeriodNotStarted();
 
-    error DelayPeriodNotEnded();
+    error DelayPeriodNotStarted(ScheduledUpgrade scheduledImpl);
+    error DelayPeriodNotEnded(ScheduledUpgrade scheduledImpl);
 
     error UnauthorizedCaller(address caller);
 
@@ -201,19 +201,22 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
-    function cancelVoterBodyUpgrade(address losingImpl) external override {
-        _checkVoterBodyDelayCriterion(losingImpl);
-
+    function cancelVoterBodyUpgrade() external override {
         Voting.Data storage data = _getVotingData();
 
+        ScheduledUpgrade memory scheduledUpgrade = data.scheduledUpgrade;
+
+        _checkDelayCriterion(scheduledUpgrade);
+
         // Check that the quorum for the new implementation is reached.
-        if (_isQuorumReached(losingImpl) && losingImpl == data.ranking[0]) {
-            revert UpgradeCancellationInvalid(data.scheduledUpgrade); //TODO rename
+        // TODO! Add getter for best ranked impl.
+        if (_isQuorumReached(scheduledUpgrade.impl) && scheduledUpgrade.impl == data.ranking[0]) {
+            revert UpgradeCancellationInvalid(scheduledUpgrade);
         }
 
         emit VoterBodyUpgradeCancelled(data.scheduledUpgrade);
 
-        // Reset the delay
+        // Reset the scheduled upgrade
         data.scheduledUpgrade = ScheduledUpgrade({impl: address(0), endTime: 0});
     }
 
@@ -364,32 +367,38 @@ contract XanV1 is
             revert ImplementationZero();
         }
 
-        ScheduledUpgrade memory councilUpgrade = scheduledCouncilUpgrade();
         ScheduledUpgrade memory voterBodyUpgrade = scheduledVoterBodyUpgrade();
+        ScheduledUpgrade memory councilUpgrade = scheduledCouncilUpgrade();
 
-        // TODO! What if zero upgade ?
+        bool isScheduledByVoterBody = (newImpl == voterBodyUpgrade.impl);
+        bool isScheduledByCouncil = (newImpl == councilUpgrade.impl);
 
-        // TODO REFACTOR
-        if (newImpl != councilUpgrade.impl) {
-            _checkVoterBodyDelayCriterion(newImpl);
-            _checkVoterBodyUpgradeCriteria(newImpl);
+        if (isScheduledByVoterBody && isScheduledByCouncil) {
+            if (voterBodyUpgrade.endTime < councilUpgrade.endTime) {
+                _checkDelayCriterion(voterBodyUpgrade);
+                _checkVoterBodyUpgradeCriteria(newImpl);
+            } else {
+                _checkDelayCriterion(councilUpgrade);
+                _checkCouncilUpgradeCriteria(newImpl);
+            }
             return;
         }
 
-        if (newImpl != voterBodyUpgrade.impl) {
-            _checkCouncilDelayCriterion();
-            _checkCouncilUpgradeCriteria(newImpl);
+        if (isScheduledByVoterBody) {
+            _checkDelayCriterion(voterBodyUpgrade);
+            _checkVoterBodyUpgradeCriteria(newImpl);
+
             return;
         }
 
-        // The same implementation has been proposed by both, the council and the voter body.
-        if (councilUpgrade.endTime < voterBodyUpgrade.endTime) {
-            _checkCouncilDelayCriterion();
+        if (isScheduledByCouncil) {
+            _checkDelayCriterion(councilUpgrade);
             _checkCouncilUpgradeCriteria(newImpl);
-        } else {
-            _checkVoterBodyDelayCriterion(newImpl);
-            _checkVoterBodyUpgradeCriteria(newImpl);
+
+            return;
         }
+
+        revert UpgradeNotScheduled(newImpl);
     }
 
     /// @notice Throws if the sender is not the governance council.
@@ -450,36 +459,15 @@ contract XanV1 is
         isReached = lockedSupply() + 1 > Parameters.MIN_LOCKED_SUPPLY;
     }
 
-    /// @notice Checks if the delay period has ended and reverts with errors if not.
-    /// @param impl The implementation to check the quorum criteria for.
-    function _checkVoterBodyDelayCriterion(address impl) internal view {
-        // TODO! Refactor
-        Voting.Data storage $ = _getVotingData();
-
-        if ($.scheduledUpgrade.endTime == 0) {
-            revert DelayPeriodNotStarted();
+    /// @notice Checks if the delay period for a scheduled upgrade has ended and reverts with errors if not.
+    /// @param scheduledUpgrade The end time to check.
+    function _checkDelayCriterion(ScheduledUpgrade memory scheduledUpgrade) internal view {
+        if (scheduledUpgrade.endTime == 0) {
+            revert DelayPeriodNotStarted(scheduledUpgrade);
         }
 
-        if (Time.timestamp() < $.scheduledUpgrade.endTime) {
-            revert DelayPeriodNotEnded();
-        }
-
-        // TODO move out
-        if (impl != $.scheduledUpgrade.impl) {
-            revert ImplementationNotDelayed({expected: $.scheduledUpgrade.impl, actual: impl});
-        }
-    }
-
-    /// @notice Checks if the delay period has ended and reverts with errors if not.
-    function _checkCouncilDelayCriterion() internal view {
-        Council.Data storage $ = _getCouncilData();
-
-        if ($.scheduledUpgrade.endTime == 0) {
-            revert DelayPeriodNotStarted();
-        }
-
-        if (Time.timestamp() < $.scheduledUpgrade.endTime) {
-            revert DelayPeriodNotEnded();
+        if (Time.timestamp() < scheduledUpgrade.endTime) {
+            revert DelayPeriodNotEnded(scheduledUpgrade);
         }
     }
 

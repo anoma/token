@@ -309,7 +309,7 @@ contract XanV1VotingTest is Test {
             ),
             address(_xanProxy)
         );
-        _xanProxy.cancelVoterBodyUpgrade(_NEW_IMPL);
+        _xanProxy.cancelVoterBodyUpgrade();
     }
 
     function test_cancelVoterBodyUpgrade_emits_the_DelayReset_event() public {
@@ -331,10 +331,10 @@ contract XanV1VotingTest is Test {
         // Advance to the end of the delay period.
         skip(Parameters.DELAY_DURATION);
 
-        // Reset the delay
+        // Cancel the upgrade
         vm.expectEmit(address(_xanProxy));
         emit IXanV1.VoterBodyUpgradeCancelled(IXanV1.ScheduledUpgrade({impl: _NEW_IMPL, endTime: endTime}));
-        _xanProxy.cancelVoterBodyUpgrade(_NEW_IMPL);
+        _xanProxy.cancelVoterBodyUpgrade();
     }
 
     function test_cancelVoterBodyUpgrade_resets_the_delay() public {
@@ -359,8 +359,8 @@ contract XanV1VotingTest is Test {
         // Advance to the end of the delay period.
         skip(Parameters.DELAY_DURATION);
 
-        // Reset the delay
-        _xanProxy.cancelVoterBodyUpgrade(_NEW_IMPL);
+        // Cancel the upgrade
+        _xanProxy.cancelVoterBodyUpgrade();
 
         // Check state change has happened
         assertEq(_xanProxy.scheduledVoterBodyUpgrade().impl, address(0));

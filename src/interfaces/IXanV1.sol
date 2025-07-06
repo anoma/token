@@ -73,8 +73,7 @@ interface IXanV1 {
 
     // TODO! Remove input args.
     /// @notice Cancels the upgrade for a losing implementation.
-    /// @param losingImpl The losing implementation to reset the delay period for.
-    function cancelVoterBodyUpgrade(address losingImpl) external;
+    function cancelVoterBodyUpgrade() external;
 
     /// @notice Schedules the upgrade to a new implementation. This is only callable by the council.
     /// @param proposedImpl The implementation proposed by the council.
