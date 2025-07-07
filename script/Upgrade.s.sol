@@ -9,7 +9,7 @@ import {Script} from "forge-std/Script.sol";
 import {XanV2} from "../src/drafts/XanV2.sol";
 import {XanV2Forwarder} from "../src/drafts/XanV2Forwarder.sol";
 
-contract Deploy is Script {
+contract Upgrade is Script {
     address internal constant _XAN_PROXY = address(0);
 
     address internal constant _PROTOCOL_ADAPTER = address(0);

@@ -27,20 +27,20 @@ contract XanV2 is IXanV2, XanV1 {
 
     /// @notice Limits functions to be callable only by the forwarder address.
     modifier onlyForwarder() {
-        _checkOnlyForwarder();
+        _checkForwarder();
         _;
     }
 
-    // solhint-disable comprehensive-interface
     /// @notice Initializes the XanV2 contract.
     /// @param initialMintRecipient The initial recipient of the minted tokens.
     /// @param council The address of the governance council contract.
     /// @param xanV2Forwarder The XanV2 forwarder contract.
     /// @custom:oz-upgrades-validate-as-initializer
-    function initializeV2(address initialMintRecipient, address council, address xanV2Forwarder)
-        external
-        reinitializer(2)
-    {
+    function initializeV2( /* solhint-disable-line comprehensive-interface*/
+        address initialMintRecipient,
+        address council,
+        address xanV2Forwarder
+    ) external reinitializer(2) {
         // Initialize inherited contracts
         __ERC20_init({name_: Parameters.NAME, symbol_: Parameters.SYMBOL});
         __ERC20Permit_init({name: Parameters.NAME});
@@ -53,17 +53,19 @@ contract XanV2 is IXanV2, XanV1 {
 
         // Initialize the XanV2 contract
         _getXanV2Storage().forwarder = xanV2Forwarder;
-    } // solhint-enable comprehensive-interface
+    }
 
-    // solhint-disable comprehensive-interface
     /// @notice Reinitializes the XanV2 contract after an upgrade from XanV1.
     /// @param xanV2Forwarder The XanV2 forwarder contract.
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
     /// @custom:oz-upgrades-validate-as-initializer
-    function reinitializeFromV1(address xanV2Forwarder) external reinitializer(2) {
+    function reinitializeFromV1(address xanV2Forwarder /* solhint-disable-line comprehensive-interface*/ )
+        external
+        reinitializer(2)
+    {
         // Initialize the XanV2 contract
         _getXanV2Storage().forwarder = xanV2Forwarder;
-    } // solhint-enable comprehensive-interface
+    }
 
     /// @inheritdoc IXanV2
     function mint(address account, uint256 value) external override onlyForwarder {
@@ -76,7 +78,7 @@ contract XanV2 is IXanV2, XanV1 {
     }
 
     /// @notice Throws if the sender is not the forwarder.
-    function _checkOnlyForwarder() internal view {
+    function _checkForwarder() internal view {
         if (forwarder() != _msgSender()) {
             revert UnauthorizedCaller({caller: _msgSender()});
         }
