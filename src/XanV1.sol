@@ -209,9 +209,13 @@ contract XanV1 is
         {
             Council.Data storage councilData = _getCouncilData();
             if (councilData.scheduledEndTime != 0 && councilData.scheduledImpl != address(0)) {
-                _cancelCouncilUpgrade();
+                // TODO! Ask Chris: Should we check `_checkDelayCriterion(councilData.scheduledEndTime);`
 
-                emit CouncilUpgradeVetoed(); // TODO! Revisit event args
+                emit CouncilUpgradeVetoed(councilData.scheduledImpl);
+
+                // Reset the scheduled
+                councilData.scheduledImpl = address(0);
+                councilData.scheduledEndTime = 0;
             }
         }
     }
@@ -220,9 +224,8 @@ contract XanV1 is
     function cancelVoterBodyUpgrade() external override {
         Voting.Data storage data = _getVotingData();
 
+        // TODO! Confirm with Chris
         _checkDelayCriterion(data.scheduledEndTime);
-
-        // TODO! check min quorum
 
         // Revert the cancellation if the currently scheduled implementation still
         // * meets the quorum and minimum locked supply for the
@@ -235,7 +238,7 @@ contract XanV1 is
             revert UpgradeCancellationInvalid(data.scheduledImpl, data.scheduledEndTime);
         }
 
-        emit VoterBodyUpgradeCancelled(data.scheduledImpl, data.scheduledEndTime);
+        emit VoterBodyUpgradeCancelled(data.scheduledImpl);
 
         // Reset the scheduled upgrade
         data.scheduledImpl = address(0);
@@ -271,8 +274,15 @@ contract XanV1 is
 
     /// @notice @inheritdoc IXanV1
     function cancelCouncilUpgrade() external override onlyCouncil {
-        emit CouncilUpgradeCancelled();
-        _cancelCouncilUpgrade();
+        Council.Data storage data = _getCouncilData();
+
+        // TODO! Ask Chris: Should we check `_checkDelayCriterion(data.scheduledEndTime);`
+
+        emit CouncilUpgradeCancelled(data.scheduledImpl);
+
+        // Reset the scheduled
+        data.scheduledImpl = address(0);
+        data.scheduledEndTime = 0;
     }
 
     /// @notice @inheritdoc IXanV1
@@ -290,10 +300,15 @@ contract XanV1 is
             revert QuorumOrMinLockedSupplyNotReached(bestRankedImplementation);
         }
 
-        emit CouncilUpgradeVetoed();
+        Council.Data storage data = _getCouncilData();
 
-        // Cancel the council upgrade
-        _cancelCouncilUpgrade();
+        // TODO! Ask Chris: Should we check `_checkDelayCriterion(data.scheduledEndTime);`
+
+        emit CouncilUpgradeVetoed(data.scheduledImpl);
+
+        // Reset the scheduled upgrade
+        data.scheduledImpl = address(0);
+        data.scheduledEndTime = 0;
     }
 
     /// @inheritdoc IXanV1
@@ -398,14 +413,6 @@ contract XanV1 is
         $.lockedBalances[account] += value;
 
         emit Locked({account: account, value: value});
-    }
-
-    /// @notice Cancels the scheduled upgrade by the council by resetting it to 0.
-    function _cancelCouncilUpgrade() internal {
-        Council.Data storage data = _getCouncilData();
-
-        data.scheduledImpl = address(0);
-        data.scheduledEndTime = 0;
     }
 
     /// @notice Authorizes an upgrade.

@@ -121,7 +121,7 @@ contract XanV1CouncilTest is Test {
         _xanProxy.scheduleCouncilUpgrade(_NEW_IMPL);
 
         vm.expectEmit(address(_xanProxy));
-        emit IXanV1.CouncilUpgradeCancelled();
+        emit IXanV1.CouncilUpgradeCancelled(_NEW_IMPL);
         _xanProxy.cancelCouncilUpgrade();
 
         (address impl, uint48 endTime) = _xanProxy.scheduledVoterBodyUpgrade();
@@ -180,7 +180,7 @@ contract XanV1CouncilTest is Test {
         vm.stopPrank();
 
         vm.expectEmit(address(_xanProxy));
-        emit IXanV1.CouncilUpgradeVetoed();
+        emit IXanV1.CouncilUpgradeVetoed(_NEW_IMPL);
         _xanProxy.vetoCouncilUpgrade();
     }
 

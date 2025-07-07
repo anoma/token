@@ -306,7 +306,7 @@ contract XanV1VotingTest is Test {
         emit IXanV1.VoterBodyUpgradeScheduled(_NEW_IMPL, Time.timestamp() + Parameters.DELAY_DURATION);
 
         vm.expectEmit(address(_xanProxy));
-        emit IXanV1.CouncilUpgradeVetoed();
+        emit IXanV1.CouncilUpgradeVetoed(_OTHER_NEW_IMPL);
         _xanProxy.scheduleVoterBodyUpgrade();
     }
 
@@ -346,7 +346,6 @@ contract XanV1VotingTest is Test {
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_NEW_IMPL);
 
-        uint48 endTime = Time.timestamp() + Parameters.DELAY_DURATION;
         _xanProxy.scheduleVoterBodyUpgrade();
 
         // Vote with more weight for another implementation
@@ -362,7 +361,7 @@ contract XanV1VotingTest is Test {
 
         // Cancel the upgrade
         vm.expectEmit(address(_xanProxy));
-        emit IXanV1.VoterBodyUpgradeCancelled(_NEW_IMPL, endTime);
+        emit IXanV1.VoterBodyUpgradeCancelled(_NEW_IMPL);
         _xanProxy.cancelVoterBodyUpgrade();
     }
 

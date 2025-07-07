@@ -26,8 +26,7 @@ interface IXanV1 {
 
     /// @notice Emitted  when the upgrade to a new implementation proposed by the voter body is cancelled.
     /// @param impl The implementation that has been cancelled.
-    /// @param endTime The end time of the delay period.
-    event VoterBodyUpgradeCancelled(address indexed impl, uint48 endTime);
+    event VoterBodyUpgradeCancelled(address indexed impl);
 
     /// @notice Emitted when the upgrade to a new implementation proposed by the governance council is scheduled.
     /// @param impl The implementation that has been scheduled.
@@ -35,12 +34,13 @@ interface IXanV1 {
     event CouncilUpgradeScheduled(address indexed impl, uint48 endTime);
 
     /// @notice Emitted when the upgrade scheduled by the governance council is cancelled.
-    // TODO! do we need to emit data
-    event CouncilUpgradeCancelled();
+    /// @param impl The implementation to which the upgrade has been cancelled by the governance council.
+    event CouncilUpgradeCancelled(address indexed impl);
 
     /// @notice Emitted when the upgrade to a new implementation proposed by the governance council is vetoed
     /// by the voter body.
-    event CouncilUpgradeVetoed();
+    /// @param impl The implementation to which the upgrade has been vetoed by the voter body.
+    event CouncilUpgradeVetoed(address indexed impl);
 
     /// @notice Permanently locks tokens for the current implementation until it gets upgraded.
     /// @param value The value to be locked.
