@@ -205,8 +205,6 @@ contract XanV1 is
         {
             Council.Data storage councilData = _getCouncilData();
             if (councilData.scheduledEndTime != 0 && councilData.scheduledImpl != address(0)) {
-  
-
                 emit CouncilUpgradeVetoed(councilData.scheduledImpl);
 
                 // Reset the scheduled
@@ -427,10 +425,8 @@ contract XanV1 is
         bool isScheduledByVoterBody = (newImpl == votingData.scheduledImpl);
         bool isScheduledByCouncil = (newImpl == councilData.scheduledImpl);
 
-        if (isScheduledByVoterBody && isScheduledByCouncil) {
-            // This state should never be reached.
-            revert UpgradeScheduledTwice(newImpl);
-        }
+        // The implementation should never be scheduled by both entities.
+        assert(!(isScheduledByVoterBody && isScheduledByCouncil));
 
         // Cache the best ranked implementation proposed by the voter body.
         address bestRankedVoterBodyImpl = votingData.implementationByRank(0);

@@ -203,6 +203,40 @@ contract XanV1UpgradeTest is Test {
         _xanProxy.upgradeToAndCall({newImplementation: _councilProposedImpl, data: ""});
     }
 
+    function test_authorizeUpgrade_reverts_council_upgrade_if_the_voter_body_implementation_has_reached_quorum()
+        public
+    {
+        vm.prank(_COUNCIL);
+        _xanProxy.scheduleCouncilUpgrade(_councilProposedImpl);
+        (, uint48 endTime) = _xanProxy.scheduledCouncilUpgrade();
+
+        // Ensure that `_voterProposedImpl` has reached quorum
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
+        _xanProxy.castVote(_voterProposedImpl);
+        vm.stopPrank();
+
+        skip(Parameters.DELAY_DURATION + 1);
+        assertGt(Time.timestamp(), endTime);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV1.QuorumAndMinLockedSupplyReached.selector, _voterProposedImpl),
+            address(_xanProxy)
+        );
+        _xanProxy.upgradeToAndCall({newImplementation: _councilProposedImpl, data: ""});
+    }
+
+    function test_authorizeUpgrade_reverts_council_upgrade_if_the_delay_period_has_not_ended() public {
+        vm.prank(_COUNCIL);
+        _xanProxy.scheduleCouncilUpgrade(_councilProposedImpl);
+        (, uint48 endTime) = _xanProxy.scheduledCouncilUpgrade();
+
+        assertLt(Time.timestamp(), endTime);
+
+        vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotEnded.selector, endTime), address(_xanProxy));
+        _xanProxy.upgradeToAndCall({newImplementation: _councilProposedImpl, data: ""});
+    }
+
     function test_upgradeToAndCall_emits_the_Upgraded_event() public {
         vm.prank(_COUNCIL);
         _xanProxy.scheduleCouncilUpgrade(_councilProposedImpl);
