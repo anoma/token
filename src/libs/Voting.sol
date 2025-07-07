@@ -31,7 +31,7 @@ library Voting {
     }
 
     /// @notice Assigns the highest rank to a proposed implementation.
-    /// @param data The voting data containing the proposed upgrades.
+    /// @param data The voting data containing the ballots and ranking of proposed implementations.
     /// @param proposedImpl The proposed implementation to assign the highest rank to.
     function assignWorstRank(Data storage data, address proposedImpl) internal {
         Ballot storage ballot = data.ballots[proposedImpl];
@@ -44,7 +44,7 @@ library Voting {
     }
 
     /// @notice Bubble the proposed implementation up in the ranking.
-    /// @param data The voting data containing the ballots for proposed upgrades.
+    /// @param data The voting data containing the ballots and ranking of proposed upgrades.
     /// @param proposedImpl The proposed implementation.
     function bubbleUp(Data storage data, address proposedImpl) internal {
         Ballot storage ballot = data.ballots[proposedImpl];
@@ -71,7 +71,7 @@ library Voting {
     }
 
     /// @notice Bubble the proposed implementation down in the ranking.
-    /// @param data The voting data containing the ballots for proposed upgrades.
+    /// @param data The voting data containing the ballots and ranking of proposed upgrades.
     /// @param proposedImpl The proposed implementation.
     function bubbleDown(Data storage data, address proposedImpl) internal {
         Ballot storage ballot = data.ballots[proposedImpl];
@@ -99,6 +99,7 @@ library Voting {
     }
 
     /// @notice Returns the implementation with the respective rank or `address(0)` if the rank does not exist.
+    /// @param data The storage containing the implementation ranking and count.
     /// @param rank The rank to return the implementation for.
     /// @return impl The proposed implementation with the respective rank or `address(0)` if the rank does not exist.
     function implementationByRank(Data storage data, uint48 rank) internal view returns (address impl) {
@@ -112,13 +113,14 @@ library Voting {
     }
 
     /// @notice Returns the number of implementations.
+    /// @param data The storage containing the number of implementations being ranked.
     /// @return count implementation count.
     function implementationsCount(Data storage data) internal view returns (uint48 count) {
         count = data.implCount;
     }
 
     /// @notice Swaps the rank of two implementations A and B.
-    /// @param data The storage containing the ballots for proposed upgrades.
+    /// @param data The storage containing the implementation ranking.
     /// @param implA Implementation A.
     /// @param rankA The rank of implementation A before the swap.
     /// @param implB Implementation B.

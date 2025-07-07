@@ -13,6 +13,10 @@ contract XanV2Forwarder is ForwarderBase {
     error InvalidFunctionSelector(bytes4 expected, bytes4 actual);
     error InvalidMintRecipient(address recipient);
 
+    /// @notice Constructs a forwarder.
+    /// @param xanProxy The of the XAN proxy contract.
+    /// @param protocolAdapter The address of the protocol adapter.
+    /// @param calldataCarrierLogicRef The logic reference of the associated calldata carrier resource.
     constructor(address xanProxy, address protocolAdapter, bytes32 calldataCarrierLogicRef)
         ForwarderBase(protocolAdapter, calldataCarrierLogicRef)
     {

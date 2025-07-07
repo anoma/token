@@ -28,12 +28,12 @@ contract XanV2 is IXanV2, XanV1 {
         _;
     }
 
+    // solhint-disable comprehensive-interface
     /// @notice Initializes the XanV2 contract.
     /// @param initialMintRecipient The initial recipient of the minted tokens.
     /// @param council The address of the governance council contract.
     /// @param xanV2Forwarder The XanV2 forwarder contract.
     /// @custom:oz-upgrades-validate-as-initializer
-    // solhint-disable-next-line comprehensive-interface
     function initializeV2(address initialMintRecipient, address council, address xanV2Forwarder)
         external
         reinitializer(2)
@@ -50,17 +50,17 @@ contract XanV2 is IXanV2, XanV1 {
 
         // Initialize the XanV2 contract
         _getXanV2Storage().forwarder = xanV2Forwarder;
-    }
+    } // solhint-enable comprehensive-interface
 
+    // solhint-disable comprehensive-interface
     /// @notice Reinitializes the XanV2 contract after an upgrade from XanV1.
     /// @param xanV2Forwarder The XanV2 forwarder contract.
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
     /// @custom:oz-upgrades-validate-as-initializer
-    // solhint-disable-next-line comprehensive-interface
     function reinitializeFromV1(address xanV2Forwarder) external reinitializer(2) {
         // Initialize the XanV2 contract
         _getXanV2Storage().forwarder = xanV2Forwarder;
-    }
+    } // solhint-enable comprehensive-interface
 
     /// @inheritdoc IXanV2
     function mint(address account, uint256 value) external override onlyForwarder {
@@ -80,13 +80,13 @@ contract XanV2 is IXanV2, XanV1 {
     }
 
     /// @notice Returns the storage from the Xan V2 storage location.
-    /// @return $ The data associated with Xan token storage.
-    function _getXanV2Storage() internal pure returns (XanV2Storage storage $) {
+    /// @return xanV2Storage The data associated with the Xan V2 token storage.
+    function _getXanV2Storage() internal pure returns (XanV2Storage storage xanV2Storage) {
         // solhint-disable no-inline-assembly
         {
             // slither-disable-next-line assembly
             assembly {
-                $.slot := _XAN_V2_STORAGE_LOCATION
+                xanV2Storage.slot := _XAN_V2_STORAGE_LOCATION
             }
         }
         // solhint-enable no-inline-assembly

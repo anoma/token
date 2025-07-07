@@ -96,16 +96,16 @@ interface IXanV1 {
 
     /// @notice Returns the unlocked token balance of an account.
     /// @param from The account to query.
-    /// @param unlockedBalance The unlocked balance.
+    /// @return unlockedBalance The unlocked balance.
     function unlockedBalanceOf(address from) external view returns (uint256 unlockedBalance);
 
     /// @notice Returns the locked token balance of an account.
     /// @param from The account to query.
-    /// @param lockedBalance The locked balance.
+    /// @return lockedBalance The locked balance.
     function lockedBalanceOf(address from) external view returns (uint256 lockedBalance);
 
     /// @notice Returns the locked total supply of the token.
-    /// @param locked The locked supply.
+    /// @return locked The locked supply.
     function lockedSupply() external view returns (uint256 locked);
 
     /// @notice Returns the upgrade scheduled by the voter body or `ScheduledUpgrade(0)`

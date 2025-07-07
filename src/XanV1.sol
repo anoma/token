@@ -79,15 +79,16 @@ contract XanV1 is
         _;
     }
 
+    /// @notice Disables the initializers on the implementation contract to prevent it from being left uninitialized.
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
+    // solhint-disable comprehensive-interface
     /// @notice Initializes the XanV1 contract.
     /// @param initialMintRecipient The initial recipient of the minted tokens.
     /// @param council The address of the governance council contract.
-    // solhint-disable-next-line comprehensive-interface
     function initializeV1(address initialMintRecipient, address council) external initializer {
         // Initialize inherited contracts
         __ERC20_init({name_: Parameters.NAME, symbol_: Parameters.SYMBOL});
@@ -98,7 +99,7 @@ contract XanV1 is
         // Initialize the XanV1 contract
         _mint(initialMintRecipient, Parameters.SUPPLY);
         _getCouncilData().council = council;
-    }
+    } // solhint-enable comprehensive-interface
 
     /// @inheritdoc IXanV1
     function lock(uint256 value) external override {
@@ -518,7 +519,7 @@ contract XanV1 is
     }
 
     /// @notice Returns the storage from the Xan V1 storage location.
-    /// @return xanV1Storage The data associated with Xan token storage.
+    /// @return xanV1Storage The data associated with the Xan V1 token storage.
     function _getXanV1Storage() internal pure returns (XanV1Storage storage xanV1Storage) {
         // solhint-disable no-inline-assembly
         {
