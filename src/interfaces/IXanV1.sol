@@ -19,15 +19,28 @@ interface IXanV1 {
     /// @param value The number of votes revoked.
     event VoteRevoked(address indexed voter, address indexed implementation, uint256 value);
 
-    /// @notice Emitted when the upgrade delay period for a new implementation is started.
-    /// @param implementation The implementation to start the delay for.
-    /// @param startTime The start time.
-    /// @param endTime The end time.
-    event DelayStarted(address indexed implementation, uint48 startTime, uint48 endTime);
+    /// @notice Emitted when the upgrade to a new implementation proposed by the voter body is scheduled.
+    /// @param impl The implementation that has been scheduled.
+    /// @param endTime The end time of the delay period.
+    event VoterBodyUpgradeScheduled(address indexed impl, uint48 endTime);
 
-    /// @notice Emitted when the upgrade delay period for a new implementation is reset.
-    /// @param implementation The implementation to reset the delay for.
-    event DelayReset(address indexed implementation);
+    /// @notice Emitted  when the upgrade to a new implementation proposed by the voter body is cancelled.
+    /// @param impl The implementation that has been cancelled.
+    event VoterBodyUpgradeCancelled(address indexed impl);
+
+    /// @notice Emitted when the upgrade to a new implementation proposed by the governance council is scheduled.
+    /// @param impl The implementation that has been scheduled.
+    /// @param endTime The end time of the delay period.
+    event CouncilUpgradeScheduled(address indexed impl, uint48 endTime);
+
+    /// @notice Emitted when the upgrade scheduled by the governance council is cancelled.
+    /// @param impl The implementation to which the upgrade has been cancelled by the governance council.
+    event CouncilUpgradeCancelled(address indexed impl);
+
+    /// @notice Emitted when the upgrade to a new implementation proposed by the governance council is vetoed
+    /// by the voter body.
+    /// @param impl The implementation to which the upgrade has been vetoed by the voter body.
+    event CouncilUpgradeVetoed(address indexed impl);
 
     /// @notice Permanently locks tokens for the current implementation until it gets upgraded.
     /// @param value The value to be locked.
@@ -48,13 +61,24 @@ interface IXanV1 {
     /// @param proposedImpl The proposed implementation to revoke the vote for.
     function revokeVote(address proposedImpl) external;
 
-    /// @notice Starts the delay period for the winning implementation.
-    /// @param winningImpl The winning implementation to activate the delay period for.
-    function startUpgradeDelay(address winningImpl) external;
+    /// @notice Schedules the upgrade to the best-ranked implementation proposed by the voter body.
+    function scheduleVoterBodyUpgrade() external;
 
-    /// @notice Resets the delay period for a losing implementation.
-    /// @param losingImpl The losing implementation to reset the delay period for.
-    function resetUpgradeDelay(address losingImpl) external;
+    /// @notice Cancels the upgrade if the scheduled implementation is not the best-ranked anymore and the delay period
+    /// has passed.
+    function cancelVoterBodyUpgrade() external;
+
+    /// @notice Schedules the upgrade to a new implementation. This is only callable by the council.
+    /// @param impl The implementation proposed by the council.
+    function scheduleCouncilUpgrade(address impl) external;
+
+    /// @notice Cancels the upgrade proposed by the governance council.
+    /// This is only callable by the council.
+    function cancelCouncilUpgrade() external;
+
+    /// @notice Vetos the council upgrade, which cancels it.
+    /// This can be called by anyone, if there is an implementation proposed by the voter body that has reached quorum.
+    function vetoCouncilUpgrade() external;
 
     /// @notice Calculates the quorum based on the current locked supply.
     /// @return threshold The calculated quorum threshold.
@@ -72,31 +96,45 @@ interface IXanV1 {
 
     /// @notice Returns the unlocked token balance of an account.
     /// @param from The account to query.
-    /// @param unlockedBalance The unlocked balance.
+    /// @return unlockedBalance The unlocked balance.
     function unlockedBalanceOf(address from) external view returns (uint256 unlockedBalance);
 
     /// @notice Returns the locked token balance of an account.
     /// @param from The account to query.
-    /// @param lockedBalance The locked balance.
+    /// @return lockedBalance The locked balance.
     function lockedBalanceOf(address from) external view returns (uint256 lockedBalance);
 
     /// @notice Returns the locked total supply of the token.
-    /// @param locked The locked supply.
+    /// @return locked The locked supply.
     function lockedSupply() external view returns (uint256 locked);
 
-    /// @notice Returns the implementation for which the delay was started.
-    /// @return delayedImpl The implementation the delay was started for.
-    function delayedUpgradeImplementation() external view returns (address delayedImpl);
+    /// @notice Returns the upgrade scheduled by the voter body or `ScheduledUpgrade(0)`
+    /// if no implementation has reached quorum yet.
+    /// @return impl The implementation to upgrade to.
+    /// @return endTime The end time of the scheduled delay.
+    function scheduledVoterBodyUpgrade() external view returns (address impl, uint48 endTime);
 
-    /// @notice Returns the delay end time.
-    /// @return endTime The delay end time.
-    function delayEndTime() external view returns (uint48 endTime);
+    /// @notice Returns the upgrade scheduled by the council or `ScheduledUpgrade(0)`
+    /// if no implementation has reached quorum yet.
+    /// @return impl The implementation to upgrade to.
+    /// @return endTime The end time of the scheduled delay.
+    function scheduledCouncilUpgrade() external view returns (address impl, uint48 endTime);
 
     /// @notice Returns the current implementation
     /// @return current The current implementation.
     function implementation() external view returns (address current);
 
-    /// @notice Returns the proposed implementation with the respective rank.
-    /// @return rankedImplementation The proposed implementation with the respective rank.
-    function proposedImplementationByRank(uint48 rank) external view returns (address rankedImplementation);
+    /// @notice Returns the proposed implementation with the respective rank or an error if no implementation with this
+    /// rank has been proposed yet.
+    /// @param rank The rank to return the implementation for.
+    /// @return impl The proposed implementation with the respective rank.
+    function proposedImplementationByRank(uint48 rank) external view returns (address impl);
+
+    /// @notice Returns the number of implementations proposed by the voter body.
+    /// @return count The proposed implementation count.
+    function proposedImplementationsCount() external view returns (uint48 count);
+
+    /// @notice Returns the address of the governance council.
+    /// @return council The governance council address.
+    function governanceCouncil() external view returns (address council);
 }

@@ -6,14 +6,15 @@ import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {XanV2} from "../src/drafts/XanV2.sol";
-import {XanV2Forwarder} from "../src/drafts/XanV2Forwarder.sol";
-import {MockProtocolAdapter} from "../test/mocks/ProtocolAdapter.m.sol";
+import {XanV2} from "../../src/drafts/XanV2.sol";
+import {XanV2Forwarder} from "../../src/drafts/XanV2Forwarder.sol";
+import {MockProtocolAdapter} from "../../test/mocks/ProtocolAdapter.m.sol";
 
 contract XanV2ForwarderUnitTest is Test {
+    address internal _defaultSender;
+    address internal _governanceCouncil;
     XanV2 internal _xanV2Proxy;
     XanV2Forwarder internal _xanV2Forwarder;
-    address internal _defaultSender;
     MockProtocolAdapter internal _mockProtocolAdapter = new MockProtocolAdapter();
 
     function setUp() public {
@@ -27,7 +28,11 @@ contract XanV2ForwarderUnitTest is Test {
             calldataCarrierLogicRef: bytes32(0)
         });
 
-        _xanV2Proxy.initializeV2({initialMintRecipient: _defaultSender, xanV2Forwarder: address(_xanV2Forwarder)});
+        _xanV2Proxy.initializeV2({
+            initialMintRecipient: _defaultSender,
+            council: _governanceCouncil,
+            xanV2Forwarder: address(_xanV2Forwarder)
+        });
     }
 
     function test_forwardCall_reverts_if_the_caller_is_not_the_protocol_adapter() public {

@@ -6,11 +6,11 @@ import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {Upgrades, UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {XanV2} from "../src/drafts/XanV2.sol";
-import {XanV2Forwarder} from "../src/drafts/XanV2Forwarder.sol";
-import {Parameters} from "../src/libs/Parameters.sol";
-import {XanV1} from "../src/XanV1.sol";
-import {MockProtocolAdapter} from "../test/mocks/ProtocolAdapter.m.sol";
+import {XanV2} from "../../src/drafts/XanV2.sol";
+import {XanV2Forwarder} from "../../src/drafts/XanV2Forwarder.sol";
+import {Parameters} from "../../src/libs/Parameters.sol";
+import {XanV1} from "../../src/XanV1.sol";
+import {MockProtocolAdapter} from "../../test/mocks/ProtocolAdapter.m.sol";
 
 contract XanV2UnitTest is Test {
     XanV1 internal _xanV1Proxy;
@@ -19,18 +19,20 @@ contract XanV2UnitTest is Test {
     address internal _xanV2Forwarder;
     address internal _defaultSender;
     address internal _other;
+    address internal _governanceCouncil;
 
     MockProtocolAdapter internal _mockProtocolAdapter = new MockProtocolAdapter();
 
     function setUp() public {
         (, _defaultSender,) = vm.readCallers();
         _other = address(uint160(1));
+        _governanceCouncil = address(uint160(2));
 
         // Deploy proxy and mint tokens for the `_defaultSender`.
         _xanV1Proxy = XanV1(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV1.sol:XanV1",
-                initializerData: abi.encodeCall(XanV1.initializeV1, _defaultSender)
+                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _governanceCouncil))
             })
         );
         _xanV2Forwarder = address(
@@ -50,7 +52,7 @@ contract XanV2UnitTest is Test {
         UnsafeUpgrades.upgradeProxy({
             proxy: address(_xanV1Proxy),
             newImpl: _xanV2Impl,
-            data: abi.encodeCall(XanV2.initializeFromV1, (_xanV2Forwarder))
+            data: abi.encodeCall(XanV2.reinitializeFromV1, (_xanV2Forwarder))
         });
 
         _xanV2Proxy = XanV2(address(_xanV1Proxy));
@@ -60,7 +62,7 @@ contract XanV2UnitTest is Test {
         XanV2 v2Proxy = XanV2(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV2.sol:XanV2",
-                initializerData: abi.encodeCall(XanV2.initializeV2, (_defaultSender, _xanV2Forwarder))
+                initializerData: abi.encodeCall(XanV2.initializeV2, (_defaultSender, _governanceCouncil, _xanV2Forwarder))
             })
         );
         assertEq(v2Proxy.forwarder(), _xanV2Forwarder);
@@ -73,7 +75,7 @@ contract XanV2UnitTest is Test {
             XanV1 v1Proxy = XanV1(
                 Upgrades.deployUUPSProxy({
                     contractName: "XanV1.sol:XanV1",
-                    initializerData: abi.encodeCall(XanV1.initializeV1, _defaultSender)
+                    initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _governanceCouncil))
                 })
             );
             _winUpgradeVoteForV2Impl(v1Proxy);
@@ -87,7 +89,7 @@ contract XanV2UnitTest is Test {
         assertEq(v2ProxyUninitialized.forwarder(), address(0));
 
         // Reinitialize and expect the owner to be set.
-        v2ProxyUninitialized.initializeFromV1({xanV2Forwarder: _xanV2Forwarder});
+        v2ProxyUninitialized.reinitializeFromV1({xanV2Forwarder: _xanV2Forwarder});
         assertEq(v2ProxyUninitialized.forwarder(), _xanV2Forwarder);
     }
 
@@ -118,7 +120,7 @@ contract XanV2UnitTest is Test {
     }
 
     function test_mint_reverts_if_the_caller_is_not_the_XanV2Forwarder() public {
-        vm.expectRevert(abi.encodeWithSelector(XanV2.UnauthorizedCaller.selector, _defaultSender), address(_xanV2Proxy));
+        vm.expectRevert(abi.encodeWithSelector(XanV1.UnauthorizedCaller.selector, _defaultSender), address(_xanV2Proxy));
 
         // Call without being the `XanV2Forwarder` contract.
         vm.prank(_defaultSender);
@@ -165,7 +167,7 @@ contract XanV2UnitTest is Test {
         vm.startPrank(_defaultSender);
         xanV1Proxy.lock(xanV1Proxy.unlockedBalanceOf(_defaultSender));
         xanV1Proxy.castVote(_xanV2Impl);
-        xanV1Proxy.startUpgradeDelay(_xanV2Impl);
+        xanV1Proxy.scheduleVoterBodyUpgrade();
         vm.stopPrank();
         skip(Parameters.DELAY_DURATION);
     }

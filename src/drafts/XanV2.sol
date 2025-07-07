@@ -22,19 +22,22 @@ contract XanV2 is IXanV2, XanV1 {
     bytes32 internal constant _XAN_V2_STORAGE_LOCATION =
         0x52ac9b9514a24171c0416c0576d612fe5fab9f5a41dcf77ddbf6be60ca9da600;
 
-    error UnauthorizedCaller(address caller);
-
+    /// @notice Limits functions to be callable only by the forwarder address.
     modifier onlyForwarder() {
-        _checkForwarder();
+        _checkOnlyForwarder();
         _;
     }
 
-    /// @notice Initializes the proxy.
+    // solhint-disable comprehensive-interface
+    /// @notice Initializes the XanV2 contract.
     /// @param initialMintRecipient The initial recipient of the minted tokens.
+    /// @param council The address of the governance council contract.
     /// @param xanV2Forwarder The XanV2 forwarder contract.
     /// @custom:oz-upgrades-validate-as-initializer
-    // solhint-disable-next-line comprehensive-interface
-    function initializeV2(address initialMintRecipient, address xanV2Forwarder) external reinitializer(2) {
+    function initializeV2(address initialMintRecipient, address council, address xanV2Forwarder)
+        external
+        reinitializer(2)
+    {
         // Initialize inherited contracts
         __ERC20_init({name_: Parameters.NAME, symbol_: Parameters.SYMBOL});
         __ERC20Permit_init({name: Parameters.NAME});
@@ -43,18 +46,21 @@ contract XanV2 is IXanV2, XanV1 {
 
         // Initialize the XanV1 contract
         _mint(initialMintRecipient, Parameters.SUPPLY);
+        _getCouncilData().council = council;
 
         // Initialize the XanV2 contract
         _getXanV2Storage().forwarder = xanV2Forwarder;
-    }
+    } // solhint-enable comprehensive-interface
 
+    // solhint-disable comprehensive-interface
+    /// @notice Reinitializes the XanV2 contract after an upgrade from XanV1.
+    /// @param xanV2Forwarder The XanV2 forwarder contract.
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
     /// @custom:oz-upgrades-validate-as-initializer
-    // solhint-disable-next-line comprehensive-interface
-    function initializeFromV1(address xanV2Forwarder) external reinitializer(2) {
+    function reinitializeFromV1(address xanV2Forwarder) external reinitializer(2) {
         // Initialize the XanV2 contract
         _getXanV2Storage().forwarder = xanV2Forwarder;
-    }
+    } // solhint-enable comprehensive-interface
 
     /// @inheritdoc IXanV2
     function mint(address account, uint256 value) external override onlyForwarder {
@@ -62,25 +68,25 @@ contract XanV2 is IXanV2, XanV1 {
     }
 
     /// @inheritdoc IXanV2
-    function forwarder() public view virtual override returns (address addr) {
+    function forwarder() public view override returns (address addr) {
         addr = _getXanV2Storage().forwarder;
     }
 
     /// @notice Throws if the sender is not the forwarder.
-    function _checkForwarder() internal view virtual {
+    function _checkOnlyForwarder() internal view {
         if (forwarder() != _msgSender()) {
             revert UnauthorizedCaller({caller: _msgSender()});
         }
     }
 
     /// @notice Returns the storage from the Xan V2 storage location.
-    /// @return $ The data associated with Xan token storage.
-    function _getXanV2Storage() internal pure returns (XanV2Storage storage $) {
+    /// @return xanV2Storage The data associated with the Xan V2 token storage.
+    function _getXanV2Storage() internal pure returns (XanV2Storage storage xanV2Storage) {
         // solhint-disable no-inline-assembly
         {
             // slither-disable-next-line assembly
             assembly {
-                $.slot := _XAN_V2_STORAGE_LOCATION
+                xanV2Storage.slot := _XAN_V2_STORAGE_LOCATION
             }
         }
         // solhint-enable no-inline-assembly
