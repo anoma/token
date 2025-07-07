@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
-/// @title IForeignReserve
+/// @title IForeignReserveV1
 /// @author Anoma Foundation, 2025
 /// @notice The interface of the foreign reserve contract, an arbitrary executor owned by the Anoma (XAN) token and
 /// receiving fees from the [Anoma token distributor](https://github.com/anoma/token-distributor) contract.
 /// @custom:security-contact security@anoma.foundation
-interface IForeignReserve {
+interface IForeignReserveV1 {
     /// @notice Emitted when the contract has received native tokens.
     /// @param sender The sender of the native token.
     /// @param value The native token value.

@@ -8,7 +8,7 @@ import {ReentrancyGuardTransientUpgradeable} from
     "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardTransientUpgradeable.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
-import {IForeignReserve} from "./interfaces/IForeignReserve.sol";
+import {IForeignReserveV1} from "./interfaces/IForeignReserveV1.sol";
 
 /// @title ForeignReserveV1
 /// @author Anoma Foundation, 2025
@@ -16,7 +16,7 @@ import {IForeignReserve} from "./interfaces/IForeignReserve.sol";
 /// receiving fees from the [Anoma token distributor](https://github.com/anoma/token-distributor) contract.
 /// @custom:security-contact security@anoma.foundation
 contract ForeignReserveV1 is
-    IForeignReserve,
+    IForeignReserveV1,
     Initializable,
     OwnableUpgradeable,
     UUPSUpgradeable,
@@ -35,14 +35,16 @@ contract ForeignReserveV1 is
         emit NativeTokenReceived(msg.sender, msg.value);
     }
 
-    // solhint-disable comprehensive-interface
     /// @notice Initializes the contract and sets the owner
     /// @param initialOwner The initial owner.
-    function initialize(address initialOwner) external initializer {
+    function initializeV1( /* solhint-disable-line comprehensive-interface*/ address initialOwner)
+        external
+        initializer
+    {
         __Ownable_init(initialOwner);
         __UUPSUpgradeable_init();
         __ReentrancyGuardTransient_init();
-    } // solhint-enable comprehensive-interface
+    }
 
     /// @notice Executes arbitrary calls without reentrancy and if called by the owner.
     /// @param target The address to call
