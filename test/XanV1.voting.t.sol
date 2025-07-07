@@ -322,7 +322,34 @@ contract XanV1VotingTest is Test {
         _xanProxy.scheduleVoterBodyUpgrade();
     }
 
-    function test_cancelVoterBodyUpgrade_reverts_on_winning_implementation() public {
+    function test_cancelVoterBodyUpgrade_reverts_if_the_delay_period_has_not_started() public {
+        // Ensure that an implementation is the best-ranked
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
+        _xanProxy.castVote(_NEW_IMPL);
+        vm.stopPrank();
+
+        vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotStarted.selector, 0), address(_xanProxy));
+        _xanProxy.cancelVoterBodyUpgrade();
+    }
+
+    function test_cancelVoterBodyUpgrade_reverts_if_the_delay_period_has_not_ended() public {
+        // Ensure that an implementation is the best-ranked
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
+        _xanProxy.castVote(_NEW_IMPL);
+        vm.stopPrank();
+
+        // Schedule the upgrade
+        uint48 expectedEndTime = Time.timestamp() + Parameters.DELAY_DURATION;
+        _xanProxy.scheduleVoterBodyUpgrade();
+
+        vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotEnded.selector, expectedEndTime), address(_xanProxy));
+        _xanProxy.cancelVoterBodyUpgrade();
+    }
+
+    function test_cancelVoterBodyUpgrade_reverts_after_the_delay_has_passed_when_attempting_to_cancel_the_best_ranked_implementation(
+    ) public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_NEW_IMPL);

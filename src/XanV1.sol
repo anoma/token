@@ -221,7 +221,7 @@ contract XanV1 is
     function cancelVoterBodyUpgrade() external override {
         Voting.Data storage data = _getVotingData();
 
-        // TODO! Confirm with Chris
+        // Check that the delay period is over.
         _checkDelayCriterion(data.scheduledEndTime);
 
         // Revert the cancellation if the currently scheduled implementation still

@@ -152,21 +152,46 @@ contract XanV1CouncilTest is Test {
         _xanProxy.vetoCouncilUpgrade();
     }
 
-    function test_vetoCouncilUpgrade_vetos_the_council_upgrade() public {
+    function test_vetoCouncilUpgrade_vetos_the_council_upgrade_before_the_delay_has_passed() public {
+        // Schedule `_NEW_IMPL` as the council.
         vm.prank(_COUNCIL);
         _xanProxy.scheduleCouncilUpgrade(_NEW_IMPL);
+        (address impl, uint48 endTime) = _xanProxy.scheduledCouncilUpgrade();
 
-        // Reach quorum for another implementation.
+        // Ensure that `_OTHER_NEW_IMPL` has quorum.
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_OTHER_NEW_IMPL);
         vm.stopPrank();
 
-        _xanProxy.vetoCouncilUpgrade();
+        // Ensure that the delay has NOT passed.
+        assertLt(Time.timestamp() + 24 hours, endTime);
 
-        (address impl, uint48 endTime) = _xanProxy.scheduledVoterBodyUpgrade();
-        assertEq(impl, address(0));
-        assertEq(endTime, 0);
+        vm.expectEmit(address(_xanProxy));
+        emit IXanV1.CouncilUpgradeVetoed(impl);
+        _xanProxy.vetoCouncilUpgrade();
+    }
+
+    function test_vetoCouncilUpgrade_vetos_the_council_upgrade_after_the_delay_has_passed() public {
+        // Schedule `_NEW_IMPL` as the council.
+        vm.prank(_COUNCIL);
+        _xanProxy.scheduleCouncilUpgrade(_NEW_IMPL);
+        (address impl, uint48 endTime) = _xanProxy.scheduledCouncilUpgrade();
+
+        // Ensure that `_OTHER_NEW_IMPL` has quorum.
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
+        _xanProxy.castVote(_OTHER_NEW_IMPL);
+        vm.stopPrank();
+
+        // Ensure that the delay has just passed.
+        skip(Parameters.DELAY_DURATION + 1);
+        assertGt(Time.timestamp(), endTime);
+
+        // Veto the council upgrade
+        vm.expectEmit(address(_xanProxy));
+        emit IXanV1.CouncilUpgradeVetoed(impl);
+        _xanProxy.vetoCouncilUpgrade();
     }
 
     function test_vetoCouncilUpgrade_emits_the_CouncilUpgradeVetoed_event() public {

@@ -61,10 +61,11 @@ interface IXanV1 {
     /// @param proposedImpl The proposed implementation to revoke the vote for.
     function revokeVote(address proposedImpl) external;
 
-    /// @notice Schedules the upgrade for the best ranked implementation proposed by the voter body.
+    /// @notice Schedules the upgrade to the best-ranked implementation proposed by the voter body.
     function scheduleVoterBodyUpgrade() external;
 
-    /// @notice Cancels the upgrade for a losing implementation.
+    /// @notice Cancels the upgrade if the scheduled implementation is not the best-ranked anymore and the delay period
+    /// has passed.
     function cancelVoterBodyUpgrade() external;
 
     /// @notice Schedules the upgrade to a new implementation. This is only callable by the council.
