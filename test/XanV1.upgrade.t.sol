@@ -46,7 +46,19 @@ contract XanV1UpgradeTest is Test {
         _xanProxy.upgradeToAndCall({newImplementation: address(0), data: ""});
     }
 
-    function test_authorizeUpgrade_reverts_voter_body_upgrade_if_implementation_has_not_been_voted_on() public {
+    function test_authorizeUpgrade_reverts_voter_body_upgrade_if_no_implementation_has_been_scheduled() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV1.UpgradeNotScheduled.selector, _voterProposedImpl), address(_xanProxy)
+        );
+        _xanProxy.upgradeToAndCall({newImplementation: _voterProposedImpl, data: ""});
+    }
+
+    function test_authorizeUpgrade_reverts_voter_body_upgrade_if_implementation_has_not_been_scheduled() public {
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
+        _xanProxy.castVote(_voterProposedImpl2);
+        vm.stopPrank();
+
         vm.expectRevert(
             abi.encodeWithSelector(XanV1.UpgradeNotScheduled.selector, _voterProposedImpl), address(_xanProxy)
         );

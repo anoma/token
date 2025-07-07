@@ -129,6 +129,10 @@ interface IXanV1 {
     /// @return impl The proposed implementation with the respective rank.
     function proposedImplementationByRank(uint48 rank) external view returns (address impl);
 
+    /// @notice Returns the number of implementations proposed by the voter body.
+    /// @return count The proposed implementation count.
+    function proposedImplementationsCount() external view returns (uint48 count);
+
     /// @notice Returns the address of the governance council.
     /// @return council The governance council address.
     function governanceCouncil() external view returns (address council);

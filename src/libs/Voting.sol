@@ -126,4 +126,10 @@ library Voting {
 
         impl = data.ranking[rank];
     }
+
+    /// @notice Returns the number of implementations.
+    /// @return count implementation count.
+    function implementationsCount(Data storage data) internal view returns (uint48 count) {
+        count = data.implCount;
+    }
 }

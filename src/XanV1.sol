@@ -64,9 +64,9 @@ contract XanV1 is
     error ImplementationNotDelayed(address expected, address actual);
 
     error UpgradeNotScheduled(address impl);
+    error UpgradeScheduledTwice(address impl);
     error UpgradeAlreadyScheduled(address impl, uint48 endTime);
     error UpgradeCancellationInvalid(address impl, uint48 endTime);
-    error UpgradeIsNotAllowedToBeScheduledTwice(address impl);
 
     error QuorumOrMinLockedSupplyNotReached(address impl);
     error QuorumAndMinLockedSupplyReached(address impl);
@@ -312,6 +312,11 @@ contract XanV1 is
     }
 
     /// @notice @inheritdoc IXanV1
+    function proposedImplementationsCount() external view returns (uint48 count) {
+        count = _getVotingData().implementationsCount();
+    }
+
+    /// @notice @inheritdoc IXanV1
     function lockedSupply() public view override returns (uint256 locked) {
         locked = _getLockingData().lockedSupply;
     }
@@ -415,13 +420,12 @@ contract XanV1 is
         bool isScheduledByVoterBody = (newImpl == votingData.scheduledImpl);
         bool isScheduledByCouncil = (newImpl == councilData.scheduledImpl);
 
-        // NOTE: councilUpgrade.impl and voterBodyUpgrade.impl can still be address(0);
-
-        if (isScheduledByCouncil && isScheduledByVoterBody) {
-            // This should never happen.
-            revert UpgradeIsNotAllowedToBeScheduledTwice(newImpl);
+        if (isScheduledByVoterBody && isScheduledByCouncil) {
+            // This state should never be reached.
+            revert UpgradeScheduledTwice(newImpl);
         }
 
+        // Cache the best ranked implementation proposed by the voter body.
         address bestRankedVoterBodyImpl = votingData.implementationByRank(0);
 
         if (isScheduledByVoterBody) {
@@ -438,12 +442,14 @@ contract XanV1 is
         }
 
         if (isScheduledByCouncil) {
-            // Revert if the quorum and minimum locked supply is reached for best ranked implementation proposed by
-            // the voter body.
-            if (_isQuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl)) {
-                revert QuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl);
+            // Check if the best ranked implementation exists.
+            if (bestRankedVoterBodyImpl != address(0)) {
+                // Revert if the quorum and minimum locked supply is reached for best ranked implementation proposed by
+                // the voter body and it could therefore could be scheduled.
+                if (_isQuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl)) {
+                    revert QuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl);
+                }
             }
-
             _checkDelayCriterion({endTime: councilData.scheduledEndTime});
 
             return;

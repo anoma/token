@@ -55,9 +55,11 @@ contract XanV1VotingTest is Test {
 
     function test_castVote_ranks_an_implementation_on_first_vote() public {
         // Check that no implementation has rank 0.
+        uint48 count = _xanProxy.proposedImplementationsCount();
         uint48 rank = 0;
+
         vm.expectRevert(
-            abi.encodeWithSelector(XanV1.ImplementationRankNonExistent.selector, 0, rank), address(_xanProxy)
+            abi.encodeWithSelector(XanV1.ImplementationRankNonExistent.selector, count, rank), address(_xanProxy)
         );
         _xanProxy.proposedImplementationByRank(rank);
 
@@ -66,12 +68,16 @@ contract XanV1VotingTest is Test {
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_NEW_IMPL);
         vm.stopPrank();
+
+        count = _xanProxy.proposedImplementationsCount();
+        assertEq(count, 1);
+
         assertEq(_NEW_IMPL, _xanProxy.proposedImplementationByRank(rank));
 
         // Check that no implementation has rank 1.
         rank = 1;
         vm.expectRevert(
-            abi.encodeWithSelector(XanV1.ImplementationRankNonExistent.selector, 1, rank), address(_xanProxy)
+            abi.encodeWithSelector(XanV1.ImplementationRankNonExistent.selector, count, rank), address(_xanProxy)
         );
         _xanProxy.proposedImplementationByRank(rank);
     }
