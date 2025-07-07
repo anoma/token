@@ -5,8 +5,11 @@ import {IXanV2} from "../interfaces/IXanV2.sol";
 import {Parameters} from "../libs/Parameters.sol";
 import {XanV1} from "../XanV1.sol";
 
-/// @notice A draft of the second version of the XAN contract.
-/// This is to ensure that `XanV1` can be upgraded to an subsequent version.
+/// @title XanV2
+/// @author TODO, 2025
+/// @notice A draft of the Anoma (XAN) token contract implementation version 2.
+/// This is used to test that `XanV1` can be upgraded to subsequent version.
+/// @custom:security-contact TODO
 /// @custom:oz-upgrades-from XanV1
 contract XanV2 is IXanV2, XanV1 {
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.

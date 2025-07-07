@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
+/// @title Locking
+/// @author TODO, 2025
+/// @notice A library containing data structures and methods related to and ranking.
+/// @custom:security-contact TODO
 library Voting {
     using Voting for Data;
 
