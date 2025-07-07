@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
-import {IXanV1} from "../interfaces/IXanV1.sol";
-
 library Voting {
     using Voting for Data;
 
@@ -100,20 +98,6 @@ library Voting {
         }
     }
 
-    /// @notice Swaps the rank of two implementations A and B.
-    /// @param data The storage containing the ballots for proposed upgrades.
-    /// @param implA Implementation A.
-    /// @param rankA The rank of implementation A before the swap.
-    /// @param implB Implementation B.
-    /// @param rankB The rank of implementation B before the swap.
-    function _swapRank(Data storage data, address implA, uint48 rankA, address implB, uint48 rankB) private {
-        data.ranking[rankA] = implB;
-        data.ranking[rankB] = implA;
-
-        data.ballots[implA].rank = rankB;
-        data.ballots[implB].rank = rankA;
-    }
-
     /// @notice Returns the implementation with the respective rank or `address(0)` if the rank does not exist.
     /// @param rank The rank to return the implementation for.
     /// @return impl The proposed implementation with the respective rank or `address(0)` if the rank does not exist.
@@ -131,5 +115,19 @@ library Voting {
     /// @return count implementation count.
     function implementationsCount(Data storage data) internal view returns (uint48 count) {
         count = data.implCount;
+    }
+
+    /// @notice Swaps the rank of two implementations A and B.
+    /// @param data The storage containing the ballots for proposed upgrades.
+    /// @param implA Implementation A.
+    /// @param rankA The rank of implementation A before the swap.
+    /// @param implB Implementation B.
+    /// @param rankB The rank of implementation B before the swap.
+    function _swapRank(Data storage data, address implA, uint48 rankA, address implB, uint48 rankB) private {
+        data.ranking[rankA] = implB;
+        data.ranking[rankB] = implA;
+
+        data.ballots[implA].rank = rankB;
+        data.ballots[implB].rank = rankA;
     }
 }
