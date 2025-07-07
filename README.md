@@ -48,11 +48,3 @@ Run
 ```sh
 forge doc
 ```
-
-#### Upgrade Mechanism
-
-```mermaid
-
-
-
-```
