@@ -38,7 +38,7 @@ contract XanV2UnitTest is Test {
             new XanV2Forwarder({
                 xanProxy: address(_xanV1Proxy),
                 protocolAdapter: address(_mockProtocolAdapter),
-                calldataCarrierLogicRef: bytes32(0)
+                calldataCarrierLogicRef: bytes32(uint256(1))
             })
         );
 

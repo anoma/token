@@ -11,18 +11,11 @@ import {XanV2Forwarder} from "../src/drafts/XanV2Forwarder.sol";
 
 contract Upgrade is Script {
     address internal constant _XAN_PROXY = address(0);
-
     address internal constant _PROTOCOL_ADAPTER = address(0);
     bytes32 internal constant _CALLDATA_CARRIER_LOGIC_REF = bytes32(0);
 
     function run() public {
         vm.startBroadcast();
-
-        if (_XAN_PROXY == address(0)) revert("TODO");
-
-        if (_PROTOCOL_ADAPTER == address(0)) revert("TODO");
-
-        if (_CALLDATA_CARRIER_LOGIC_REF == bytes32(0)) revert("TODO");
 
         address xanV2Forwarder = address(
             new XanV2Forwarder({

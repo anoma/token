@@ -14,6 +14,7 @@ contract XanV2Forwarder {
     bytes32 internal immutable _CALLDATA_CARRIER_RESOURCE_KIND;
 
     error AddressZero();
+    error Bytes32Zero();
     error UnauthorizedCaller(address caller);
     error InvalidFunctionSelector(bytes4 expected, bytes4 actual);
     error InvalidMintRecipient(address recipient);
@@ -23,7 +24,13 @@ contract XanV2Forwarder {
     /// @param protocolAdapter The address of the protocol adapter.
     /// @param calldataCarrierLogicRef The logic reference of the associated calldata carrier resource.
     constructor(address xanProxy, address protocolAdapter, bytes32 calldataCarrierLogicRef) {
-        if (xanProxy == address(0) || protocolAdapter == address(0)) revert AddressZero();
+        // Zero checks
+        if (xanProxy == address(0) || protocolAdapter == address(0)) {
+            revert AddressZero();
+        }
+        if (calldataCarrierLogicRef == bytes32(0)) {
+            revert Bytes32Zero();
+        }
 
         _XAN_PROXY = XanV2(xanProxy);
         _PROTOCOL_ADAPTER = protocolAdapter;
