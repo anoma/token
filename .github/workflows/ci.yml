@@ -46,11 +46,8 @@ jobs:
       - name: Show Bun version
         run: bun --version
 
-      - name: Install Solhint
-        run: bun install solhint
-
-      - name: Show Solhint version
-        run: bunx --bun solhint --version
+      - name: Install Test-Tooling
+        run: bun install
 
       - name: Run Solhint in `src` dir
         run: bunx --bun solhint --config .solhint.json 'src/**/*.sol'
@@ -63,10 +60,6 @@ jobs:
       - name: Run Solhint in `script` dir
         run: bunx --bun solhint --config .solhint.other.json 'script/**/*.sol'
         id: solhint-script
-
-      - name: Install Upgrades-core
-        run: |
-          bun install @openzeppelin/upgrades-core@latest
 
       - name: Run Forge clean
         run: forge clean

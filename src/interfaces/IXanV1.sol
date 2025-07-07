@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
+/// @title IXanV1
+/// @author TODO, 2025
+/// @notice The interface of the Anoma (XAN) token contract version 1.
+/// @custom:security-contact TODO
 interface IXanV1 {
     /// @notice Emitted when tokens are locked.
     /// @param account The owning account.

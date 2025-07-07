@@ -18,6 +18,10 @@ import {Locking} from "./libs/Locking.sol";
 import {Parameters} from "./libs/Parameters.sol";
 import {Voting} from "./libs/Voting.sol";
 
+/// @title XanV1
+/// @author TODO, 2025
+/// @notice The Anoma (XAN) token contract implementation version 1.
+/// @custom:security-contact TODO
 contract XanV1 is
     IXanV1,
     Initializable,
