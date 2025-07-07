@@ -90,9 +90,7 @@ contract XanV1CouncilTest is Test {
     function test_scheduleCouncilUpgrade_emits_the_CouncilUpgradeScheduled_event() public {
         vm.prank(_COUNCIL);
         vm.expectEmit(address(_xanProxy));
-        emit IXanV1.CouncilUpgradeScheduled(
-            IXanV1.ScheduledUpgrade({impl: _NEW_IMPL, endTime: Time.timestamp() + Parameters.DELAY_DURATION})
-        );
+        emit IXanV1.CouncilUpgradeScheduled({impl: _NEW_IMPL, endTime: Time.timestamp() + Parameters.DELAY_DURATION});
         _xanProxy.scheduleCouncilUpgrade(_NEW_IMPL);
     }
 
@@ -119,8 +117,9 @@ contract XanV1CouncilTest is Test {
         emit IXanV1.CouncilUpgradeCancelled();
         _xanProxy.cancelCouncilUpgrade();
 
-        assertEq(_xanProxy.scheduledVoterBodyUpgrade().impl, address(0));
-        assertEq(_xanProxy.scheduledVoterBodyUpgrade().endTime, 0);
+        (address impl, uint48 endTime) = _xanProxy.scheduledVoterBodyUpgrade();
+        assertEq(impl, address(0));
+        assertEq(endTime, 0);
     }
 
     function test_vetoCouncilUpgrade_reverts_if_no_implementation_proposed_by_the_voter_body_has_reached_quorum()
@@ -146,8 +145,9 @@ contract XanV1CouncilTest is Test {
 
         _xanProxy.vetoCouncilUpgrade();
 
-        assertEq(_xanProxy.scheduledVoterBodyUpgrade().impl, address(0));
-        assertEq(_xanProxy.scheduledVoterBodyUpgrade().endTime, 0);
+        (address impl, uint48 endTime) = _xanProxy.scheduledVoterBodyUpgrade();
+        assertEq(impl, address(0));
+        assertEq(endTime, 0);
     }
 
     function test_vetoCouncilUpgrade_emits_the_CouncilUpgradeVetoed_event() public {
@@ -172,12 +172,14 @@ contract XanV1CouncilTest is Test {
         vm.prank(_COUNCIL);
         _xanProxy.scheduleCouncilUpgrade(_NEW_IMPL);
 
-        assertEq(_xanProxy.scheduledCouncilUpgrade().impl, _NEW_IMPL);
-        assertEq(_xanProxy.scheduledCouncilUpgrade().endTime, expectedEndTime);
+        (address impl, uint48 endTime) = _xanProxy.scheduledCouncilUpgrade();
+        assertEq(impl, _NEW_IMPL);
+        assertEq(endTime, expectedEndTime);
     }
 
     function test_scheduledCouncilImplementation_returns_0_if_no_upgrade_delay_has_been_started() public view {
-        assertEq(_xanProxy.scheduledCouncilUpgrade().impl, address(0));
-        assertEq(_xanProxy.scheduledCouncilUpgrade().endTime, 0);
+        (address impl, uint48 endTime) = _xanProxy.scheduledCouncilUpgrade();
+        assertEq(impl, address(0));
+        assertEq(endTime, 0);
     }
 }

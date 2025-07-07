@@ -6,9 +6,11 @@ import {IXanV1} from "../interfaces/IXanV1.sol";
 library Council {
     /// @notice A struct containing data associated with a current implementation and proposed upgrades from it.
     /// @param council The address of the governance council.
-    /// @param scheduledUpgrade An upgrade scheduled by the council.
+    /// @param scheduledImpl The scheduled implementation.
+    /// @param scheduledEndTime The scheduled end time of the delay period.
     struct Data {
         address council;
-        IXanV1.ScheduledUpgrade scheduledUpgrade;
+        address scheduledImpl;
+        uint48 scheduledEndTime;
     }
 }

@@ -234,10 +234,7 @@ contract XanV1VotingTest is Test {
 
         // Try to start the delay again.
         vm.expectRevert(
-            abi.encodeWithSelector(
-                XanV1.UpgradeAlreadyScheduled.selector, IXanV1.ScheduledUpgrade({impl: _NEW_IMPL, endTime: endTime})
-            ),
-            address(_xanProxy)
+            abi.encodeWithSelector(XanV1.UpgradeAlreadyScheduled.selector, _NEW_IMPL, endTime), address(_xanProxy)
         );
         _xanProxy.scheduleVoterBodyUpgrade(_NEW_IMPL);
     }
@@ -273,8 +270,9 @@ contract XanV1VotingTest is Test {
 
         _xanProxy.scheduleVoterBodyUpgrade(_NEW_IMPL);
 
-        assertEq(_xanProxy.scheduledVoterBodyUpgrade().impl, _NEW_IMPL);
-        assertEq(_xanProxy.scheduledVoterBodyUpgrade().endTime, Time.timestamp() + Parameters.DELAY_DURATION);
+        (address impl, uint48 endTime) = _xanProxy.scheduledVoterBodyUpgrade();
+        assertEq(impl, _NEW_IMPL);
+        assertEq(endTime, Time.timestamp() + Parameters.DELAY_DURATION);
     }
 
     function test_scheduleVoterBodyUpgrade_cancels_a_scheduled_upgrade_by_the_council_if_present() public {
@@ -293,9 +291,7 @@ contract XanV1VotingTest is Test {
         emit IXanV1.CouncilUpgradeVetoed();
 
         vm.expectEmit(address(_xanProxy));
-        emit IXanV1.VoterBodyUpgradeScheduled(
-            IXanV1.ScheduledUpgrade({impl: _NEW_IMPL, endTime: Time.timestamp() + Parameters.DELAY_DURATION})
-        );
+        emit IXanV1.VoterBodyUpgradeScheduled(_NEW_IMPL, Time.timestamp() + Parameters.DELAY_DURATION);
         _xanProxy.scheduleVoterBodyUpgrade(_NEW_IMPL);
     }
 
@@ -306,9 +302,8 @@ contract XanV1VotingTest is Test {
         vm.stopPrank();
 
         vm.expectEmit(address(_xanProxy));
-        emit IXanV1.VoterBodyUpgradeScheduled(
-            IXanV1.ScheduledUpgrade({impl: _NEW_IMPL, endTime: Time.timestamp() + Parameters.DELAY_DURATION})
-        );
+        emit IXanV1.VoterBodyUpgradeScheduled(_NEW_IMPL, Time.timestamp() + Parameters.DELAY_DURATION);
+
         _xanProxy.scheduleVoterBodyUpgrade(_NEW_IMPL);
     }
 
@@ -326,10 +321,7 @@ contract XanV1VotingTest is Test {
         skip(Parameters.DELAY_DURATION);
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                XanV1.UpgradeCancellationInvalid.selector, IXanV1.ScheduledUpgrade({impl: _NEW_IMPL, endTime: endTime})
-            ),
-            address(_xanProxy)
+            abi.encodeWithSelector(XanV1.UpgradeCancellationInvalid.selector, _NEW_IMPL, endTime), address(_xanProxy)
         );
         _xanProxy.cancelVoterBodyUpgrade();
     }
@@ -355,7 +347,7 @@ contract XanV1VotingTest is Test {
 
         // Cancel the upgrade
         vm.expectEmit(address(_xanProxy));
-        emit IXanV1.VoterBodyUpgradeCancelled(IXanV1.ScheduledUpgrade({impl: _NEW_IMPL, endTime: endTime}));
+        emit IXanV1.VoterBodyUpgradeCancelled(_NEW_IMPL, endTime);
         _xanProxy.cancelVoterBodyUpgrade();
     }
 
@@ -367,8 +359,9 @@ contract XanV1VotingTest is Test {
         uint48 endTime = Time.timestamp() + Parameters.DELAY_DURATION;
         _xanProxy.scheduleVoterBodyUpgrade(_NEW_IMPL);
 
-        assertEq(_xanProxy.scheduledVoterBodyUpgrade().impl, _NEW_IMPL);
-        assertEq(_xanProxy.scheduledVoterBodyUpgrade().endTime, endTime);
+        (address scheduledImpl, uint48 scheduledEndTime) = _xanProxy.scheduledVoterBodyUpgrade();
+        assertEq(scheduledImpl, _NEW_IMPL);
+        assertEq(scheduledEndTime, endTime);
 
         // Vote with more weight for another implementation
         _xanProxy.lock(1);
@@ -385,8 +378,9 @@ contract XanV1VotingTest is Test {
         _xanProxy.cancelVoterBodyUpgrade();
 
         // Check state change has happened
-        assertEq(_xanProxy.scheduledVoterBodyUpgrade().impl, address(0));
-        assertEq(_xanProxy.scheduledVoterBodyUpgrade().endTime, 0);
+        (scheduledImpl, scheduledEndTime) = _xanProxy.scheduledVoterBodyUpgrade();
+        assertEq(scheduledImpl, address(0));
+        assertEq(scheduledEndTime, 0);
     }
 
     function test_scheduleVoterBodyUpgrade_returns_the_upgrade_if_one_has_been_scheduled() public {
@@ -397,12 +391,14 @@ contract XanV1VotingTest is Test {
         uint48 endTime = Time.timestamp() + Parameters.DELAY_DURATION;
         _xanProxy.scheduleVoterBodyUpgrade(_NEW_IMPL);
 
-        assertEq(_xanProxy.scheduledVoterBodyUpgrade().impl, _NEW_IMPL);
-        assertEq(_xanProxy.scheduledVoterBodyUpgrade().endTime, endTime);
+        (address scheduledImpl, uint48 scheduledEndTime) = _xanProxy.scheduledVoterBodyUpgrade();
+        assertEq(scheduledImpl, _NEW_IMPL);
+        assertEq(scheduledEndTime, endTime);
     }
 
     function test_scheduledVoterBodyImplementation_returns_0_if_no_upgrade_has_been_scheduled() public view {
-        assertEq(_xanProxy.scheduledVoterBodyUpgrade().impl, address(0));
-        assertEq(_xanProxy.scheduledVoterBodyUpgrade().endTime, 0);
+        (address scheduledImpl, uint48 scheduledEndTime) = _xanProxy.scheduledVoterBodyUpgrade();
+        assertEq(scheduledImpl, address(0));
+        assertEq(scheduledEndTime, 0);
     }
 }

@@ -10,12 +10,14 @@ library Voting {
     /// @param ballots The ballots of proposed implementations to upgrade to.
     /// @param ranking The proposed implementations ranking.
     /// @param implCount The count of proposed implementations.
-    /// @param scheduledUpgrade An upgrade scheduled by the voting body.
+    /// @param scheduledImpl The scheduled implementation.
+    /// @param scheduledEndTime The scheduled end time of the delay period.
     struct Data {
         mapping(address proposedImpl => Ballot) ballots;
         mapping(uint48 rank => address proposedImpl) ranking;
         uint48 implCount;
-        IXanV1.ScheduledUpgrade scheduledUpgrade;
+        address scheduledImpl;
+        uint48 scheduledEndTime;
     }
 
     /// @notice The vote data of a proposed implementation.

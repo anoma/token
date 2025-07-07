@@ -2,14 +2,6 @@
 pragma solidity ^0.8.30;
 
 interface IXanV1 {
-    /// @notice A struct representing a scheduled implementation.
-    /// @param impl The scheduled implementation for which the delay period has been started.
-    /// @param endTime The end time of the delay period.
-    struct ScheduledUpgrade {
-        address impl;
-        uint48 endTime;
-    }
-
     /// @notice Emitted when tokens are locked.
     /// @param account The owning account.
     /// @param value The number of tokens being locked.
@@ -28,16 +20,19 @@ interface IXanV1 {
     event VoteRevoked(address indexed voter, address indexed implementation, uint256 value);
 
     /// @notice Emitted when the upgrade to a new implementation proposed by the voter body is scheduled.
-    /// @param scheduledUpgrade The scheduled upgrade.
-    event VoterBodyUpgradeScheduled(ScheduledUpgrade scheduledUpgrade);
+    /// @param impl The implementation that has been scheduled.
+    /// @param endTime The end time of the delay period.
+    event VoterBodyUpgradeScheduled(address indexed impl, uint48 endTime);
 
     /// @notice Emitted  when the upgrade to a new implementation proposed by the voter body is cancelled.
-    /// @param cancelledUpgrade The scheduled upgrade that was cancelled.
-    event VoterBodyUpgradeCancelled(ScheduledUpgrade cancelledUpgrade);
+    /// @param impl The implementation that has been cancelled.
+    /// @param endTime The end time of the delay period.
+    event VoterBodyUpgradeCancelled(address indexed impl, uint48 endTime);
 
     /// @notice Emitted when the upgrade to a new implementation proposed by the governance council is scheduled.
-    /// @param scheduledUpgrade The scheduled upgrade.
-    event CouncilUpgradeScheduled(ScheduledUpgrade indexed scheduledUpgrade);
+    /// @param impl The implementation that has been scheduled.
+    /// @param endTime The end time of the delay period.
+    event CouncilUpgradeScheduled(address indexed impl, uint48 endTime);
 
     /// @notice Emitted when the upgrade scheduled by the governance council is cancelled.
     // TODO! do we need to emit data
@@ -71,7 +66,6 @@ interface IXanV1 {
     /// @param winningImpl The winning implementation to activate the delay period for.
     function scheduleVoterBodyUpgrade(address winningImpl) external;
 
-    // TODO! Remove input args.
     /// @notice Cancels the upgrade for a losing implementation.
     function cancelVoterBodyUpgrade() external;
 
@@ -117,13 +111,15 @@ interface IXanV1 {
 
     /// @notice Returns the upgrade scheduled by the voter body or `ScheduledUpgrade(0)`
     /// if no implementation has reached quorum yet.
-    /// @return scheduledUpgrade The upgrade scheduled by the voter body.
-    function scheduledVoterBodyUpgrade() external view returns (ScheduledUpgrade memory scheduledUpgrade);
+    /// @return impl The implementation to upgrade to.
+    /// @return endTime The end time of the scheduled delay.
+    function scheduledVoterBodyUpgrade() external view returns (address impl, uint48 endTime);
 
     /// @notice Returns the upgrade scheduled by the council or `ScheduledUpgrade(0)`
     /// if no implementation has reached quorum yet.
-    /// @return scheduledUpgrade The upgrade scheduled by the council.
-    function scheduledCouncilUpgrade() external view returns (ScheduledUpgrade memory scheduledUpgrade);
+    /// @return impl The implementation to upgrade to.
+    /// @return endTime The end time of the scheduled delay.
+    function scheduledCouncilUpgrade() external view returns (address impl, uint48 endTime);
 
     /// @notice Returns the current implementation
     /// @return current The current implementation.

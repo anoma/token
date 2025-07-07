@@ -90,13 +90,7 @@ contract XanV1UpgradeTest is Test {
         uint48 endTime = Time.timestamp() + Parameters.DELAY_DURATION;
         _xanProxy.scheduleVoterBodyUpgrade(_voterProposedImpl);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                XanV1.DelayPeriodNotEnded.selector,
-                IXanV1.ScheduledUpgrade({impl: _voterProposedImpl, endTime: endTime})
-            ),
-            address(_xanProxy)
-        );
+        vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotEnded.selector, endTime), address(_xanProxy));
         _xanProxy.upgradeToAndCall({newImplementation: _voterProposedImpl, data: ""});
     }
 
@@ -160,7 +154,8 @@ contract XanV1UpgradeTest is Test {
         _xanProxy.scheduleVoterBodyUpgrade(_councilProposedImpl);
 
         // Advance time after the end time of the scheduled voter body upgrade.
-        skip(_xanProxy.scheduledVoterBodyUpgrade().endTime);
+        (, uint48 endTime) = _xanProxy.scheduledVoterBodyUpgrade();
+        skip(endTime);
 
         // Upgrade which should pass
         vm.expectEmit(address(_xanProxy));
@@ -183,7 +178,8 @@ contract XanV1UpgradeTest is Test {
         _xanProxy.scheduleVoterBodyUpgrade(_councilProposedImpl);
 
         // Advance time after the end time of the scheduled voter body upgrade.
-        skip(_xanProxy.scheduledVoterBodyUpgrade().endTime);
+        (, uint48 endTime) = _xanProxy.scheduledVoterBodyUpgrade();
+        skip(endTime);
 
         // Upgrade which should pass
         vm.expectEmit(address(_xanProxy));
@@ -238,8 +234,11 @@ contract XanV1UpgradeTest is Test {
     }
 
     function invariant_mutually_exclusive_schedule_upgrades() public view {
-        bool isScheduledByCouncil = _xanProxy.scheduledCouncilUpgrade().impl != address(0);
-        bool isScheduledByVoterBody = _xanProxy.scheduledVoterBodyUpgrade().impl != address(0);
+        (address scheduledVoterBodyImpl,) = _xanProxy.scheduledVoterBodyUpgrade();
+        (address scheduledCouncilImpl,) = _xanProxy.scheduledCouncilUpgrade();
+
+        bool isScheduledByCouncil = scheduledVoterBodyImpl != address(0);
+        bool isScheduledByVoterBody = scheduledCouncilImpl != address(0);
 
         assert(!(isScheduledByCouncil && isScheduledByVoterBody));
     }

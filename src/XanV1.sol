@@ -63,8 +63,8 @@ contract XanV1 is
     error ImplementationNotDelayed(address expected, address actual);
 
     error UpgradeNotScheduled(address impl);
-    error UpgradeAlreadyScheduled(ScheduledUpgrade scheduledImpl);
-    error UpgradeCancellationInvalid(ScheduledUpgrade scheduledImpl);
+    error UpgradeAlreadyScheduled(address impl, uint48 endTime);
+    error UpgradeCancellationInvalid(address impl, uint48 endTime);
     error UpgradeIsNotAllowedToBeScheduledTwice(address impl);
 
     error MinLockedSupplyNotReached();
@@ -72,8 +72,8 @@ contract XanV1 is
     error QuorumNotReached(address impl);
     error QuorumReached(address impl);
 
-    error DelayPeriodNotStarted(ScheduledUpgrade scheduledImpl);
-    error DelayPeriodNotEnded(ScheduledUpgrade scheduledImpl);
+    error DelayPeriodNotStarted(uint48 endTime);
+    error DelayPeriodNotEnded(uint48 endTime);
 
     error UnauthorizedCaller(address caller);
 
@@ -184,13 +184,14 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
+    // TODO! remove input arg
     function scheduleVoterBodyUpgrade(address proposedImpl) external override {
         Voting.Data storage votingData = _getVotingData();
 
         // Check that no other upgrade has been scheduled yet.
         {
-            if (votingData.scheduledUpgrade.endTime != 0 && votingData.scheduledUpgrade.impl != address(0)) {
-                revert UpgradeAlreadyScheduled(votingData.scheduledUpgrade);
+            if (votingData.scheduledEndTime != 0 && votingData.scheduledImpl != address(0)) {
+                revert UpgradeAlreadyScheduled(votingData.scheduledImpl, votingData.scheduledEndTime);
             }
         }
 
@@ -205,7 +206,7 @@ contract XanV1 is
         // Check if the council has proposed an upgrade and, if so, cancel.
         {
             Council.Data storage councilData = _getCouncilData();
-            if (councilData.scheduledUpgrade.endTime != 0 && councilData.scheduledUpgrade.impl != address(0)) {
+            if (councilData.scheduledEndTime != 0 && councilData.scheduledImpl != address(0)) {
                 _cancelCouncilUpgrade();
 
                 emit CouncilUpgradeVetoed(); // TODO! Revisit event args
@@ -213,29 +214,28 @@ contract XanV1 is
         }
 
         // Schedule the upgrade and emit the associated event.
-        votingData.scheduledUpgrade =
-            ScheduledUpgrade({impl: proposedImpl, endTime: Time.timestamp() + Parameters.DELAY_DURATION});
+        votingData.scheduledImpl = proposedImpl;
+        votingData.scheduledEndTime = Time.timestamp() + Parameters.DELAY_DURATION;
 
-        emit VoterBodyUpgradeScheduled(votingData.scheduledUpgrade);
+        emit VoterBodyUpgradeScheduled(votingData.scheduledImpl, votingData.scheduledEndTime);
     }
 
     /// @inheritdoc IXanV1
     function cancelVoterBodyUpgrade() external override {
         Voting.Data storage data = _getVotingData();
 
-        ScheduledUpgrade memory scheduledUpgrade = data.scheduledUpgrade;
-
-        _checkDelayCriterion(scheduledUpgrade);
+        _checkDelayCriterion(data.scheduledEndTime);
 
         // Check that the quorum for the new implementation is reached.
-        if (_isQuorumReached(scheduledUpgrade.impl) && scheduledUpgrade.impl == data.ranking[0]) {
-            revert UpgradeCancellationInvalid(scheduledUpgrade);
+        if (_isQuorumReached(data.scheduledImpl) && data.scheduledImpl == data.ranking[0]) {
+            revert UpgradeCancellationInvalid(data.scheduledImpl, data.scheduledEndTime);
         }
 
-        emit VoterBodyUpgradeCancelled(data.scheduledUpgrade);
+        emit VoterBodyUpgradeCancelled(data.scheduledImpl, data.scheduledEndTime);
 
         // Reset the scheduled upgrade
-        data.scheduledUpgrade = ScheduledUpgrade({impl: address(0), endTime: 0});
+        data.scheduledImpl = address(0);
+        data.scheduledEndTime = 0;
     }
 
     /// @notice @inheritdoc IXanV1
@@ -252,14 +252,14 @@ contract XanV1 is
 
         Council.Data storage data = _getCouncilData();
 
-        if (data.scheduledUpgrade.impl == proposedImpl) {
+        if (data.scheduledImpl == proposedImpl) {
             revert ImplementationAlreadyProposed(proposedImpl);
         }
 
-        data.scheduledUpgrade =
-            ScheduledUpgrade({impl: proposedImpl, endTime: Time.timestamp() + Parameters.DELAY_DURATION});
+        data.scheduledImpl = proposedImpl;
+        data.scheduledEndTime = Time.timestamp() + Parameters.DELAY_DURATION;
 
-        emit CouncilUpgradeScheduled(data.scheduledUpgrade);
+        emit CouncilUpgradeScheduled(data.scheduledImpl, data.scheduledEndTime);
     }
 
     /// @notice @inheritdoc IXanV1
@@ -324,13 +324,17 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
-    function scheduledVoterBodyUpgrade() public view override returns (ScheduledUpgrade memory scheduledUpgrade) {
-        scheduledUpgrade = _getVotingData().scheduledUpgrade;
+    function scheduledVoterBodyUpgrade() public view override returns (address impl, uint48 endTime) {
+        Voting.Data storage data = _getVotingData();
+        impl = data.scheduledImpl;
+        endTime = data.scheduledEndTime;
     }
 
     /// @inheritdoc IXanV1
-    function scheduledCouncilUpgrade() public view override returns (ScheduledUpgrade memory scheduledUpgrade) {
-        scheduledUpgrade = _getCouncilData().scheduledUpgrade;
+    function scheduledCouncilUpgrade() public view override returns (address impl, uint48 endTime) {
+        Council.Data storage data = _getCouncilData();
+        impl = data.scheduledImpl;
+        endTime = data.scheduledEndTime;
     }
 
     /// @inheritdoc IXanV1
@@ -385,7 +389,10 @@ contract XanV1 is
 
     /// @notice Cancels the scheduled upgrade by the council by resetting it to 0.
     function _cancelCouncilUpgrade() internal {
-        _getCouncilData().scheduledUpgrade = ScheduledUpgrade({impl: address(0), endTime: 0});
+        Council.Data storage data = _getCouncilData();
+
+        data.scheduledImpl = address(0);
+        data.scheduledEndTime = 0;
     }
 
     /// @notice Authorizes an upgrade.
@@ -396,13 +403,12 @@ contract XanV1 is
         }
 
         Voting.Data storage votingData = _getVotingData();
+        Council.Data storage councilData = _getCouncilData();
+
         address bestRankedVoterBodyImpl = votingData.ranking[0];
 
-        ScheduledUpgrade memory voterBodyUpgrade = votingData.scheduledUpgrade;
-        ScheduledUpgrade memory councilUpgrade = scheduledCouncilUpgrade();
-
-        bool isScheduledByVoterBody = (newImpl == voterBodyUpgrade.impl);
-        bool isScheduledByCouncil = (newImpl == councilUpgrade.impl);
+        bool isScheduledByVoterBody = (newImpl == votingData.scheduledImpl);
+        bool isScheduledByCouncil = (newImpl == councilData.scheduledImpl);
 
         // NOTE: councilUpgrade.impl and voterBodyUpgrade.impl can still be address(0);
 
@@ -412,9 +418,9 @@ contract XanV1 is
         }
 
         if (isScheduledByVoterBody) {
-            _checkDelayCriterion(voterBodyUpgrade);
+            _checkDelayCriterion(votingData.scheduledEndTime);
             _checkVoterBodyUpgradeCriteria({
-                impl: voterBodyUpgrade.impl,
+                impl: votingData.scheduledImpl,
                 bestRankedVoterBodyImpl: bestRankedVoterBodyImpl
             });
 
@@ -422,7 +428,7 @@ contract XanV1 is
         }
 
         if (isScheduledByCouncil) {
-            _checkDelayCriterion(councilUpgrade);
+            _checkDelayCriterion(councilData.scheduledEndTime);
             _checkCouncilUpgradeCriteria({bestRankedVoterBodyImpl: bestRankedVoterBodyImpl});
 
             return;
@@ -486,14 +492,14 @@ contract XanV1 is
     }
 
     /// @notice Checks if the delay period for a scheduled upgrade has ended and reverts with errors if not.
-    /// @param scheduledUpgrade The end time to check.
-    function _checkDelayCriterion(ScheduledUpgrade memory scheduledUpgrade) internal view {
-        if (scheduledUpgrade.endTime == 0) {
-            revert DelayPeriodNotStarted(scheduledUpgrade);
+    /// @param endTime The end time of the delay period to check.
+    function _checkDelayCriterion(uint48 endTime) internal view {
+        if (endTime == 0) {
+            revert DelayPeriodNotStarted(endTime);
         }
 
-        if (Time.timestamp() < scheduledUpgrade.endTime) {
-            revert DelayPeriodNotEnded(scheduledUpgrade);
+        if (Time.timestamp() < endTime) {
+            revert DelayPeriodNotEnded(endTime);
         }
     }
 
