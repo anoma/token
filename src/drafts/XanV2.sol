@@ -27,7 +27,7 @@ contract XanV2 is IXanV2, XanV1 {
 
     /// @notice Limits functions to be callable only by the forwarder address.
     modifier onlyForwarder() {
-        _checkOnlyForwarder();
+        _checkForwarder();
         _;
     }
 
@@ -78,7 +78,7 @@ contract XanV2 is IXanV2, XanV1 {
     }
 
     /// @notice Throws if the sender is not the forwarder.
-    function _checkOnlyForwarder() internal view {
+    function _checkForwarder() internal view {
         if (forwarder() != _msgSender()) {
             revert UnauthorizedCaller({caller: _msgSender()});
         }

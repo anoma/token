@@ -77,7 +77,7 @@ contract XanV1 is
 
     /// @notice Limits functions to be callable only by the governance council address.
     modifier onlyCouncil() {
-        _checkOnlyCouncil();
+        _checkCouncil();
         _;
     }
 
@@ -468,7 +468,7 @@ contract XanV1 is
     }
 
     /// @notice Throws if the sender is not the governance council.
-    function _checkOnlyCouncil() internal view {
+    function _checkCouncil() internal view {
         if (governanceCouncil() != msg.sender) {
             revert UnauthorizedCaller({caller: msg.sender});
         }
