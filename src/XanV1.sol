@@ -273,6 +273,10 @@ contract XanV1 is
     function cancelCouncilUpgrade() external override onlyCouncil {
         Council.Data storage data = _getCouncilData();
 
+        if (data.scheduledImpl == address(0) && data.scheduledEndTime == 0) {
+            revert UpgradeNotScheduled(address(0));
+        }
+
         emit CouncilUpgradeCancelled(data.scheduledImpl);
 
         // Reset the scheduled

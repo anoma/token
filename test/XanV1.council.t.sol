@@ -110,6 +110,12 @@ contract XanV1CouncilTest is Test {
         _xanProxy.cancelCouncilUpgrade();
     }
 
+    function test_cancelCouncilUpgrade_reverts_if_no_council_upgrade_is_scheduled() public {
+        vm.prank(_COUNCIL);
+        vm.expectRevert(abi.encodeWithSelector(XanV1.UpgradeNotScheduled.selector, address(0)), address(_xanProxy));
+        _xanProxy.cancelCouncilUpgrade();
+    }
+
     function test_cancelCouncilUpgrade_cancels_the_council_upgrade_before_the_delay_has_passed() public {
         // Schedule `_NEW_IMPL` as the council.
         vm.prank(_COUNCIL);
