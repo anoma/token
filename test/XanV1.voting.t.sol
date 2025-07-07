@@ -397,6 +397,36 @@ contract XanV1VotingTest is Test {
         assertEq(scheduledEndTime, 0);
     }
 
+    function test_cancelVoterBodyUpgrade_cancels_a_scheduled_upgrade_after_the_delay_if_the_implementation_is_not_the_best_ranked_anymore(
+    ) public {
+        // Vote for `_NEW_IMPL`
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
+        _xanProxy.castVote(_NEW_IMPL);
+        vm.stopPrank();
+
+        // Schedule the upgrade for `_NEW_IMPL`
+        _xanProxy.scheduleVoterBodyUpgrade();
+
+        // Skip the delay period.
+        skip(Parameters.DELAY_DURATION);
+
+        // Lock more tokens and vote for `_OTHER_NEW_IMPL`.
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(1);
+        _xanProxy.castVote(_OTHER_NEW_IMPL);
+        vm.stopPrank();
+
+        // Check that `_OTHER_NEW_IMPL` is now the best-ranked implementation.
+        assertEq(_xanProxy.proposedImplementationByRank(0), _OTHER_NEW_IMPL);
+        assertEq(_xanProxy.proposedImplementationByRank(1), _NEW_IMPL);
+
+        // Cancel the upgrade for `_NEW_IMPL`;
+        vm.expectEmit(address(_xanProxy));
+        emit IXanV1.VoterBodyUpgradeCancelled(_NEW_IMPL);
+        _xanProxy.cancelVoterBodyUpgrade();
+    }
+
     function test_scheduleVoterBodyUpgrade_returns_the_upgrade_if_one_has_been_scheduled() public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
