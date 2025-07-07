@@ -18,8 +18,6 @@ import {Locking} from "./libs/Locking.sol";
 import {Parameters} from "./libs/Parameters.sol";
 import {Voting} from "./libs/Voting.sol";
 
-import {console} from "forge-std/Test.sol";
-
 contract XanV1 is
     IXanV1,
     Initializable,
