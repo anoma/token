@@ -61,10 +61,8 @@ interface IXanV1 {
     /// @param proposedImpl The proposed implementation to revoke the vote for.
     function revokeVote(address proposedImpl) external;
 
-    // TODO! Remove input args.
-    /// @notice Schedules the upgrade for a winning implementation.
-    /// @param winningImpl The winning implementation to activate the delay period for.
-    function scheduleVoterBodyUpgrade(address winningImpl) external;
+    /// @notice Schedules the upgrade for the best ranked implementation proposed by the voter body.
+    function scheduleVoterBodyUpgrade() external;
 
     /// @notice Cancels the upgrade for a losing implementation.
     function cancelVoterBodyUpgrade() external;

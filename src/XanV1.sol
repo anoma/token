@@ -184,23 +184,31 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
-    // TODO! remove input arg
-    function scheduleVoterBodyUpgrade(address proposedImpl) external override {
+    function scheduleVoterBodyUpgrade() external override {
         Voting.Data storage votingData = _getVotingData();
 
         // Check that no other upgrade has been scheduled yet.
-        {
-            if (votingData.scheduledEndTime != 0 && votingData.scheduledImpl != address(0)) {
-                revert UpgradeAlreadyScheduled(votingData.scheduledImpl, votingData.scheduledEndTime);
-            }
+        if (votingData.scheduledEndTime != 0 && votingData.scheduledImpl != address(0)) {
+            revert UpgradeAlreadyScheduled(votingData.scheduledImpl, votingData.scheduledEndTime);
         }
 
-        // Check if the proposed implementation is the best ranked implementation.
+        // Check if the minimal locked supply is reached.
+        if (!_isMinLockedSupplyReached()) {
+            revert MinLockedSupplyNotReached();
+        }
+
+        // Check if the proposed implementation is the best ranked implementation
         {
             address bestRankedVoterBodyImpl = votingData.ranking[0];
+            if (!_isQuorumReached(bestRankedVoterBodyImpl)) {
+                revert QuorumNotReached(bestRankedVoterBodyImpl);
+            }
 
-            // Check that all upgrade criteria are met before scheduling the upgrade.
-            _checkVoterBodyUpgradeCriteria(proposedImpl, bestRankedVoterBodyImpl);
+            // Schedule the upgrade and emit the associated event.
+            votingData.scheduledImpl = bestRankedVoterBodyImpl;
+            votingData.scheduledEndTime = Time.timestamp() + Parameters.DELAY_DURATION;
+
+            emit VoterBodyUpgradeScheduled(votingData.scheduledImpl, votingData.scheduledEndTime);
         }
 
         // Check if the council has proposed an upgrade and, if so, cancel.
@@ -212,12 +220,6 @@ contract XanV1 is
                 emit CouncilUpgradeVetoed(); // TODO! Revisit event args
             }
         }
-
-        // Schedule the upgrade and emit the associated event.
-        votingData.scheduledImpl = proposedImpl;
-        votingData.scheduledEndTime = Time.timestamp() + Parameters.DELAY_DURATION;
-
-        emit VoterBodyUpgradeScheduled(votingData.scheduledImpl, votingData.scheduledEndTime);
     }
 
     /// @inheritdoc IXanV1
@@ -225,6 +227,8 @@ contract XanV1 is
         Voting.Data storage data = _getVotingData();
 
         _checkDelayCriterion(data.scheduledEndTime);
+
+        // TODO! check min quorum
 
         // Check that the quorum for the new implementation is reached.
         if (_isQuorumReached(data.scheduledImpl) && data.scheduledImpl == data.ranking[0]) {
@@ -240,14 +244,16 @@ contract XanV1 is
 
     /// @notice @inheritdoc IXanV1
     function scheduleCouncilUpgrade(address proposedImpl) external override onlyCouncil {
+        // TODO! replace by `isAcceptedVoterBodyUpgrade`
         {
             Voting.Data storage votingData = _getVotingData();
 
             address bestRankedVoterBodyImpl = votingData.ranking[0];
 
-            if (_isQuorumReached(bestRankedVoterBodyImpl)) {
+            if (_isQuorumReached(bestRankedVoterBodyImpl) && _isMinLockedSupplyReached()) {
                 revert QuorumReached(bestRankedVoterBodyImpl);
             }
+            // TODO! add min quorum check
         }
 
         Council.Data storage data = _getCouncilData();
@@ -401,11 +407,8 @@ contract XanV1 is
         if (newImpl == address(0)) {
             revert ImplementationZero();
         }
-
         Voting.Data storage votingData = _getVotingData();
         Council.Data storage councilData = _getCouncilData();
-
-        address bestRankedVoterBodyImpl = votingData.ranking[0];
 
         bool isScheduledByVoterBody = (newImpl == votingData.scheduledImpl);
         bool isScheduledByCouncil = (newImpl == councilData.scheduledImpl);
@@ -417,19 +420,40 @@ contract XanV1 is
             revert UpgradeIsNotAllowedToBeScheduledTwice(newImpl);
         }
 
+        address bestRankedVoterBodyImpl = votingData.ranking[0];
+
         if (isScheduledByVoterBody) {
-            _checkDelayCriterion(votingData.scheduledEndTime);
-            _checkVoterBodyUpgradeCriteria({
-                impl: votingData.scheduledImpl,
-                bestRankedVoterBodyImpl: bestRankedVoterBodyImpl
-            });
+            if (newImpl != bestRankedVoterBodyImpl) {
+                revert ImplementationNotRankedBest({expected: bestRankedVoterBodyImpl, actual: newImpl});
+            }
+
+            if (!_isMinLockedSupplyReached()) {
+                revert MinLockedSupplyNotReached();
+            }
+            // TODO combine `_isMinLockedSupplyReached` with the check below?
+            // NOTE: It should not be possible to schedule an implementation without minLockedSupply
+            // Check that the quorum for the new implementation is reached.
+            if (!_isQuorumReached(bestRankedVoterBodyImpl)) {
+                revert QuorumNotReached(bestRankedVoterBodyImpl);
+            }
+
+            _checkDelayCriterion({endTime: votingData.scheduledEndTime});
+            //_checkVoterBodyUpgradeCriteria({bestRankedVoterBodyImpl: bestRankedVoterBodyImpl});
 
             return;
         }
 
         if (isScheduledByCouncil) {
-            _checkDelayCriterion(councilData.scheduledEndTime);
-            _checkCouncilUpgradeCriteria({bestRankedVoterBodyImpl: bestRankedVoterBodyImpl});
+            // there cannot be ANY accepted voter body upgrade
+            // TODO!
+
+            // Revert if the quorum is reached for the
+            if (_isQuorumReached(bestRankedVoterBodyImpl) && _isMinLockedSupplyReached()) {
+                // TODO! better error name
+                revert QuorumReached(bestRankedVoterBodyImpl);
+            }
+
+            _checkDelayCriterion({endTime: councilData.scheduledEndTime});
 
             return;
         }
@@ -444,41 +468,7 @@ contract XanV1 is
         }
     }
 
-    /// @notice Checks if an implementation meets the voter body upgrade criteria:
-    /// * The minimal locked supply must be reached
-    /// * The quorum ust be reached for the implementation
-    /// * The implementation must be the best ranked implementation
-    /// If not, it reverts with an error.
-    /// @param impl The implementation to check the upgrade criteria for.
-    /// @param bestRankedVoterBodyImpl The best ranked implementation proposed by the voter body.
-    function _checkVoterBodyUpgradeCriteria(address impl, address bestRankedVoterBodyImpl) internal view {
-        // Check that the minimal required supply has been locked.
-        if (!_isMinLockedSupplyReached()) {
-            revert MinLockedSupplyNotReached();
-        }
-
-        // Check that the quorum for the new implementation is reached.
-        if (!_isQuorumReached(impl)) {
-            revert QuorumNotReached(impl);
-        }
-
-        // Check that the new implementation is the most voted implementation.
-        if (impl != bestRankedVoterBodyImpl) {
-            revert ImplementationNotRankedBest({expected: bestRankedVoterBodyImpl, actual: impl});
-        }
-    }
-
-    /// @notice Checks if the council upgrade criteria are met:
-    /// * No implementation proposed by the voter body has quorum,
-    ///   (which is equivalent to best ranked implementation not having quorum)
-    /// @param bestRankedVoterBodyImpl The best ranked implementation proposed by the voter body.
-    function _checkCouncilUpgradeCriteria(address bestRankedVoterBodyImpl) internal view {
-        if (_isQuorumReached(bestRankedVoterBodyImpl)) {
-            revert QuorumReached(bestRankedVoterBodyImpl);
-        }
-    }
-
-    /// @notice Returns `true` if the quorum is reached for a particular implementation.
+    /// @notice Returns `true` if the quorum is reached for a given mplementation.
     /// @param impl The implementation to check the quorum criteria for.
     /// @return isReached Whether the quorum is reached or not.
     function _isQuorumReached(address impl) internal view returns (bool isReached) {

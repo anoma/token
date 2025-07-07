@@ -36,22 +36,7 @@ contract XanV1CouncilTest is Test {
         _xanProxy.scheduleCouncilUpgrade(_NEW_IMPL);
     }
 
-    function test_scheduleCouncilUpgrade_reverts_if_an_voter_body_upgrade_has_quorum() public {
-        // Voter body votes on `_NEW_IMPL`
-        vm.startPrank(_defaultSender);
-        _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));
-        _xanProxy.castVote(_NEW_IMPL);
-        vm.stopPrank();
-        // Schedule the `_NEW_IMPL`
-        _xanProxy.scheduleVoterBodyUpgrade(_NEW_IMPL);
-
-        // Attempt to schedule an council upgrade.
-        vm.prank(_COUNCIL);
-        vm.expectRevert(abi.encodeWithSelector(XanV1.QuorumReached.selector, _NEW_IMPL), address(_xanProxy));
-        _xanProxy.scheduleCouncilUpgrade(_OTHER_NEW_IMPL);
-    }
-
-    function test_scheduleCouncilUpgrade_reverts_if_an_voter_body_upgrade_has_quorum_even_if_it_is_the_same_implementation(
+    function test_scheduleCouncilUpgrade_reverts_if_an_voter_body_upgrade_has_quorum_and_the_minimal_locked_supply_is_reached(
     ) public {
         // Voter body votes on `_NEW_IMPL`
         vm.startPrank(_defaultSender);
@@ -59,7 +44,23 @@ contract XanV1CouncilTest is Test {
         _xanProxy.castVote(_NEW_IMPL);
         vm.stopPrank();
         // Schedule the `_NEW_IMPL`
-        _xanProxy.scheduleVoterBodyUpgrade(_NEW_IMPL);
+        _xanProxy.scheduleVoterBodyUpgrade();
+
+        // Attempt to schedule an council upgrade.
+        vm.prank(_COUNCIL);
+        vm.expectRevert(abi.encodeWithSelector(XanV1.QuorumReached.selector, _NEW_IMPL), address(_xanProxy));
+        _xanProxy.scheduleCouncilUpgrade(_OTHER_NEW_IMPL);
+    }
+
+    function test_scheduleCouncilUpgrade_reverts_if_an_voter_body_upgrade_has_quorum_and_the_minimal_locked_supply_is_reached_even_if_it_is_the_same_implementation(
+    ) public {
+        // Voter body votes on `_NEW_IMPL`
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));
+        _xanProxy.castVote(_NEW_IMPL);
+        vm.stopPrank();
+        // Schedule the `_NEW_IMPL`
+        _xanProxy.scheduleVoterBodyUpgrade();
 
         // Attempt to schedule an council upgrade.
         vm.prank(_COUNCIL);

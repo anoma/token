@@ -60,7 +60,7 @@ contract XanV1UpgradeTest is Test {
         _xanProxy.castVote(_voterProposedImpl2);
         vm.stopPrank();
 
-        _xanProxy.scheduleVoterBodyUpgrade(_voterProposedImpl2);
+        _xanProxy.scheduleVoterBodyUpgrade();
         skip(Parameters.DELAY_DURATION);
 
         vm.expectRevert(
@@ -88,7 +88,7 @@ contract XanV1UpgradeTest is Test {
         vm.stopPrank();
 
         uint48 endTime = Time.timestamp() + Parameters.DELAY_DURATION;
-        _xanProxy.scheduleVoterBodyUpgrade(_voterProposedImpl);
+        _xanProxy.scheduleVoterBodyUpgrade();
 
         vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotEnded.selector, endTime), address(_xanProxy));
         _xanProxy.upgradeToAndCall({newImplementation: _voterProposedImpl, data: ""});
@@ -100,7 +100,7 @@ contract XanV1UpgradeTest is Test {
         _xanProxy.castVote(_voterProposedImpl);
         vm.stopPrank();
 
-        _xanProxy.scheduleVoterBodyUpgrade(_voterProposedImpl);
+        _xanProxy.scheduleVoterBodyUpgrade();
         skip(Parameters.DELAY_DURATION);
 
         vm.prank(_defaultSender);
@@ -121,7 +121,7 @@ contract XanV1UpgradeTest is Test {
         _xanProxy.castVote(_voterProposedImpl);
         assertEq(_xanProxy.proposedImplementationByRank(0), _voterProposedImpl);
 
-        _xanProxy.scheduleVoterBodyUpgrade(_voterProposedImpl);
+        _xanProxy.scheduleVoterBodyUpgrade();
         _xanProxy.lock(1);
         _xanProxy.castVote(_voterProposedImpl2);
         vm.stopPrank();
@@ -151,7 +151,7 @@ contract XanV1UpgradeTest is Test {
         _xanProxy.castVote(_councilProposedImpl);
         vm.stopPrank();
         // Schedule the `_councilProposedImpl`
-        _xanProxy.scheduleVoterBodyUpgrade(_councilProposedImpl);
+        _xanProxy.scheduleVoterBodyUpgrade();
 
         // Advance time after the end time of the scheduled voter body upgrade.
         (, uint48 endTime) = _xanProxy.scheduledVoterBodyUpgrade();
@@ -175,7 +175,7 @@ contract XanV1UpgradeTest is Test {
         _xanProxy.castVote(_councilProposedImpl);
         vm.stopPrank();
         // Schedule the `_councilProposedImpl`
-        _xanProxy.scheduleVoterBodyUpgrade(_councilProposedImpl);
+        _xanProxy.scheduleVoterBodyUpgrade();
 
         // Advance time after the end time of the scheduled voter body upgrade.
         (, uint48 endTime) = _xanProxy.scheduledVoterBodyUpgrade();

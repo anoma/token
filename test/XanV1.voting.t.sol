@@ -201,7 +201,7 @@ contract XanV1VotingTest is Test {
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY - 1);
 
         vm.expectRevert(abi.encodeWithSelector(XanV1.MinLockedSupplyNotReached.selector), address(_xanProxy));
-        _xanProxy.scheduleVoterBodyUpgrade(_NEW_IMPL);
+        _xanProxy.scheduleVoterBodyUpgrade();
     }
 
     function test_scheduleVoterBodyUpgrade_reverts_if_quorum_is_not_met() public {
@@ -219,7 +219,7 @@ contract XanV1VotingTest is Test {
         vm.stopPrank();
 
         vm.expectRevert(abi.encodeWithSelector(XanV1.QuorumNotReached.selector, _NEW_IMPL), address(_xanProxy));
-        _xanProxy.scheduleVoterBodyUpgrade(_NEW_IMPL);
+        _xanProxy.scheduleVoterBodyUpgrade();
     }
 
     function test_scheduleVoterBodyUpgrade_reverts_if_delay_has_already_been_started() public {
@@ -230,16 +230,16 @@ contract XanV1VotingTest is Test {
 
         // Schedule the upgrade
         uint48 endTime = Time.timestamp() + Parameters.DELAY_DURATION;
-        _xanProxy.scheduleVoterBodyUpgrade(_NEW_IMPL);
+        _xanProxy.scheduleVoterBodyUpgrade();
 
         // Try to start the delay again.
         vm.expectRevert(
             abi.encodeWithSelector(XanV1.UpgradeAlreadyScheduled.selector, _NEW_IMPL, endTime), address(_xanProxy)
         );
-        _xanProxy.scheduleVoterBodyUpgrade(_NEW_IMPL);
+        _xanProxy.scheduleVoterBodyUpgrade();
     }
 
-    function test_scheduleVoterBodyUpgrade_reverts_if_the_implementation_is_not_ranked_best() public {
+    function test_scheduleVoterBodyUpgrade_schedules_the_best_ranked_implementation() public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_NEW_IMPL);
@@ -249,11 +249,10 @@ contract XanV1VotingTest is Test {
         assertEq(_xanProxy.proposedImplementationByRank(0), _NEW_IMPL);
         assertEq(_xanProxy.proposedImplementationByRank(1), _OTHER_NEW_IMPL);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(XanV1.ImplementationNotRankedBest.selector, _NEW_IMPL, _OTHER_NEW_IMPL),
-            address(_xanProxy)
-        );
-        _xanProxy.scheduleVoterBodyUpgrade(_OTHER_NEW_IMPL);
+        _xanProxy.scheduleVoterBodyUpgrade();
+
+        (address scheduledImpl,) = _xanProxy.scheduledVoterBodyUpgrade();
+        assertEq(scheduledImpl, _NEW_IMPL);
     }
 
     function test_scheduleVoterBodyUpgrade_starts_the_delay_if_locked_supply_and_quorum_are_met_and_the_impl_is_ranked_best(
@@ -268,7 +267,7 @@ contract XanV1VotingTest is Test {
         assertGt(_xanProxy.totalVotes(_NEW_IMPL), _xanProxy.calculateQuorumThreshold());
         assertEq(_xanProxy.proposedImplementationByRank(0), _NEW_IMPL);
 
-        _xanProxy.scheduleVoterBodyUpgrade(_NEW_IMPL);
+        _xanProxy.scheduleVoterBodyUpgrade();
 
         (address impl, uint48 endTime) = _xanProxy.scheduledVoterBodyUpgrade();
         assertEq(impl, _NEW_IMPL);
@@ -288,11 +287,11 @@ contract XanV1VotingTest is Test {
 
         // Schedule `_NEW_IMPL` with the voter body
         vm.expectEmit(address(_xanProxy));
-        emit IXanV1.CouncilUpgradeVetoed();
+        emit IXanV1.VoterBodyUpgradeScheduled(_NEW_IMPL, Time.timestamp() + Parameters.DELAY_DURATION);
 
         vm.expectEmit(address(_xanProxy));
-        emit IXanV1.VoterBodyUpgradeScheduled(_NEW_IMPL, Time.timestamp() + Parameters.DELAY_DURATION);
-        _xanProxy.scheduleVoterBodyUpgrade(_NEW_IMPL);
+        emit IXanV1.CouncilUpgradeVetoed();
+        _xanProxy.scheduleVoterBodyUpgrade();
     }
 
     function test_scheduleVoterBodyUpgrade_emits_the_DelayStarted_event() public {
@@ -304,7 +303,7 @@ contract XanV1VotingTest is Test {
         vm.expectEmit(address(_xanProxy));
         emit IXanV1.VoterBodyUpgradeScheduled(_NEW_IMPL, Time.timestamp() + Parameters.DELAY_DURATION);
 
-        _xanProxy.scheduleVoterBodyUpgrade(_NEW_IMPL);
+        _xanProxy.scheduleVoterBodyUpgrade();
     }
 
     function test_cancelVoterBodyUpgrade_reverts_on_winning_implementation() public {
@@ -315,7 +314,7 @@ contract XanV1VotingTest is Test {
 
         // Schedule the upgrade
         uint48 endTime = Time.timestamp() + Parameters.DELAY_DURATION;
-        _xanProxy.scheduleVoterBodyUpgrade(_NEW_IMPL);
+        _xanProxy.scheduleVoterBodyUpgrade();
 
         // Skip the delay period.
         skip(Parameters.DELAY_DURATION);
@@ -332,7 +331,7 @@ contract XanV1VotingTest is Test {
         _xanProxy.castVote(_NEW_IMPL);
 
         uint48 endTime = Time.timestamp() + Parameters.DELAY_DURATION;
-        _xanProxy.scheduleVoterBodyUpgrade(_NEW_IMPL);
+        _xanProxy.scheduleVoterBodyUpgrade();
 
         // Vote with more weight for another implementation
         _xanProxy.lock(1);
@@ -357,7 +356,7 @@ contract XanV1VotingTest is Test {
         _xanProxy.castVote(_NEW_IMPL);
 
         uint48 endTime = Time.timestamp() + Parameters.DELAY_DURATION;
-        _xanProxy.scheduleVoterBodyUpgrade(_NEW_IMPL);
+        _xanProxy.scheduleVoterBodyUpgrade();
 
         (address scheduledImpl, uint48 scheduledEndTime) = _xanProxy.scheduledVoterBodyUpgrade();
         assertEq(scheduledImpl, _NEW_IMPL);
@@ -389,7 +388,7 @@ contract XanV1VotingTest is Test {
         _xanProxy.castVote(_NEW_IMPL);
 
         uint48 endTime = Time.timestamp() + Parameters.DELAY_DURATION;
-        _xanProxy.scheduleVoterBodyUpgrade(_NEW_IMPL);
+        _xanProxy.scheduleVoterBodyUpgrade();
 
         (address scheduledImpl, uint48 scheduledEndTime) = _xanProxy.scheduledVoterBodyUpgrade();
         assertEq(scheduledImpl, _NEW_IMPL);
