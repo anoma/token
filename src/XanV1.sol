@@ -327,7 +327,7 @@ contract XanV1 is
     }
 
     /// @notice @inheritdoc IXanV1
-    function proposedImplementationsCount() external view returns (uint48 count) {
+    function proposedImplementationsCount() external view override returns (uint48 count) {
         count = _getVotingData().implementationsCount();
     }
 
@@ -380,7 +380,11 @@ contract XanV1 is
         lockedBalance = _getLockingData().lockedBalances[from];
     }
 
-    /// @inheritdoc ERC20Upgradeable
+    /// @notice Updates the balances. Only the unlocked token balances can be updated, except for the minting case,
+    /// where `from == address(0)`.
+    /// @param from The address to take the tokens from.
+    /// @param to The address to give the tokens to.
+    /// @param value The amount of tokens to update that must be unlocked.
     function _update(address from, address to, uint256 value) internal override {
         // Require the unlocked balance to be at least the updated value, except for the minting case,
         // where `from == address(0)`.
@@ -402,15 +406,15 @@ contract XanV1 is
     /// @param account The account to lock  the tokens for.
     /// @param value The value to be locked.
     function _lock(address account, uint256 value) internal {
-        Locking.Data storage $ = _getLockingData();
+        Locking.Data storage data = _getLockingData();
 
         uint256 unlockedBalance = unlockedBalanceOf(account);
         if (value > unlockedBalance) {
             revert UnlockedBalanceInsufficient({sender: account, unlockedBalance: unlockedBalance, valueToLock: value});
         }
 
-        $.lockedSupply += value;
-        $.lockedBalances[account] += value;
+        data.lockedSupply += value;
+        data.lockedBalances[account] += value;
 
         emit Locked({account: account, value: value});
     }
@@ -511,19 +515,19 @@ contract XanV1 is
 
     /// @notice Returns the data of the upgrade proposed by the council from the current implementation
     /// from the contract storage location.
-    /// @return proposedUpgrade The data associated with upgrade proposed by the council from the current implementation.
-    function _getCouncilData() internal view returns (Council.Data storage proposedUpgrade) {
-        proposedUpgrade = _getXanV1Storage().implementationSpecificData[implementation()].councilData;
+    /// @return councilData The data associated with upgrade proposed by the council from the current implementation.
+    function _getCouncilData() internal view returns (Council.Data storage councilData) {
+        councilData = _getXanV1Storage().implementationSpecificData[implementation()].councilData;
     }
 
     /// @notice Returns the storage from the Xan V1 storage location.
-    /// @return $ The data associated with Xan token storage.
-    function _getXanV1Storage() internal pure returns (XanV1Storage storage $) {
+    /// @return xanV1Storage The data associated with Xan token storage.
+    function _getXanV1Storage() internal pure returns (XanV1Storage storage xanV1Storage) {
         // solhint-disable no-inline-assembly
         {
             // slither-disable-next-line assembly
             assembly {
-                $.slot := _XAN_V1_STORAGE_LOCATION
+                xanV1Storage.slot := _XAN_V1_STORAGE_LOCATION
             }
         }
         // solhint-enable no-inline-assembly
