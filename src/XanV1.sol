@@ -273,8 +273,6 @@ contract XanV1 is
     function cancelCouncilUpgrade() external override onlyCouncil {
         Council.Data storage data = _getCouncilData();
 
-        // TODO! Ask Chris: Should we check `_checkDelayCriterion(data.scheduledEndTime);`
-
         emit CouncilUpgradeCancelled(data.scheduledImpl);
 
         // Reset the scheduled
@@ -298,8 +296,6 @@ contract XanV1 is
         }
 
         Council.Data storage data = _getCouncilData();
-
-        // TODO! Ask Chris: Should we check `_checkDelayCriterion(data.scheduledEndTime);`
 
         emit CouncilUpgradeVetoed(data.scheduledImpl);
 
