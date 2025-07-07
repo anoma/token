@@ -68,8 +68,8 @@ interface IXanV1 {
     function cancelVoterBodyUpgrade() external;
 
     /// @notice Schedules the upgrade to a new implementation. This is only callable by the council.
-    /// @param proposedImpl The implementation proposed by the council.
-    function scheduleCouncilUpgrade(address proposedImpl) external;
+    /// @param impl The implementation proposed by the council.
+    function scheduleCouncilUpgrade(address impl) external;
 
     /// @notice Cancels the upgrade proposed by the governance council.
     /// This is only callable by the council.
@@ -123,9 +123,11 @@ interface IXanV1 {
     /// @return current The current implementation.
     function implementation() external view returns (address current);
 
-    /// @notice Returns the proposed implementation with the respective rank.
-    /// @return rankedImplementation The proposed implementation with the respective rank.
-    function proposedImplementationByRank(uint48 rank) external view returns (address rankedImplementation);
+    /// @notice Returns the proposed implementation with the respective rank or an error if no implementation with this
+    /// rank has been proposed yet.
+    /// @param rank The rank to return the implementation for.
+    /// @return impl The proposed implementation with the respective rank.
+    function proposedImplementationByRank(uint48 rank) external view returns (address impl);
 
     /// @notice Returns the address of the governance council.
     /// @return council The governance council address.

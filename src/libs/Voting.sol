@@ -113,4 +113,17 @@ library Voting {
         data.ballots[implA].rank = rankB;
         data.ballots[implB].rank = rankA;
     }
+
+    /// @notice Returns the implementation with the respective rank or `address(0)` if the rank does not exist.
+    /// @param rank The rank to return the implementation for.
+    /// @return impl The proposed implementation with the respective rank or `address(0)` if the rank does not exist.
+    function implementationByRank(Data storage data, uint48 rank) internal view returns (address impl) {
+        uint48 implCount = data.implCount;
+
+        if (implCount == 0 || rank > implCount - 1) {
+            return impl = address(0);
+        }
+
+        impl = data.ranking[rank];
+    }
 }

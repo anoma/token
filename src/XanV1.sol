@@ -56,6 +56,7 @@ contract XanV1 is
     error UnlockedBalanceInsufficient(address sender, uint256 unlockedBalance, uint256 valueToLock);
     error LockedBalanceInsufficient(address sender, uint256 lockedBalance);
     error NoVotesToRevoke(address sender, address proposedImpl);
+
     error ImplementationZero();
     error ImplementationAlreadyProposed(address impl);
     error ImplementationRankNonExistent(uint48 limit, uint48 rank);
@@ -67,10 +68,8 @@ contract XanV1 is
     error UpgradeCancellationInvalid(address impl, uint48 endTime);
     error UpgradeIsNotAllowedToBeScheduledTwice(address impl);
 
-    error MinLockedSupplyNotReached();
-    error QuorumNowhereReached();
-    error QuorumNotReached(address impl);
-    error QuorumReached(address impl);
+    error QuorumOrMinLockedSupplyNotReached(address impl);
+    error QuorumAndMinLockedSupplyReached(address impl);
 
     error DelayPeriodNotStarted(uint48 endTime);
     error DelayPeriodNotEnded(uint48 endTime);
@@ -192,16 +191,11 @@ contract XanV1 is
             revert UpgradeAlreadyScheduled(votingData.scheduledImpl, votingData.scheduledEndTime);
         }
 
-        // Check if the minimal locked supply is reached.
-        if (!_isMinLockedSupplyReached()) {
-            revert MinLockedSupplyNotReached();
-        }
-
         // Check if the proposed implementation is the best ranked implementation
         {
-            address bestRankedVoterBodyImpl = votingData.ranking[0];
-            if (!_isQuorumReached(bestRankedVoterBodyImpl)) {
-                revert QuorumNotReached(bestRankedVoterBodyImpl);
+            address bestRankedVoterBodyImpl = votingData.implementationByRank(0);
+            if (!_isQuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl)) {
+                revert QuorumOrMinLockedSupplyNotReached(bestRankedVoterBodyImpl);
             }
 
             // Schedule the upgrade and emit the associated event.
@@ -230,8 +224,14 @@ contract XanV1 is
 
         // TODO! check min quorum
 
-        // Check that the quorum for the new implementation is reached.
-        if (_isQuorumReached(data.scheduledImpl) && data.scheduledImpl == data.ranking[0]) {
+        // Revert the cancellation if the currently scheduled implementation still
+        // * meets the quorum and minimum locked supply for the
+        // * is the best ranked implementation
+        // and revert the cancellation if this is the case.
+        if (
+            _isQuorumAndMinLockedSupplyReached(data.scheduledImpl)
+                && (data.scheduledImpl == data.implementationByRank(0))
+        ) {
             revert UpgradeCancellationInvalid(data.scheduledImpl, data.scheduledEndTime);
         }
 
@@ -243,26 +243,27 @@ contract XanV1 is
     }
 
     /// @notice @inheritdoc IXanV1
-    function scheduleCouncilUpgrade(address proposedImpl) external override onlyCouncil {
-        // TODO! replace by `isAcceptedVoterBodyUpgrade`
+    function scheduleCouncilUpgrade(address impl) external override onlyCouncil {
+        // Check if a voter body upgrade could be scheduled.
         {
             Voting.Data storage votingData = _getVotingData();
 
-            address bestRankedVoterBodyImpl = votingData.ranking[0];
+            address bestRankedVoterBodyImpl = votingData.implementationByRank(0);
 
-            if (_isQuorumReached(bestRankedVoterBodyImpl) && _isMinLockedSupplyReached()) {
-                revert QuorumReached(bestRankedVoterBodyImpl);
+            if (_isQuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl)) {
+                revert QuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl);
             }
-            // TODO! add min quorum check
         }
 
         Council.Data storage data = _getCouncilData();
 
-        if (data.scheduledImpl == proposedImpl) {
-            revert ImplementationAlreadyProposed(proposedImpl);
+        // Check if the council upgrade is already scheduled
+        if (data.scheduledImpl != address(0) && data.scheduledEndTime != 0) {
+            revert UpgradeAlreadyScheduled(data.scheduledImpl, data.scheduledEndTime);
         }
 
-        data.scheduledImpl = proposedImpl;
+        // Schedule the council upgrade
+        data.scheduledImpl = impl;
         data.scheduledEndTime = Time.timestamp() + Parameters.DELAY_DURATION;
 
         emit CouncilUpgradeScheduled(data.scheduledImpl, data.scheduledEndTime);
@@ -276,14 +277,17 @@ contract XanV1 is
 
     /// @notice @inheritdoc IXanV1
     function vetoCouncilUpgrade() external override {
-        // Get the implementation with the most votes.
-        address mostVotedImplementation = _getVotingData().ranking[0];
+        // Get the best ranked implementation.
+        address bestRankedImplementation = _getVotingData().implementationByRank(0);
+        if (bestRankedImplementation == address(0)) {
+            revert ImplementationRankNonExistent({limit: 0, rank: 0});
+        }
 
         // Check if the most voted implementation has reached quorum.
-        if (!_isQuorumReached(mostVotedImplementation)) {
+        if (!_isQuorumAndMinLockedSupplyReached(bestRankedImplementation)) {
             // The voter body has not reached quorum on any implementation.
-            // This means that vetoing the council is not possible.
-            revert QuorumNowhereReached();
+            // This means that vetoing the council is not allowed.
+            revert QuorumOrMinLockedSupplyNotReached(bestRankedImplementation);
         }
 
         emit CouncilUpgradeVetoed();
@@ -295,6 +299,16 @@ contract XanV1 is
     /// @inheritdoc IXanV1
     function votum(address proposedImpl) external view override returns (uint256 votes) {
         votes = _getVotingData().ballots[proposedImpl].vota[msg.sender];
+    }
+
+    /// @notice @inheritdoc IXanV1
+    function proposedImplementationByRank(uint48 rank) external view override returns (address impl) {
+        Voting.Data storage data = _getVotingData();
+
+        impl = data.implementationByRank(rank);
+        if (impl == address(0)) {
+            revert ImplementationRankNonExistent({limit: data.implCount, rank: rank});
+        }
     }
 
     /// @notice @inheritdoc IXanV1
@@ -315,18 +329,6 @@ contract XanV1 is
     /// @notice @inheritdoc IXanV1
     function implementation() public view override returns (address thisImplementation) {
         thisImplementation = ERC1967Utils.getImplementation();
-    }
-
-    /// @notice @inheritdoc IXanV1
-    function proposedImplementationByRank(uint48 rank) public view override returns (address rankedImplementation) {
-        Voting.Data storage $ = _getVotingData();
-        uint48 implCount = $.implCount;
-
-        if (implCount == 0 || rank > implCount - 1) {
-            revert ImplementationRankNonExistent({limit: implCount, rank: rank});
-        }
-
-        rankedImplementation = $.ranking[rank];
     }
 
     /// @inheritdoc IXanV1
@@ -420,37 +422,26 @@ contract XanV1 is
             revert UpgradeIsNotAllowedToBeScheduledTwice(newImpl);
         }
 
-        address bestRankedVoterBodyImpl = votingData.ranking[0];
+        address bestRankedVoterBodyImpl = votingData.implementationByRank(0);
 
         if (isScheduledByVoterBody) {
             if (newImpl != bestRankedVoterBodyImpl) {
                 revert ImplementationNotRankedBest({expected: bestRankedVoterBodyImpl, actual: newImpl});
             }
 
-            if (!_isMinLockedSupplyReached()) {
-                revert MinLockedSupplyNotReached();
+            if (!_isQuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl)) {
+                revert QuorumOrMinLockedSupplyNotReached(bestRankedVoterBodyImpl);
             }
-            // TODO combine `_isMinLockedSupplyReached` with the check below?
-            // NOTE: It should not be possible to schedule an implementation without minLockedSupply
-            // Check that the quorum for the new implementation is reached.
-            if (!_isQuorumReached(bestRankedVoterBodyImpl)) {
-                revert QuorumNotReached(bestRankedVoterBodyImpl);
-            }
-
             _checkDelayCriterion({endTime: votingData.scheduledEndTime});
-            //_checkVoterBodyUpgradeCriteria({bestRankedVoterBodyImpl: bestRankedVoterBodyImpl});
 
             return;
         }
 
         if (isScheduledByCouncil) {
-            // there cannot be ANY accepted voter body upgrade
-            // TODO!
-
-            // Revert if the quorum is reached for the
-            if (_isQuorumReached(bestRankedVoterBodyImpl) && _isMinLockedSupplyReached()) {
-                // TODO! better error name
-                revert QuorumReached(bestRankedVoterBodyImpl);
+            // Revert if the quorum and minimum locked supply is reached for best ranked implementation proposed by
+            // the voter body.
+            if (_isQuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl)) {
+                revert QuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl);
             }
 
             _checkDelayCriterion({endTime: councilData.scheduledEndTime});
@@ -468,17 +459,17 @@ contract XanV1 is
         }
     }
 
-    /// @notice Returns `true` if the quorum is reached for a given mplementation.
+    /// @notice Returns `true` if the quorum and minimum locked supply is reached for a given mplementation.
     /// @param impl The implementation to check the quorum criteria for.
-    /// @return isReached Whether the quorum is reached or not.
-    function _isQuorumReached(address impl) internal view returns (bool isReached) {
-        isReached = totalVotes(impl) > calculateQuorumThreshold();
-    }
-
-    /// @notice Returns `true` if the quorum is reached for a particular implementation.
-    /// @return isReached Whether the minimum locked supply is reached or not.
-    function _isMinLockedSupplyReached() internal view returns (bool isReached) {
-        isReached = lockedSupply() + 1 > Parameters.MIN_LOCKED_SUPPLY;
+    /// @return isReached Whether the quorum and minimum locked supply is reached or not.
+    function _isQuorumAndMinLockedSupplyReached(address impl) internal view returns (bool isReached) {
+        if (totalVotes(impl) < calculateQuorumThreshold() + 1) {
+            return isReached = false;
+        }
+        if (lockedSupply() < Parameters.MIN_LOCKED_SUPPLY) {
+            return isReached = false;
+        }
+        isReached = true;
     }
 
     /// @notice Checks if the delay period for a scheduled upgrade has ended and reverts with errors if not.

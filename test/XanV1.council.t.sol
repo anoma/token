@@ -48,7 +48,9 @@ contract XanV1CouncilTest is Test {
 
         // Attempt to schedule an council upgrade.
         vm.prank(_COUNCIL);
-        vm.expectRevert(abi.encodeWithSelector(XanV1.QuorumReached.selector, _NEW_IMPL), address(_xanProxy));
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV1.QuorumAndMinLockedSupplyReached.selector, _NEW_IMPL), address(_xanProxy)
+        );
         _xanProxy.scheduleCouncilUpgrade(_OTHER_NEW_IMPL);
     }
 
@@ -64,16 +66,20 @@ contract XanV1CouncilTest is Test {
 
         // Attempt to schedule an council upgrade.
         vm.prank(_COUNCIL);
-        vm.expectRevert(abi.encodeWithSelector(XanV1.QuorumReached.selector, _NEW_IMPL), address(_xanProxy));
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV1.QuorumAndMinLockedSupplyReached.selector, _NEW_IMPL), address(_xanProxy)
+        );
         _xanProxy.scheduleCouncilUpgrade(_NEW_IMPL);
     }
 
     function test_scheduleCouncilUpgrade_reverts_if_an_council_upgrade_has_been_proposed_already() public {
         vm.startPrank(_COUNCIL);
+
+        uint48 endTime = Time.timestamp() + Parameters.DELAY_DURATION;
         _xanProxy.scheduleCouncilUpgrade(_NEW_IMPL);
 
         vm.expectRevert(
-            abi.encodeWithSelector(XanV1.ImplementationAlreadyProposed.selector, _NEW_IMPL), address(_xanProxy)
+            abi.encodeWithSelector(XanV1.UpgradeAlreadyScheduled.selector, _NEW_IMPL, endTime), address(_xanProxy)
         );
         _xanProxy.scheduleCouncilUpgrade(_NEW_IMPL);
     }
@@ -129,8 +135,20 @@ contract XanV1CouncilTest is Test {
         vm.prank(_COUNCIL);
         _xanProxy.scheduleCouncilUpgrade(_NEW_IMPL);
 
+        // Vote for another implementation but without meeting the minimal locked supply
+        vm.startPrank(_defaultSender);
+        // Lock first half.
+        _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY - 1);
+        _xanProxy.castVote(_OTHER_NEW_IMPL);
+        vm.stopPrank();
+
         vm.prank(_defaultSender);
-        vm.expectRevert(abi.encodeWithSelector(XanV1.QuorumNowhereReached.selector), address(_xanProxy));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                XanV1.QuorumOrMinLockedSupplyNotReached.selector, _xanProxy.proposedImplementationByRank(0)
+            ),
+            address(_xanProxy)
+        );
         _xanProxy.vetoCouncilUpgrade();
     }
 

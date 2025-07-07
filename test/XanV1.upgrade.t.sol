@@ -106,7 +106,10 @@ contract XanV1UpgradeTest is Test {
         vm.prank(_defaultSender);
         _xanProxy.revokeVote(_voterProposedImpl);
 
-        vm.expectRevert(abi.encodeWithSelector(XanV1.QuorumNotReached.selector, _voterProposedImpl), address(_xanProxy));
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV1.QuorumOrMinLockedSupplyNotReached.selector, _voterProposedImpl),
+            address(_xanProxy)
+        );
         _xanProxy.upgradeToAndCall({newImplementation: _voterProposedImpl, data: ""});
     }
 

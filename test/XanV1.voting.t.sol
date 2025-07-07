@@ -8,6 +8,7 @@ import {Upgrades, UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.
 import {Test} from "forge-std/Test.sol";
 
 import {Parameters} from "../src/libs/Parameters.sol";
+import {Voting} from "../src/libs/Voting.sol";
 import {IXanV1, XanV1} from "../src/XanV1.sol";
 
 contract XanV1VotingTest is Test {
@@ -199,8 +200,15 @@ contract XanV1VotingTest is Test {
         vm.startPrank(_defaultSender);
         // Lock first half.
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY - 1);
+        _xanProxy.castVote(_NEW_IMPL);
+        vm.stopPrank();
 
-        vm.expectRevert(abi.encodeWithSelector(XanV1.MinLockedSupplyNotReached.selector), address(_xanProxy));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                XanV1.QuorumOrMinLockedSupplyNotReached.selector, _xanProxy.proposedImplementationByRank(0)
+            ),
+            address(_xanProxy)
+        );
         _xanProxy.scheduleVoterBodyUpgrade();
     }
 
@@ -218,7 +226,9 @@ contract XanV1VotingTest is Test {
         _xanProxy.lock(quorumThreshold);
         vm.stopPrank();
 
-        vm.expectRevert(abi.encodeWithSelector(XanV1.QuorumNotReached.selector, _NEW_IMPL), address(_xanProxy));
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV1.QuorumOrMinLockedSupplyNotReached.selector, _NEW_IMPL), address(_xanProxy)
+        );
         _xanProxy.scheduleVoterBodyUpgrade();
     }
 
