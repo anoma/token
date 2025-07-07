@@ -28,7 +28,7 @@ contract XanV1 is
 {
     using Voting for Voting.Data;
 
-    /// @notice A struct containing data associated with a current implementation.
+    /// @notice A struct containing data associated with the current implementation.
     /// @param lockingData The state associated with the locking mechanism for the current implementation.
     /// @param votingData  The state associated with the voting mechanism for the current implementation.
     /// @param councilData The state associated with the governance council for the current implementation.
@@ -41,7 +41,6 @@ contract XanV1 is
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.
     /// @custom:storage-location erc7201:anoma.storage.Xan.v1
     struct XanV1Storage {
-        // TODO! Revisit
         mapping(address current => ImplementationData) implementationSpecificData;
     }
 
