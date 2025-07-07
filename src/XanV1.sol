@@ -18,6 +18,8 @@ import {Locking} from "./libs/Locking.sol";
 import {Parameters} from "./libs/Parameters.sol";
 import {Voting} from "./libs/Voting.sol";
 
+import {console} from "forge-std/Test.sol";
+
 contract XanV1 is
     IXanV1,
     Initializable,
@@ -63,11 +65,12 @@ contract XanV1 is
     error UpgradeNotScheduled(address impl);
     error UpgradeAlreadyScheduled(ScheduledUpgrade scheduledImpl);
     error UpgradeCancellationInvalid(ScheduledUpgrade scheduledImpl);
+    error UpgradeIsNotAllowedToBeScheduledTwice(address impl);
 
     error MinLockedSupplyNotReached();
-    error QuorumNowhereReached(); // TODO remove?
-    error QuorumNotReached(address proposedImpl);
-    error QuorumReachedForVoterBodyProposedImplementation(address voterBodyProposedImpl);
+    error QuorumNowhereReached();
+    error QuorumNotReached(address impl);
+    error QuorumReached(address impl);
 
     error DelayPeriodNotStarted(ScheduledUpgrade scheduledImpl);
     error DelayPeriodNotEnded(ScheduledUpgrade scheduledImpl);
@@ -182,22 +185,38 @@ contract XanV1 is
 
     /// @inheritdoc IXanV1
     function scheduleVoterBodyUpgrade(address proposedImpl) external override {
-        // Check that all upgrade criteria are met before starting the delay.
-        _checkVoterBodyUpgradeCriteria(proposedImpl);
+        Voting.Data storage votingData = _getVotingData();
 
-        Voting.Data storage data = _getVotingData();
+        // Check that no other upgrade has been scheduled yet.
+        {
+            if (votingData.scheduledUpgrade.endTime != 0 && votingData.scheduledUpgrade.impl != address(0)) {
+                revert UpgradeAlreadyScheduled(votingData.scheduledUpgrade);
+            }
+        }
 
-        // Check that the delay period hasn't been started yet by
-        // ensuring that no end time and implementation has been set.
-        if (data.scheduledUpgrade.endTime != 0 && data.scheduledUpgrade.impl != address(0)) {
-            revert UpgradeAlreadyScheduled(data.scheduledUpgrade);
+        // Check if the proposed implementation is the best ranked implementation.
+        {
+            address bestRankedVoterBodyImpl = votingData.ranking[0];
+
+            // Check that all upgrade criteria are met before scheduling the upgrade.
+            _checkVoterBodyUpgradeCriteria(proposedImpl, bestRankedVoterBodyImpl);
+        }
+
+        // Check if the council has proposed an upgrade and, if so, cancel.
+        {
+            Council.Data storage councilData = _getCouncilData();
+            if (councilData.scheduledUpgrade.endTime != 0 && councilData.scheduledUpgrade.impl != address(0)) {
+                _cancelCouncilUpgrade();
+
+                emit CouncilUpgradeVetoed(); // TODO! Revisit event args
+            }
         }
 
         // Schedule the upgrade and emit the associated event.
-        data.scheduledUpgrade =
+        votingData.scheduledUpgrade =
             ScheduledUpgrade({impl: proposedImpl, endTime: Time.timestamp() + Parameters.DELAY_DURATION});
 
-        emit VoterBodyUpgradeScheduled(data.scheduledUpgrade);
+        emit VoterBodyUpgradeScheduled(votingData.scheduledUpgrade);
     }
 
     /// @inheritdoc IXanV1
@@ -209,7 +228,6 @@ contract XanV1 is
         _checkDelayCriterion(scheduledUpgrade);
 
         // Check that the quorum for the new implementation is reached.
-        // TODO! Add getter for best ranked impl.
         if (_isQuorumReached(scheduledUpgrade.impl) && scheduledUpgrade.impl == data.ranking[0]) {
             revert UpgradeCancellationInvalid(scheduledUpgrade);
         }
@@ -222,6 +240,16 @@ contract XanV1 is
 
     /// @notice @inheritdoc IXanV1
     function scheduleCouncilUpgrade(address proposedImpl) external override onlyCouncil {
+        {
+            Voting.Data storage votingData = _getVotingData();
+
+            address bestRankedVoterBodyImpl = votingData.ranking[0];
+
+            if (_isQuorumReached(bestRankedVoterBodyImpl)) {
+                revert QuorumReached(bestRankedVoterBodyImpl);
+            }
+        }
+
         Council.Data storage data = _getCouncilData();
 
         if (data.scheduledUpgrade.impl == proposedImpl) {
@@ -367,33 +395,35 @@ contract XanV1 is
             revert ImplementationZero();
         }
 
-        ScheduledUpgrade memory voterBodyUpgrade = scheduledVoterBodyUpgrade();
+        Voting.Data storage votingData = _getVotingData();
+        address bestRankedVoterBodyImpl = votingData.ranking[0];
+
+        ScheduledUpgrade memory voterBodyUpgrade = votingData.scheduledUpgrade;
         ScheduledUpgrade memory councilUpgrade = scheduledCouncilUpgrade();
 
         bool isScheduledByVoterBody = (newImpl == voterBodyUpgrade.impl);
         bool isScheduledByCouncil = (newImpl == councilUpgrade.impl);
 
-        if (isScheduledByVoterBody && isScheduledByCouncil) {
-            if (voterBodyUpgrade.endTime < councilUpgrade.endTime) {
-                _checkDelayCriterion(voterBodyUpgrade);
-                _checkVoterBodyUpgradeCriteria(newImpl);
-            } else {
-                _checkDelayCriterion(councilUpgrade);
-                _checkCouncilUpgradeCriteria(newImpl);
-            }
-            return;
+        // NOTE: councilUpgrade.impl and voterBodyUpgrade.impl can still be address(0);
+
+        if (isScheduledByCouncil && isScheduledByVoterBody) {
+            // This should never happen.
+            revert UpgradeIsNotAllowedToBeScheduledTwice(newImpl);
         }
 
         if (isScheduledByVoterBody) {
             _checkDelayCriterion(voterBodyUpgrade);
-            _checkVoterBodyUpgradeCriteria(newImpl);
+            _checkVoterBodyUpgradeCriteria({
+                impl: voterBodyUpgrade.impl,
+                bestRankedVoterBodyImpl: bestRankedVoterBodyImpl
+            });
 
             return;
         }
 
         if (isScheduledByCouncil) {
             _checkDelayCriterion(councilUpgrade);
-            _checkCouncilUpgradeCriteria(newImpl);
+            _checkCouncilUpgradeCriteria({bestRankedVoterBodyImpl: bestRankedVoterBodyImpl});
 
             return;
         }
@@ -408,10 +438,14 @@ contract XanV1 is
         }
     }
 
-    /// @notice Checks if the criteria to upgrade to the new implementation proposed by the voter body are met
-    /// and reverts with errors if not.
+    /// @notice Checks if an implementation meets the voter body upgrade criteria:
+    /// * The minimal locked supply must be reached
+    /// * The quorum ust be reached for the implementation
+    /// * The implementation must be the best ranked implementation
+    /// If not, it reverts with an error.
     /// @param impl The implementation to check the upgrade criteria for.
-    function _checkVoterBodyUpgradeCriteria(address impl) internal view {
+    /// @param bestRankedVoterBodyImpl The best ranked implementation proposed by the voter body.
+    function _checkVoterBodyUpgradeCriteria(address impl, address bestRankedVoterBodyImpl) internal view {
         // Check that the minimal required supply has been locked.
         if (!_isMinLockedSupplyReached()) {
             revert MinLockedSupplyNotReached();
@@ -423,26 +457,18 @@ contract XanV1 is
         }
 
         // Check that the new implementation is the most voted implementation.
-        address bestRankedImpl = _getVotingData().ranking[0];
-
-        if (impl != bestRankedImpl) {
-            revert ImplementationNotRankedBest({expected: bestRankedImpl, actual: impl});
+        if (impl != bestRankedVoterBodyImpl) {
+            revert ImplementationNotRankedBest({expected: bestRankedVoterBodyImpl, actual: impl});
         }
     }
 
-    /// @notice Checks if the criteria to upgrade to the new implementation proposed by the governance council are met
-    /// and reverts with errors if not.
-    /// @param impl The implementation to check the upgrade criteria for.
-    // TODO! Change input args.
-    function _checkCouncilUpgradeCriteria(address impl) internal view {
-        // Get the implementation with the most votes.
-        address voterBodyProposedImpl = _getVotingData().ranking[0];
-
-        // Check if it matches the
-        if (impl == voterBodyProposedImpl) return; // TODO! Test this logic carefully
-
-        if (_isQuorumReached(voterBodyProposedImpl)) {
-            revert QuorumReachedForVoterBodyProposedImplementation(voterBodyProposedImpl);
+    /// @notice Checks if the council upgrade criteria are met:
+    /// * No implementation proposed by the voter body has quorum,
+    ///   (which is equivalent to best ranked implementation not having quorum)
+    /// @param bestRankedVoterBodyImpl The best ranked implementation proposed by the voter body.
+    function _checkCouncilUpgradeCriteria(address bestRankedVoterBodyImpl) internal view {
+        if (_isQuorumReached(bestRankedVoterBodyImpl)) {
+            revert QuorumReached(bestRankedVoterBodyImpl);
         }
     }
 

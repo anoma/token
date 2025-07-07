@@ -144,80 +144,51 @@ contract XanV1UpgradeTest is Test {
         _xanProxy.upgradeToAndCall({newImplementation: _voterProposedImpl, data: ""});
     }
 
-    function test_authorizeUpgrade_reverts_council_upgrade_if_voter_body_implementation_has_reached_quorum() public {
-        // Voter body votes on `_voterProposedImpl`
-        vm.startPrank(_defaultSender);
-        _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));
-        _xanProxy.castVote(_voterProposedImpl);
-        vm.stopPrank();
-
-        // Start upgrade delay for `_voterProposedImpl`
-        _xanProxy.scheduleVoterBodyUpgrade(_voterProposedImpl);
-
+    function test_authorizeUpgrade_passes_if_the_voter_body_has_scheduled_the_upgrade_after_the_council() public {
         // Council proposes `_councilProposedImpl`
         vm.prank(_COUNCIL);
         _xanProxy.scheduleCouncilUpgrade(_councilProposedImpl);
 
-        // Advance time after the delay end of the implementation proposed by the council.
-        skip(_xanProxy.scheduledCouncilUpgrade().endTime);
+        skip(1);
 
-        // Try to upgrade to which should fail
-        vm.expectRevert(
-            abi.encodeWithSelector(XanV1.QuorumReachedForVoterBodyProposedImplementation.selector, _voterProposedImpl),
-            address(_xanProxy)
-        );
-        _xanProxy.upgradeToAndCall({newImplementation: _councilProposedImpl, data: ""});
-    }
-
-    function test_authorizeUpgrade_does_not_increase_the_delay_of_the_implementation_proposed_by_the_voter_body_if_the_council_endorses_it(
-    ) public {
-        // Voter body votes on `_voterProposedImpl`
+        // Voter body votes on `_councilProposedImpl` as well
         vm.startPrank(_defaultSender);
         _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));
-        _xanProxy.castVote(_voterProposedImpl);
+        _xanProxy.castVote(_councilProposedImpl);
         vm.stopPrank();
-
-        // Start upgrade delay for `_voterProposedImpl`
-        _xanProxy.scheduleVoterBodyUpgrade(_voterProposedImpl);
-
-        // Advance time shortly before the end time of the scheduled voter body upgrade.
-        skip(_xanProxy.scheduledVoterBodyUpgrade().endTime - 5 minutes);
-
-        // Council endorses `_voterProposedImpl`
-        vm.prank(_COUNCIL);
-        _xanProxy.scheduleCouncilUpgrade(_voterProposedImpl);
-
-        assertLt(_xanProxy.scheduledVoterBodyUpgrade().endTime, _xanProxy.scheduledCouncilUpgrade().endTime);
-
-        // Advance time after the end time of the scheduled voter body upgrade.
-        skip(_xanProxy.scheduledVoterBodyUpgrade().endTime - Time.timestamp());
-
-        _xanProxy.upgradeToAndCall({newImplementation: _voterProposedImpl, data: ""});
-    }
-
-    function test_authorizeUpgrade_passes_if_the_council_and_voter_body_have_proposed_the_same_implementation()
-        public
-    {
-        // Voter body votes on `_voterProposedImpl`
-        vm.startPrank(_defaultSender);
-        _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));
-        _xanProxy.castVote(_voterProposedImpl);
-        vm.stopPrank();
-
-        // Start upgrade delay for `_voterProposedImpl`
-        _xanProxy.scheduleVoterBodyUpgrade(_voterProposedImpl);
-
-        // Council proposes `_voterProposedImpl` as well
-        vm.prank(_COUNCIL);
-        _xanProxy.scheduleCouncilUpgrade(_voterProposedImpl);
+        // Schedule the `_councilProposedImpl`
+        _xanProxy.scheduleVoterBodyUpgrade(_councilProposedImpl);
 
         // Advance time after the end time of the scheduled voter body upgrade.
         skip(_xanProxy.scheduledVoterBodyUpgrade().endTime);
 
         // Upgrade which should pass
         vm.expectEmit(address(_xanProxy));
-        emit IERC1967.Upgraded(_voterProposedImpl);
-        _xanProxy.upgradeToAndCall({newImplementation: _voterProposedImpl, data: ""});
+        emit IERC1967.Upgraded(_councilProposedImpl);
+        _xanProxy.upgradeToAndCall({newImplementation: _councilProposedImpl, data: ""});
+    }
+
+    function test_authorizeUpgrade_passes_if_the_voter_body_has_scheduled_the_upgrade_in_the_same_block_as_the_council_(
+    ) public {
+        // Council proposes `_councilProposedImpl`
+        vm.prank(_COUNCIL);
+        _xanProxy.scheduleCouncilUpgrade(_councilProposedImpl);
+
+        // Voter body votes on `_councilProposedImpl` as well
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));
+        _xanProxy.castVote(_councilProposedImpl);
+        vm.stopPrank();
+        // Schedule the `_councilProposedImpl`
+        _xanProxy.scheduleVoterBodyUpgrade(_councilProposedImpl);
+
+        // Advance time after the end time of the scheduled voter body upgrade.
+        skip(_xanProxy.scheduledVoterBodyUpgrade().endTime);
+
+        // Upgrade which should pass
+        vm.expectEmit(address(_xanProxy));
+        emit IERC1967.Upgraded(_councilProposedImpl);
+        _xanProxy.upgradeToAndCall({newImplementation: _councilProposedImpl, data: ""});
     }
 
     function test_upgradeToAndCall_emits_the_Upgraded_event() public {
@@ -264,5 +235,12 @@ contract XanV1UpgradeTest is Test {
         vm.expectEmit(address(_xanProxy));
         emit IERC1967.Upgraded(currentImpl);
         address(_xanProxy).upgradeProxy({newImpl: currentImpl, data: ""});
+    }
+
+    function invariant_mutually_exclusive_schedule_upgrades() public view {
+        bool isScheduledByCouncil = _xanProxy.scheduledCouncilUpgrade().impl != address(0);
+        bool isScheduledByVoterBody = _xanProxy.scheduledVoterBodyUpgrade().impl != address(0);
+
+        assert(!(isScheduledByCouncil && isScheduledByVoterBody));
     }
 }
