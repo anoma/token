@@ -87,11 +87,13 @@ contract XanV1 is
         _disableInitializers();
     }
 
-    // solhint-disable comprehensive-interface
     /// @notice Initializes the XanV1 contract.
     /// @param initialMintRecipient The initial recipient of the minted tokens.
     /// @param council The address of the governance council contract.
-    function initializeV1(address initialMintRecipient, address council) external initializer {
+    function initializeV1( /* solhint-disable-line comprehensive-interface*/
+        address initialMintRecipient,
+        address council
+    ) external initializer {
         // Initialize inherited contracts
         __ERC20_init({name_: Parameters.NAME, symbol_: Parameters.SYMBOL});
         __ERC20Permit_init({name: Parameters.NAME});
@@ -101,7 +103,7 @@ contract XanV1 is
         // Initialize the XanV1 contract
         _mint(initialMintRecipient, Parameters.SUPPLY);
         _getCouncilData().council = council;
-    } // solhint-enable comprehensive-interface
+    }
 
     /// @inheritdoc IXanV1
     function lock(uint256 value) external override {
