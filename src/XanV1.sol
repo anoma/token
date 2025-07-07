@@ -55,10 +55,8 @@ contract XanV1 is
     error NoVotesToRevoke(address sender, address proposedImpl);
 
     error ImplementationZero();
-    error ImplementationAlreadyProposed(address impl);
     error ImplementationRankNonExistent(uint48 limit, uint48 rank);
     error ImplementationNotRankedBest(address expected, address actual);
-    error ImplementationNotDelayed(address expected, address actual);
 
     error UpgradeNotScheduled(address impl);
     error UpgradeScheduledTwice(address impl);
