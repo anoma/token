@@ -2,9 +2,9 @@
 pragma solidity ^0.8.30;
 
 /// @title Locking
-/// @author TODO, 2025
+/// @author Anoma Foundation, 2025
 /// @notice A library containing a data structure to store the locked balances and the locked supply.
-/// @custom:security-contact TODO
+/// @custom:security-contact security@anoma.foundation
 library Locking {
     /// @notice A struct containing data associated with the token locking mechanism.
     /// @param lockedBalances The locked balances associated with the current implementation.

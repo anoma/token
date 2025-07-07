@@ -2,9 +2,9 @@
 pragma solidity ^0.8.30;
 
 /// @title Parameters
-/// @author TODO, 2025
+/// @author Anoma Foundation, 2025
 /// @notice A library containing the token parameters.
-/// @custom:security-contact TODO
+/// @custom:security-contact security@anoma.foundation
 library Parameters {
     /// @notice The name of the token.
     string internal constant NAME = "Anoma";

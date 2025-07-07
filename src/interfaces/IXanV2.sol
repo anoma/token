@@ -4,9 +4,9 @@ pragma solidity ^0.8.30;
 import {IXanV1} from "./IXanV1.sol";
 
 /// @title IXanV2
-/// @author TODO, 2025
+/// @author Anoma Foundation, 2025
 /// @notice A draft of the interface of the Anoma (XAN) token contract version 2.
-/// @custom:security-contact TODO
+/// @custom:security-contact security@anoma.foundation
 interface IXanV2 is IXanV1 {
     /// @notice Mints tokens for an account.
     /// @param account The receiving account.
