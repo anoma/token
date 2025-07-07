@@ -19,9 +19,9 @@ import {Parameters} from "./libs/Parameters.sol";
 import {Voting} from "./libs/Voting.sol";
 
 /// @title XanV1
-/// @author TODO, 2025
+/// @author Anoma Foundation, 2025
 /// @notice The Anoma (XAN) token contract implementation version 1.
-/// @custom:security-contact TODO
+/// @custom:security-contact security@anoma.foundation
 contract XanV1 is
     IXanV1,
     Initializable,

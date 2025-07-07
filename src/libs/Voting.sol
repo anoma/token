@@ -2,9 +2,9 @@
 pragma solidity ^0.8.30;
 
 /// @title Locking
-/// @author TODO, 2025
+/// @author Anoma Foundation, 2025
 /// @notice A library containing data structures and methods related to and ranking.
-/// @custom:security-contact TODO
+/// @custom:security-contact security@anoma.foundation
 library Voting {
     using Voting for Data;
 

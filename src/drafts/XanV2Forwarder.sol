@@ -6,10 +6,10 @@ import {ForwarderBase} from "@anoma/evm-protocol-adapter/forwarders/ForwarderBas
 import {XanV2} from "./XanV2.sol";
 
 /// @title XanV2Forwarder
-/// @author TODO, 2025
+/// @author Anoma Foundation, 2025
 /// @notice A draft of a XanV2 forwarder contract minting new XAN tokens for a recipient.
 /// Note, that the forwarder contract is the recipient of newly minted XAN tokens.
-/// @custom:security-contact TODO
+/// @custom:security-contact security@anoma.foundation
 contract XanV2Forwarder is ForwarderBase {
     XanV2 internal immutable _XAN_PROXY;
 

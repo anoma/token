@@ -2,9 +2,9 @@
 pragma solidity ^0.8.30;
 
 /// @title IXanV1
-/// @author TODO, 2025
+/// @author Anoma Foundation, 2025
 /// @notice The interface of the Anoma (XAN) token contract version 1.
-/// @custom:security-contact TODO
+/// @custom:security-contact security@anoma.foundation
 interface IXanV1 {
     /// @notice Emitted when tokens are locked.
     /// @param account The owning account.
