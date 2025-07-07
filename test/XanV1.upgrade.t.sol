@@ -2,14 +2,15 @@
 pragma solidity ^0.8.30;
 
 import {IERC1967} from "@openzeppelin/contracts/interfaces/IERC1967.sol";
-import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
+
 import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {Upgrades, UnsafeUpgrades, Options} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {XanV2} from "../src/drafts/XanV2.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
-import {IXanV1, XanV1} from "../src/XanV1.sol";
+import {XanV1} from "../src/XanV1.sol";
 
 contract XanV1UpgradeTest is Test {
     using UnsafeUpgrades for address;

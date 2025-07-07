@@ -6,7 +6,6 @@ import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 
 import {Test} from "forge-std/Test.sol";
 
-import {Parameters} from "../src/libs/Parameters.sol";
 import {IXanV1, XanV1} from "../src/XanV1.sol";
 
 contract XanV1LockingTest is Test {
