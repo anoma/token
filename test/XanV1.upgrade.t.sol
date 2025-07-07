@@ -232,7 +232,6 @@ contract XanV1UpgradeTest is Test {
             data: abi.encodeCall(XanV2.reinitializeFromV1, (address(uint160(1))))
         });
 
-        // TODO! Confirm with Chris
         assertEq(_xanProxy.governanceCouncil(), address(0));
     }
 

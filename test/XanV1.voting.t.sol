@@ -288,16 +288,22 @@ contract XanV1VotingTest is Test {
         assertEq(endTime, Time.timestamp() + Parameters.DELAY_DURATION);
     }
 
-    function test_scheduleVoterBodyUpgrade_cancels_a_scheduled_upgrade_by_the_council_if_present() public {
+    function test_scheduleVoterBodyUpgrade_cancels_a_scheduled_upgrade_by_the_council_before_the_delay_has_passed()
+        public
+    {
         // Schedule `_OTHER_NEW_IMPL` with the council.
         vm.prank(_COUNCIL);
         _xanProxy.scheduleCouncilUpgrade(_OTHER_NEW_IMPL);
+        (, uint48 endTime) = _xanProxy.scheduledCouncilUpgrade();
 
         // Vote on `_NEW_IMPL` with the voter body.
         vm.startPrank(_defaultSender);
         _xanProxy.lock(_xanProxy.totalSupply());
         _xanProxy.castVote(_NEW_IMPL);
         vm.stopPrank();
+
+        // Ensure that the delay has NOT passed.
+        assertLt(Time.timestamp() + 24 hours, endTime);
 
         // Schedule `_NEW_IMPL` with the voter body
         vm.expectEmit(address(_xanProxy));
@@ -306,6 +312,58 @@ contract XanV1VotingTest is Test {
         vm.expectEmit(address(_xanProxy));
         emit IXanV1.CouncilUpgradeVetoed(_OTHER_NEW_IMPL);
         _xanProxy.scheduleVoterBodyUpgrade();
+    }
+
+    function test_scheduleVoterBodyUpgrade_cancels_a_scheduled_upgrade_by_the_council_after_the_delay_has_passed()
+        public
+    {
+        // Schedule `_OTHER_NEW_IMPL` with the council.
+        vm.prank(_COUNCIL);
+        _xanProxy.scheduleCouncilUpgrade(_OTHER_NEW_IMPL);
+        (, uint48 endTime) = _xanProxy.scheduledCouncilUpgrade();
+
+        // Vote on `_NEW_IMPL` with the voter body.
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(_xanProxy.totalSupply());
+        _xanProxy.castVote(_NEW_IMPL);
+        vm.stopPrank();
+
+        // Ensure that the delay has just passed.
+        skip(Parameters.DELAY_DURATION + 1);
+        assertGt(Time.timestamp(), endTime);
+
+        // Schedule `_NEW_IMPL` with the voter body
+        vm.expectEmit(address(_xanProxy));
+        emit IXanV1.VoterBodyUpgradeScheduled(_NEW_IMPL, Time.timestamp() + Parameters.DELAY_DURATION);
+
+        vm.expectEmit(address(_xanProxy));
+        emit IXanV1.CouncilUpgradeVetoed(_OTHER_NEW_IMPL);
+        _xanProxy.scheduleVoterBodyUpgrade();
+    }
+
+    function test_scheduleVoterBodyUpgrade_cancels_a_scheduled_upgrade_by_the_council_and_resets_the_scheduled_upgrade_to_zero(
+    ) public {
+        // Schedule `_OTHER_NEW_IMPL` with the council.
+        vm.prank(_COUNCIL);
+        uint48 expectedEndTime = Time.timestamp() + Parameters.DELAY_DURATION;
+        _xanProxy.scheduleCouncilUpgrade(_OTHER_NEW_IMPL);
+        (address impl, uint48 endTime) = _xanProxy.scheduledCouncilUpgrade();
+        assertEq(impl, _OTHER_NEW_IMPL);
+        assertEq(endTime, expectedEndTime);
+
+        // Vote on `_NEW_IMPL` with the voter body.
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(_xanProxy.totalSupply());
+        _xanProxy.castVote(_NEW_IMPL);
+        vm.stopPrank();
+
+        // Schedule `_NEW_IMPL` with the voter body
+        _xanProxy.scheduleVoterBodyUpgrade();
+
+        // Check that the council upgrade has been reset
+        (impl, endTime) = _xanProxy.scheduledCouncilUpgrade();
+        assertEq(impl, address(0));
+        assertEq(endTime, 0);
     }
 
     function test_scheduleVoterBodyUpgrade_emits_the_DelayStarted_event() public {

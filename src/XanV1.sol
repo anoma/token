@@ -205,7 +205,7 @@ contract XanV1 is
         {
             Council.Data storage councilData = _getCouncilData();
             if (councilData.scheduledEndTime != 0 && councilData.scheduledImpl != address(0)) {
-                // TODO! Ask Chris: Should we check `_checkDelayCriterion(councilData.scheduledEndTime);`
+  
 
                 emit CouncilUpgradeVetoed(councilData.scheduledImpl);
 

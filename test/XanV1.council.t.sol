@@ -155,7 +155,7 @@ contract XanV1CouncilTest is Test {
 
         _xanProxy.cancelCouncilUpgrade();
 
-        (address impl, uint48 endTime) = _xanProxy.scheduledVoterBodyUpgrade();
+        (address impl, uint48 endTime) = _xanProxy.scheduledCouncilUpgrade();
         assertEq(impl, address(0));
         assertEq(endTime, 0);
     }
