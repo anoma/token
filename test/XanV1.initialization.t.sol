@@ -49,8 +49,8 @@ contract XanV1InitializationTest is Test {
         assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), uninitializedProxy.totalSupply());
     }
 
-    function test_initialize_mints_the_expected_supply_amounting_to_1_billion_tokens() public view {
-        uint256 expectedTokens = 10 ** 9;
+    function test_initialize_mints_the_expected_supply_amounting_to_10_billion_tokens() public view {
+        uint256 expectedTokens = 10 ** 10;
 
         // Consider the decimals for the expected supply.
         uint256 expectedSupply = expectedTokens * (10 ** _xanProxy.decimals());
