@@ -8,8 +8,8 @@ library Parameters {
     /// @notice The symbol of the token.
     string internal constant SYMBOL = "XAN";
 
-    /// @notice The total supply amounting to 1 bn (10^9) tokens with 18 decimals.
-    uint256 internal constant SUPPLY = 10 ** (9 + 18);
+    /// @notice The total supply amounting to 10 bn (10^10) tokens with 18 decimals.
+    uint256 internal constant SUPPLY = 10 ** (10 + 18);
 
     /// @notice The minimal locked supply required for upgrades amounting to 25% of the total supply.
     uint256 internal constant MIN_LOCKED_SUPPLY = SUPPLY / 4;
