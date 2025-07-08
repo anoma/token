@@ -464,7 +464,7 @@ contract XanV1VotingTest is Test {
         // Vote with more weight for another implementation
         _xanProxy.lock(1);
         _xanProxy.castVote(_OTHER_NEW_IMPL);
-        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_OTHER_NEW_IMPL);
         vm.stopPrank();
 
         assertEq(_xanProxy.mostVotedImplementation(), _OTHER_NEW_IMPL);
