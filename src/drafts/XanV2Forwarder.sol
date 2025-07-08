@@ -13,6 +13,7 @@ contract XanV2Forwarder {
     address internal immutable _PROTOCOL_ADAPTER;
     bytes32 internal immutable _CALLDATA_CARRIER_RESOURCE_KIND;
 
+    error AddressZero();
     error UnauthorizedCaller(address caller);
     error InvalidFunctionSelector(bytes4 expected, bytes4 actual);
     error InvalidMintRecipient(address recipient);
@@ -22,6 +23,8 @@ contract XanV2Forwarder {
     /// @param protocolAdapter The address of the protocol adapter.
     /// @param calldataCarrierLogicRef The logic reference of the associated calldata carrier resource.
     constructor(address xanProxy, address protocolAdapter, bytes32 calldataCarrierLogicRef) {
+        if (xanProxy == address(0) || protocolAdapter == address(0)) revert AddressZero();
+
         _XAN_PROXY = XanV2(xanProxy);
         _PROTOCOL_ADAPTER = protocolAdapter;
         _CALLDATA_CARRIER_RESOURCE_KIND =
@@ -31,7 +34,10 @@ contract XanV2Forwarder {
     /// @notice Forwards mint calls to the XAN proxy contract pointing to the `XanV2` implementation.
     /// @param input The `bytes` encoded mint calldata (including the `bytes4` function selector).
     /// @return output The empty output of the call.
-    function forwardCall(bytes calldata input) external returns (bytes memory output) {
+    function forwardCall(bytes calldata input /* solhint-disable-line comprehensive-interface*/ )
+        external
+        returns (bytes memory output)
+    {
         if (msg.sender != _PROTOCOL_ADAPTER) {
             revert UnauthorizedCaller(msg.sender);
         }
