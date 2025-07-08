@@ -97,17 +97,17 @@ contract XanV1VotingTest is Test {
         uint256 secondLockValue = _xanProxy.totalSupply() - firstLockValue;
 
         vm.startPrank(_defaultSender);
-        assertEq(_xanProxy.votum(_NEW_IMPL), 0);
+        assertEq(_xanProxy.votum(_defaultSender, _NEW_IMPL), 0);
 
         _xanProxy.lock(firstLockValue);
         _xanProxy.castVote(_NEW_IMPL);
 
-        assertEq(_xanProxy.votum(_NEW_IMPL), firstLockValue);
+        assertEq(_xanProxy.votum(_defaultSender, _NEW_IMPL), firstLockValue);
 
         _xanProxy.lock(secondLockValue);
         _xanProxy.castVote(_NEW_IMPL);
 
-        assertEq(_xanProxy.votum(_NEW_IMPL), firstLockValue + secondLockValue);
+        assertEq(_xanProxy.votum(_defaultSender, _NEW_IMPL), firstLockValue + secondLockValue);
         vm.stopPrank();
     }
 

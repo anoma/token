@@ -56,7 +56,6 @@ contract XanV1 is
 
     error UnlockedBalanceInsufficient(address sender, uint256 unlockedBalance, uint256 valueToLock);
     error LockedBalanceInsufficient(address sender, uint256 lockedBalance);
-    error NoVotesToRevoke(address sender, address proposedImpl);
 
     error ImplementationZero();
     error ImplementationNotMostVoted(address notMostVotedImpl);
@@ -152,11 +151,13 @@ contract XanV1 is
             emit VoteCast({voter: voter, impl: proposedImpl, value: delta});
         }
 
-        // Eventually update the most voted implementation
+        // Update the most voted implementation if it has changed
         {
             address currentMostVotedImpl = data.mostVotedImpl;
 
+            // Check if the proposed implementation now has the most votes
             if (data.ballots[currentMostVotedImpl].totalVotes < data.ballots[proposedImpl].totalVotes) {
+                // Update the most voted implementation to the proposed implementation
                 data.mostVotedImpl = proposedImpl;
 
                 emit MostVotedImplementationUpdated({newMostVotedImpl: proposedImpl});
@@ -173,7 +174,7 @@ contract XanV1 is
             revert UpgradeAlreadyScheduled(votingData.scheduledImpl, votingData.scheduledEndTime);
         }
 
-        // Check if the proposed implementation is the best ranked implementation
+        // Check if the most voted implementation has reached quorum
         {
             address mostVotedImpl = votingData.mostVotedImpl;
             if (!_isQuorumAndMinLockedSupplyReached(mostVotedImpl)) {
@@ -208,9 +209,8 @@ contract XanV1 is
         _checkDelayCriterion(data.scheduledEndTime);
 
         // Revert the cancellation if the currently scheduled implementation still
-        // * meets the quorum and minimum locked supply for the
+        // * meets the quorum and minimum locked supply
         // * is the most voted implementation
-        // and revert the cancellation if this is the case.
         if (_isQuorumAndMinLockedSupplyReached(data.scheduledImpl) && (data.scheduledImpl == data.mostVotedImpl)) {
             revert UpgradeCancellationInvalid(data.scheduledImpl, data.scheduledEndTime);
         }
@@ -237,7 +237,7 @@ contract XanV1 is
 
         Council.Data storage data = _getCouncilData();
 
-        // Check if the council upgrade is already scheduled
+        // Check if an council upgrade is already scheduled
         if (data.scheduledImpl != address(0) && data.scheduledEndTime != 0) {
             revert UpgradeAlreadyScheduled(data.scheduledImpl, data.scheduledEndTime);
         }
@@ -286,8 +286,8 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
-    function votum(address proposedImpl) external view override returns (uint256 votes) {
-        votes = _getVotingData().ballots[proposedImpl].vota[msg.sender];
+    function votum(address voter, address proposedImpl) external view override returns (uint256 votes) {
+        votes = _getVotingData().ballots[proposedImpl].vota[voter];
     }
 
     /// @notice @inheritdoc IXanV1
@@ -406,15 +406,12 @@ contract XanV1 is
                 revert ImplementationNotMostVoted({notMostVotedImpl: newImpl});
             }
 
+            // This check is redundant, but kept for defense in depth.
             if (!_isQuorumAndMinLockedSupplyReached(mostVotedImpl)) {
                 revert QuorumOrMinLockedSupplyNotReached(mostVotedImpl);
             }
             _checkDelayCriterion({endTime: votingData.scheduledEndTime});
-
-            return;
-        }
-
-        if (isScheduledByCouncil) {
+        } else if (isScheduledByCouncil) {
             // Check if the best ranked implementation exists.
             if (mostVotedImpl != address(0)) {
                 // Revert if the quorum and minimum locked supply is reached for best ranked implementation proposed by
@@ -424,11 +421,9 @@ contract XanV1 is
                 }
             }
             _checkDelayCriterion({endTime: councilData.scheduledEndTime});
-
-            return;
+        } else {
+            revert UpgradeNotScheduled(newImpl);
         }
-
-        revert UpgradeNotScheduled(newImpl);
     }
 
     /// @notice Throws if the sender is not the governance council.
