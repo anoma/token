@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
-import {ForwarderCalldata} from "@anoma/evm-protocol-adapter/Types.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {Upgrades, UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
@@ -96,7 +95,7 @@ contract XanV2UnitTest is Test {
     function test_mint_is_callable_from_the_ProtocolAdapter_via_the_XanV2Forwarder() public {
         uint256 valueToMint = 123;
 
-        ForwarderCalldata memory forwarderCalldata = ForwarderCalldata({
+        MockProtocolAdapter.ForwarderCalldata memory forwarderCalldata = MockProtocolAdapter.ForwarderCalldata({
             untrustedForwarder: _xanV2Forwarder,
             input: abi.encodeCall(XanV2.mint, (_other, valueToMint)),
             output: bytes("")
@@ -130,7 +129,7 @@ contract XanV2UnitTest is Test {
     function test_mint_mints_tokens_for_the_XanV2Forwarder() public {
         uint256 valueToMint = 123;
 
-        ForwarderCalldata memory forwarderCalldata = ForwarderCalldata({
+        MockProtocolAdapter.ForwarderCalldata memory forwarderCalldata = MockProtocolAdapter.ForwarderCalldata({
             untrustedForwarder: _xanV2Forwarder,
             input: abi.encodeCall(XanV2.mint, (_other, valueToMint)),
             output: bytes("")
@@ -153,7 +152,7 @@ contract XanV2UnitTest is Test {
 
         uint256 valueToMint = 123;
 
-        ForwarderCalldata memory forwarderCalldata = ForwarderCalldata({
+        MockProtocolAdapter.ForwarderCalldata memory forwarderCalldata = MockProtocolAdapter.ForwarderCalldata({
             untrustedForwarder: _xanV2Forwarder,
             input: abi.encodeCall(XanV2.mint, (_other, valueToMint)),
             output: bytes("")
