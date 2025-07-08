@@ -13,15 +13,13 @@ interface IXanV1 {
 
     /// @notice Emitted when a vote is cast for a implementation.
     /// @param voter The voter address.
-    /// @param implementation The implementation the vote was cast for.
+    /// @param impl The implementation the vote was cast for.
     /// @param value The number of votes cast.
-    event VoteCast(address indexed voter, address indexed implementation, uint256 value);
+    event VoteCast(address indexed voter, address indexed impl, uint256 value);
 
-    /// @notice Emitted when a vote is revoked from a new implementation.
-    /// @param voter The voting account.
-    /// @param implementation The implementation the vote was revoked from.
-    /// @param value The number of votes revoked.
-    event VoteRevoked(address indexed voter, address indexed implementation, uint256 value);
+    /// @notice Emitted when the most voted implementation gets updated.
+    /// @param newMostVotedImpl The new most-voted implementation.
+    event MostVotedImplementationUpdated(address indexed newMostVotedImpl);
 
     /// @notice Emitted when the upgrade to a new implementation proposed by the voter body is scheduled.
     /// @param impl The implementation that has been scheduled.
@@ -60,14 +58,6 @@ interface IXanV1 {
     /// Otherwise, the function will revert with an error.
     /// @param proposedImpl The proposed implementation to cast the vote for.
     function castVote(address proposedImpl) external;
-
-    /// @notice Revokes the vote from a proposed implementation.
-    /// @param proposedImpl The proposed implementation to revoke the vote for.
-    function revokeVote(address proposedImpl) external;
-
-    /// @notice Sets the most voted implementation.
-    /// @param newMostVotedImpl The new most voted implementation to set.
-    function updateMostVotedImplementation(address newMostVotedImpl) external;
 
     /// @notice Schedules the upgrade to the best-ranked implementation proposed by the voter body.
     function scheduleVoterBodyUpgrade() external;

@@ -120,91 +120,52 @@ contract XanV1 is
         address voter = msg.sender;
 
         Voting.Data storage data = _getVotingData();
-        Voting.Ballot storage ballot = data.ballots[proposedImpl];
 
-        // TODO! Remove
-        // if (!ballot.exists) {
-        //     data.assignWorstRank(proposedImpl);
-        // }
+        // Cast the vote for the proposed implementation
+        {
+            Voting.Ballot storage ballot = data.ballots[proposedImpl];
 
-        // Cache the old votum of the voter.
-        uint256 oldVotum = ballot.vota[voter];
+            // Cache the old votum of the voter.
+            uint256 oldVotum = ballot.vota[voter];
 
-        // Cache the locked balance.
-        uint256 lockedBalance = lockedBalanceOf(voter);
+            // Cache the locked balance.
+            uint256 lockedBalance = lockedBalanceOf(voter);
 
-        // Check that the locked balance is larger than the old votum.
-        if (lockedBalance < oldVotum + 1) {
-            revert LockedBalanceInsufficient({sender: voter, lockedBalance: lockedBalance});
+            // Check that the locked balance is larger than the old votum.
+            if (lockedBalance < oldVotum + 1) {
+                revert LockedBalanceInsufficient({sender: voter, lockedBalance: lockedBalance});
+            }
+
+            // Calculate the votes that must be added.
+            uint256 delta;
+            unchecked {
+                // Skip the underflow check because `lockedBalance > oldVotum` has been checked before.
+                delta = lockedBalance - oldVotum;
+            }
+
+            // Update the votum.
+            ballot.vota[voter] = lockedBalance;
+
+            // Update the total votes.
+            ballot.totalVotes += delta;
+
+            emit VoteCast({voter: voter, impl: proposedImpl, value: delta});
         }
 
-        // Calculate the votes that must be added.
-        uint256 delta;
-        unchecked {
-            // Skip the underflow check because `lockedBalance > oldVotum` has been checked before.
-            delta = lockedBalance - oldVotum;
+        // Eventually update the most voted implementation
+        {
+            address currentMostVotedImpl = data.mostVotedImpl;
+
+            if (data.ballots[currentMostVotedImpl].totalVotes < data.ballots[proposedImpl].totalVotes) {
+                data.mostVotedImpl = proposedImpl;
+
+                emit MostVotedImplementationUpdated({newMostVotedImpl: proposedImpl});
+            }
         }
-
-        // Update the votum.
-        ballot.vota[voter] = lockedBalance;
-
-        // Update the total votes.
-        ballot.totalVotes += delta;
-
-        // TODO! Should auto-update the most voted impl if it has changed
-
-        // TODO! Remove
-        // Bubble the proposed implementation up in the ranking.
-        // data.bubbleUp(proposedImpl);
-
-        emit VoteCast({voter: voter, implementation: proposedImpl, value: delta});
-    }
-
-    /// @inheritdoc IXanV1
-    function revokeVote(address proposedImpl) external override {
-        address voter = msg.sender;
-
-        Voting.Data storage data = _getVotingData();
-        Voting.Ballot storage ballot = data.ballots[proposedImpl];
-
-        // Cache the old votum of the voter.
-        uint256 oldVotum = ballot.vota[voter];
-
-        // Check if there has been an old votum to revoke.
-        if (oldVotum == 0) {
-            revert NoVotesToRevoke({sender: voter, proposedImpl: proposedImpl});
-        }
-
-        // Set the votum of the voter to zero.
-        ballot.vota[voter] = 0;
-
-        // Revoke the old votum by subtracting it from the total votes.
-        ballot.totalVotes -= oldVotum;
-
-        // TODO! Remove
-        // Bubble the proposed implementation down in the ranking.
-        // data.bubbleDown(proposedImpl);
-
-        emit VoteRevoked({voter: voter, implementation: proposedImpl, value: oldVotum});
-    }
-
-    /// @inheritdoc IXanV1
-    function updateMostVotedImplementation(address newMostVotedImpl) external {
-        Voting.Data storage data = _getVotingData();
-
-        // Check if the implementation has more votes than the currently most voted implementation.
-        if (_isMostVoted(newMostVotedImpl)) {
-            revert ImplementationNotMostVoted({notMostVotedImpl: newMostVotedImpl});
-        }
-
-        // If not, set the new most voted implementation.
-        data.mostVotedImpl = newMostVotedImpl;
     }
 
     /// @inheritdoc IXanV1
     function scheduleVoterBodyUpgrade() external override {
-        // TODO! Should this method receive the impl as an input arg and try to update it to be most voted?
-
         Voting.Data storage votingData = _getVotingData();
 
         // Check that no other upgrade has been scheduled yet.
@@ -475,15 +436,6 @@ contract XanV1 is
         if (governanceCouncil() != msg.sender) {
             revert UnauthorizedCaller({caller: msg.sender});
         }
-    }
-
-    /// @notice Checks whether an implementation is the most voted implementation.
-    /// @param impl The implementation to check.
-    /// @return mostVoted Whether the implementation is the most voted or not.
-    function _isMostVoted(address impl) internal view returns (bool mostVoted) {
-        Voting.Data storage data = _getVotingData();
-
-        mostVoted = data.ballots[impl].totalVotes < data.ballots[data.mostVotedImpl].totalVotes;
     }
 
     /// @notice Returns `true` if the quorum and minimum locked supply is reached for a given implementation.
