@@ -141,7 +141,7 @@ contract XanV1VotingTest is Test {
         vm.stopPrank();
     }
 
-    function test_castVote_updated_the_most_voted_implementationTODOTOD() public {
+    function test_castVote_updates_the_most_voted_implementationTODOTOD() public {
         revert("TODO?");
     }
 

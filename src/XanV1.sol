@@ -192,14 +192,10 @@ contract XanV1 is
     function updateMostVotedImplementation(address newMostVotedImpl) external {
         Voting.Data storage data = _getVotingData();
 
-        // Check if the current most voted implementation has more votes
-        address currentMostVotedImpl = data.mostVotedImpl;
-
-        if (data.ballots[newMostVotedImpl].totalVotes < data.ballots[currentMostVotedImpl].totalVotes) {
+        // Check if the implementation has more votes than the currently most voted implementation.
+        if (_isMostVoted(newMostVotedImpl)) {
             revert ImplementationNotMostVoted({notMostVotedImpl: newMostVotedImpl});
         }
-
-        // TODO! Should we automatically cancel the scheduled voter body upgrade?
 
         // If not, set the new most voted implementation.
         data.mostVotedImpl = newMostVotedImpl;
@@ -481,7 +477,16 @@ contract XanV1 is
         }
     }
 
-    /// @notice Returns `true` if the quorum and minimum locked supply is reached for a given mplementation.
+    /// @notice Checks whether an implementation is the most voted implementation.
+    /// @param impl The implementation to check.
+    /// @return mostVoted Whether the implementation is the most voted or not.
+    function _isMostVoted(address impl) internal view returns (bool mostVoted) {
+        Voting.Data storage data = _getVotingData();
+
+        mostVoted = data.ballots[impl].totalVotes < data.ballots[data.mostVotedImpl].totalVotes;
+    }
+
+    /// @notice Returns `true` if the quorum and minimum locked supply is reached for a given implementation.
     /// @param impl The implementation to check the quorum criteria for.
     /// @return isReached Whether the quorum and minimum locked supply is reached or not.
     function _isQuorumAndMinLockedSupplyReached(address impl) internal view returns (bool isReached) {
