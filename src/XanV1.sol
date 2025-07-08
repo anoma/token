@@ -61,7 +61,6 @@ contract XanV1 is
     error ImplementationNotMostVoted(address notMostVotedImpl);
 
     error UpgradeNotScheduled(address impl);
-    error UpgradeScheduledTwice(address impl);
     error UpgradeAlreadyScheduled(address impl, uint48 endTime);
     error UpgradeCancellationInvalid(address impl, uint48 endTime);
 
