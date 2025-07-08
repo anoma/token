@@ -149,7 +149,6 @@ contract XanV1VotingTest is Test {
 
     function test_scheduleVoterBodyUpgrade_reverts_if_the_minimal_locked_supply_is_not_met() public {
         vm.startPrank(_defaultSender);
-        // Lock first half.
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY - 1);
         _xanProxy.castVote(_NEW_IMPL);
         vm.stopPrank();
