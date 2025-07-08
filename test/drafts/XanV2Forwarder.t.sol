@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
-import {ForwarderBase} from "@anoma/evm-protocol-adapter/forwarders/ForwarderBase.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
@@ -37,7 +36,7 @@ contract XanV2ForwarderUnitTest is Test {
 
     function test_forwardCall_reverts_if_the_caller_is_not_the_protocol_adapter() public {
         vm.expectRevert(
-            abi.encodeWithSelector(ForwarderBase.UnauthorizedCaller.selector, _defaultSender), address(_xanV2Forwarder)
+            abi.encodeWithSelector(XanV2Forwarder.UnauthorizedCaller.selector, _defaultSender), address(_xanV2Forwarder)
         );
 
         // Make the forwarder call but not as the protocol adapter.

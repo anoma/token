@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
-import {ForwarderBase} from "@anoma/evm-protocol-adapter/forwarders/ForwarderBase.sol";
-
 import {XanV2} from "./XanV2.sol";
 
 /// @title XanV2Forwarder
@@ -10,9 +8,12 @@ import {XanV2} from "./XanV2.sol";
 /// @notice A draft of a XanV2 forwarder contract minting new XAN tokens for a recipient.
 /// Note, that the forwarder contract is the recipient of newly minted XAN tokens.
 /// @custom:security-contact security@anoma.foundation
-contract XanV2Forwarder is ForwarderBase {
+contract XanV2Forwarder {
     XanV2 internal immutable _XAN_PROXY;
+    address internal immutable _PROTOCOL_ADAPTER;
+    bytes32 internal immutable _CALLDATA_CARRIER_RESOURCE_KIND;
 
+    error UnauthorizedCaller(address caller);
     error InvalidFunctionSelector(bytes4 expected, bytes4 actual);
     error InvalidMintRecipient(address recipient);
 
@@ -20,16 +21,21 @@ contract XanV2Forwarder is ForwarderBase {
     /// @param xanProxy The of the XAN proxy contract.
     /// @param protocolAdapter The address of the protocol adapter.
     /// @param calldataCarrierLogicRef The logic reference of the associated calldata carrier resource.
-    constructor(address xanProxy, address protocolAdapter, bytes32 calldataCarrierLogicRef)
-        ForwarderBase(protocolAdapter, calldataCarrierLogicRef)
-    {
+    constructor(address xanProxy, address protocolAdapter, bytes32 calldataCarrierLogicRef) {
         _XAN_PROXY = XanV2(xanProxy);
+        _PROTOCOL_ADAPTER = protocolAdapter;
+        _CALLDATA_CARRIER_RESOURCE_KIND =
+            _kind({logicRef: calldataCarrierLogicRef, labelRef: sha256(abi.encode(address(this)))});
     }
 
     /// @notice Forwards mint calls to the XAN proxy contract pointing to the `XanV2` implementation.
     /// @param input The `bytes` encoded mint calldata (including the `bytes4` function selector).
     /// @return output The empty output of the call.
-    function _forwardCall(bytes calldata input) internal override returns (bytes memory output) {
+    function forwardCall(bytes calldata input) external returns (bytes memory output) {
+        if (msg.sender != _PROTOCOL_ADAPTER) {
+            revert UnauthorizedCaller(msg.sender);
+        }
+
         bytes4 selector = bytes4(input[:4]);
 
         bytes memory args = input[4:];
@@ -49,5 +55,13 @@ contract XanV2Forwarder is ForwarderBase {
         // Mint tokens for the forwarder contract.
         // NOTE: The calldata carrier resource must ensure that the recipient receives corresponding XAN resources.
         _XAN_PROXY.mint({account: address(this), value: value});
+    }
+
+    /// @notice Computes the resource kind.
+    /// @param logicRef The resource logic reference.
+    /// @param labelRef The resource label reference.
+    /// @return k The computed kind.
+    function _kind(bytes32 logicRef, bytes32 labelRef) internal pure returns (bytes32 k) {
+        k = sha256(abi.encode(logicRef, labelRef));
     }
 }
