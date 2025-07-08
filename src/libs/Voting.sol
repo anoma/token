@@ -21,12 +21,8 @@ library Voting {
     /// @notice The vote data of a proposed implementation.
     /// @param vota The vota of the individual identities.
     /// @param totalVotes The total votes casted.
-    /// @param rank The voting rank of the implementation
-    /// @param exists Whether the implementation was proposed or not.
     struct Ballot {
         mapping(address voter => uint256 votes) vota;
         uint256 totalVotes;
-        uint48 rank;
-        bool exists;
     }
 }
