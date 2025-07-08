@@ -16,6 +16,8 @@ remappings = [
     "@anoma/evm-protocol-adapter/=lib/evm-protocol-adapter/contracts/src/",
 ]
 
+gas_limit = 0x1fffffffffffffff
+
 optimizer_runs = 10_000
 fuzz = { runs = 1_000 }
 
