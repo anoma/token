@@ -7,7 +7,7 @@ pragma solidity ^0.8.30;
 /// scheduled implementation and delay period end time.
 /// @custom:security-contact security@anoma.foundation
 library Council {
-    /// @notice A struct containing data associated with a current implementation and proposed upgrades from it.
+    /// @notice A struct containing data associated with the governance council.
     /// @param council The address of the governance council.
     /// @param scheduledImpl The scheduled implementation.
     /// @param scheduledEndTime The scheduled end time of the delay period.

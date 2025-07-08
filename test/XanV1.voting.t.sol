@@ -51,7 +51,8 @@ contract XanV1VotingTest is Test {
         _xanProxy.castVote(_NEW_IMPL);
     }
 
-    function test_castVote_ranks_an_implementation_on_first_vote() public {
+    // TODO! Remove
+    /*function test_castVote_ranks_an_implementation_on_first_vote() public {
         // Check that no implementation has rank 0.
         uint48 count = _xanProxy.proposedImplementationsCount();
         uint48 rank = 0;
@@ -78,7 +79,7 @@ contract XanV1VotingTest is Test {
             abi.encodeWithSelector(XanV1.ImplementationRankNonExistent.selector, count, rank), address(_xanProxy)
         );
         _xanProxy.proposedImplementationByRank(rank);
-    }
+    }*/
 
     function test_castVote_reverts_if_the_votum_has_already_been_casted() public {
         uint256 valueToLock = _xanProxy.totalSupply() / 3;
@@ -138,6 +139,10 @@ contract XanV1VotingTest is Test {
 
         assertEq(_xanProxy.votum(_NEW_IMPL), firstLockValue + secondLockValue);
         vm.stopPrank();
+    }
+
+    function test_castVote_updated_the_most_voted_implementationTODOTOD() public {
+        revert("TODO?");
     }
 
     function test_revokeVote_emits_the_VoteRevoked_event() public {
@@ -200,6 +205,20 @@ contract XanV1VotingTest is Test {
         _xanProxy.revokeVote(_NEW_IMPL);
     }
 
+    function test_updateMostVotedImplementation_sets_an_implementation_as_the_most_voted_if_it_has_more_votes_than_the_current_one(
+    ) public {
+        revert("TODO");
+    }
+
+    function test_updateMostVotedImplementation_reverts_if_the_proposed_implementation_has_less_votes_than_the_current_one(
+    ) public {
+        revert("TODO");
+    }
+
+    function test_updateMostVotedImplementation_DEMONSTRATE_BEHAVIOR() public {
+        revert("TODO");
+    }
+
     function test_scheduleVoterBodyUpgrade_reverts_if_the_minimal_locked_supply_is_not_met() public {
         vm.startPrank(_defaultSender);
         // Lock first half.
@@ -209,7 +228,7 @@ contract XanV1VotingTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                XanV1.QuorumOrMinLockedSupplyNotReached.selector, _xanProxy.proposedImplementationByRank(0)
+                XanV1.QuorumOrMinLockedSupplyNotReached.selector, _xanProxy.mostVotedImplementation()
             ),
             address(_xanProxy)
         );
@@ -225,6 +244,7 @@ contract XanV1VotingTest is Test {
         _xanProxy.lock(quorumThreshold);
         // Vote with first half.
         _xanProxy.castVote(_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
 
         // Lock second half.
         _xanProxy.lock(quorumThreshold);
@@ -240,6 +260,7 @@ contract XanV1VotingTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
         vm.stopPrank();
 
         // Schedule the upgrade
@@ -253,15 +274,14 @@ contract XanV1VotingTest is Test {
         _xanProxy.scheduleVoterBodyUpgrade();
     }
 
-    function test_scheduleVoterBodyUpgrade_schedules_the_best_ranked_implementation() public {
+    function test_scheduleVoterBodyUpgrade_schedules_the_most_voted_implementation() public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_NEW_IMPL);
-        _xanProxy.castVote(_OTHER_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
         vm.stopPrank();
 
-        assertEq(_xanProxy.proposedImplementationByRank(0), _NEW_IMPL);
-        assertEq(_xanProxy.proposedImplementationByRank(1), _OTHER_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
 
         _xanProxy.scheduleVoterBodyUpgrade();
 
@@ -274,12 +294,15 @@ contract XanV1VotingTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
         vm.stopPrank();
+
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
 
         assertGe(_xanProxy.lockedSupply(), Parameters.MIN_LOCKED_SUPPLY);
 
         assertGt(_xanProxy.totalVotes(_NEW_IMPL), _xanProxy.calculateQuorumThreshold());
-        assertEq(_xanProxy.proposedImplementationByRank(0), _NEW_IMPL);
+        assertEq(_xanProxy.mostVotedImplementation(), _NEW_IMPL);
 
         _xanProxy.scheduleVoterBodyUpgrade();
 
@@ -300,6 +323,7 @@ contract XanV1VotingTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(_xanProxy.totalSupply());
         _xanProxy.castVote(_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
         vm.stopPrank();
 
         // Ensure that the delay has NOT passed.
@@ -326,6 +350,7 @@ contract XanV1VotingTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(_xanProxy.totalSupply());
         _xanProxy.castVote(_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
         vm.stopPrank();
 
         // Ensure that the delay has just passed.
@@ -355,6 +380,7 @@ contract XanV1VotingTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(_xanProxy.totalSupply());
         _xanProxy.castVote(_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
         vm.stopPrank();
 
         // Schedule `_NEW_IMPL` with the voter body
@@ -370,6 +396,7 @@ contract XanV1VotingTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(_xanProxy.totalSupply());
         _xanProxy.castVote(_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
         vm.stopPrank();
 
         vm.expectEmit(address(_xanProxy));
@@ -383,6 +410,7 @@ contract XanV1VotingTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
         vm.stopPrank();
 
         vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotStarted.selector, 0), address(_xanProxy));
@@ -394,6 +422,7 @@ contract XanV1VotingTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
         vm.stopPrank();
 
         // Schedule the upgrade
@@ -409,6 +438,7 @@ contract XanV1VotingTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
         vm.stopPrank();
 
         // Schedule the upgrade
@@ -428,16 +458,16 @@ contract XanV1VotingTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_NEW_IMPL);
-
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
         _xanProxy.scheduleVoterBodyUpgrade();
 
         // Vote with more weight for another implementation
         _xanProxy.lock(1);
         _xanProxy.castVote(_OTHER_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
         vm.stopPrank();
 
-        assertEq(_xanProxy.proposedImplementationByRank(0), _OTHER_NEW_IMPL);
-        assertEq(_xanProxy.proposedImplementationByRank(1), _NEW_IMPL);
+        assertEq(_xanProxy.mostVotedImplementation(), _OTHER_NEW_IMPL);
 
         // Advance to the end of the delay period.
         skip(Parameters.DELAY_DURATION);
@@ -452,6 +482,7 @@ contract XanV1VotingTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
 
         uint48 endTime = Time.timestamp() + Parameters.DELAY_DURATION;
         _xanProxy.scheduleVoterBodyUpgrade();
@@ -463,10 +494,10 @@ contract XanV1VotingTest is Test {
         // Vote with more weight for another implementation
         _xanProxy.lock(1);
         _xanProxy.castVote(_OTHER_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_OTHER_NEW_IMPL);
         vm.stopPrank();
 
-        assertEq(_xanProxy.proposedImplementationByRank(0), _OTHER_NEW_IMPL);
-        assertEq(_xanProxy.proposedImplementationByRank(1), _NEW_IMPL);
+        assertEq(_xanProxy.mostVotedImplementation(), _OTHER_NEW_IMPL);
 
         // Advance to the end of the delay period.
         skip(Parameters.DELAY_DURATION);
@@ -486,6 +517,7 @@ contract XanV1VotingTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
         vm.stopPrank();
 
         // Schedule the upgrade for `_NEW_IMPL`
@@ -498,11 +530,11 @@ contract XanV1VotingTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(1);
         _xanProxy.castVote(_OTHER_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_OTHER_NEW_IMPL);
         vm.stopPrank();
 
         // Check that `_OTHER_NEW_IMPL` is now the best-ranked implementation.
-        assertEq(_xanProxy.proposedImplementationByRank(0), _OTHER_NEW_IMPL);
-        assertEq(_xanProxy.proposedImplementationByRank(1), _NEW_IMPL);
+        assertEq(_xanProxy.mostVotedImplementation(), _OTHER_NEW_IMPL);
 
         // Cancel the upgrade for `_NEW_IMPL`;
         vm.expectEmit(address(_xanProxy));
@@ -514,6 +546,7 @@ contract XanV1VotingTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
 
         uint48 endTime = Time.timestamp() + Parameters.DELAY_DURATION;
         _xanProxy.scheduleVoterBodyUpgrade();

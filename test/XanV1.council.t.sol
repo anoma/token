@@ -41,6 +41,7 @@ contract XanV1CouncilTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));
         _xanProxy.castVote(_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
         vm.stopPrank();
         // Schedule the `_NEW_IMPL`
         _xanProxy.scheduleVoterBodyUpgrade();
@@ -59,6 +60,7 @@ contract XanV1CouncilTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));
         _xanProxy.castVote(_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_NEW_IMPL);
         vm.stopPrank();
         // Schedule the `_NEW_IMPL`
         _xanProxy.scheduleVoterBodyUpgrade();
@@ -181,12 +183,13 @@ contract XanV1CouncilTest is Test {
         // Lock first half.
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY - 1);
         _xanProxy.castVote(_OTHER_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_OTHER_NEW_IMPL);
         vm.stopPrank();
 
         vm.prank(_defaultSender);
         vm.expectRevert(
             abi.encodeWithSelector(
-                XanV1.QuorumOrMinLockedSupplyNotReached.selector, _xanProxy.proposedImplementationByRank(0)
+                XanV1.QuorumOrMinLockedSupplyNotReached.selector, _xanProxy.mostVotedImplementation()
             ),
             address(_xanProxy)
         );
@@ -203,6 +206,7 @@ contract XanV1CouncilTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_OTHER_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_OTHER_NEW_IMPL);
         vm.stopPrank();
 
         // Ensure that the delay has NOT passed.
@@ -223,6 +227,7 @@ contract XanV1CouncilTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_OTHER_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_OTHER_NEW_IMPL);
         vm.stopPrank();
 
         // Ensure that the delay has just passed.
@@ -243,6 +248,7 @@ contract XanV1CouncilTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_OTHER_NEW_IMPL);
+        _xanProxy.updateMostVotedImplementation(_OTHER_NEW_IMPL);
         vm.stopPrank();
 
         vm.expectEmit(address(_xanProxy));

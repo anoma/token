@@ -59,8 +59,7 @@ contract XanV1 is
     error NoVotesToRevoke(address sender, address proposedImpl);
 
     error ImplementationZero();
-    error ImplementationRankNonExistent(uint48 limit, uint48 rank);
-    error ImplementationNotRankedBest(address expected, address actual);
+    error ImplementationNotMostVoted(address notMostVotedImpl);
 
     error UpgradeNotScheduled(address impl);
     error UpgradeScheduledTwice(address impl);
@@ -123,9 +122,10 @@ contract XanV1 is
         Voting.Data storage data = _getVotingData();
         Voting.Ballot storage ballot = data.ballots[proposedImpl];
 
-        if (!ballot.exists) {
-            data.assignWorstRank(proposedImpl);
-        }
+        // TODO! Remove
+        // if (!ballot.exists) {
+        //     data.assignWorstRank(proposedImpl);
+        // }
 
         // Cache the old votum of the voter.
         uint256 oldVotum = ballot.vota[voter];
@@ -151,8 +151,11 @@ contract XanV1 is
         // Update the total votes.
         ballot.totalVotes += delta;
 
+        // TODO! Should auto-update the most voted impl if it has changed
+
+        // TODO! Remove
         // Bubble the proposed implementation up in the ranking.
-        data.bubbleUp(proposedImpl);
+        // data.bubbleUp(proposedImpl);
 
         emit VoteCast({voter: voter, implementation: proposedImpl, value: delta});
     }
@@ -178,14 +181,34 @@ contract XanV1 is
         // Revoke the old votum by subtracting it from the total votes.
         ballot.totalVotes -= oldVotum;
 
+        // TODO! Remove
         // Bubble the proposed implementation down in the ranking.
-        data.bubbleDown(proposedImpl);
+        // data.bubbleDown(proposedImpl);
 
         emit VoteRevoked({voter: voter, implementation: proposedImpl, value: oldVotum});
     }
 
     /// @inheritdoc IXanV1
+    function updateMostVotedImplementation(address newMostVotedImpl) external {
+        Voting.Data storage data = _getVotingData();
+
+        // Check if the current most voted implementation has more votes
+        address currentMostVotedImpl = data.mostVotedImpl;
+
+        if (data.ballots[newMostVotedImpl].totalVotes < data.ballots[currentMostVotedImpl].totalVotes) {
+            revert ImplementationNotMostVoted({notMostVotedImpl: newMostVotedImpl});
+        }
+
+        // TODO! Should we automatically cancel the scheduled voter body upgrade?
+
+        // If not, set the new most voted implementation.
+        data.mostVotedImpl = newMostVotedImpl;
+    }
+
+    /// @inheritdoc IXanV1
     function scheduleVoterBodyUpgrade() external override {
+        // TODO! Should this method receive the impl as an input arg and try to update it to be most voted?
+
         Voting.Data storage votingData = _getVotingData();
 
         // Check that no other upgrade has been scheduled yet.
@@ -195,13 +218,13 @@ contract XanV1 is
 
         // Check if the proposed implementation is the best ranked implementation
         {
-            address bestRankedVoterBodyImpl = votingData.implementationByRank(0);
-            if (!_isQuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl)) {
-                revert QuorumOrMinLockedSupplyNotReached(bestRankedVoterBodyImpl);
+            address mostVotedImpl = votingData.mostVotedImpl;
+            if (!_isQuorumAndMinLockedSupplyReached(mostVotedImpl)) {
+                revert QuorumOrMinLockedSupplyNotReached(mostVotedImpl);
             }
 
             // Schedule the upgrade and emit the associated event.
-            votingData.scheduledImpl = bestRankedVoterBodyImpl;
+            votingData.scheduledImpl = mostVotedImpl;
             votingData.scheduledEndTime = Time.timestamp() + Parameters.DELAY_DURATION;
 
             emit VoterBodyUpgradeScheduled(votingData.scheduledImpl, votingData.scheduledEndTime);
@@ -229,12 +252,9 @@ contract XanV1 is
 
         // Revert the cancellation if the currently scheduled implementation still
         // * meets the quorum and minimum locked supply for the
-        // * is the best ranked implementation
+        // * is the most voted implementation
         // and revert the cancellation if this is the case.
-        if (
-            _isQuorumAndMinLockedSupplyReached(data.scheduledImpl)
-                && (data.scheduledImpl == data.implementationByRank(0))
-        ) {
+        if (_isQuorumAndMinLockedSupplyReached(data.scheduledImpl) && (data.scheduledImpl == data.mostVotedImpl)) {
             revert UpgradeCancellationInvalid(data.scheduledImpl, data.scheduledEndTime);
         }
 
@@ -251,10 +271,10 @@ contract XanV1 is
         {
             Voting.Data storage votingData = _getVotingData();
 
-            address bestRankedVoterBodyImpl = votingData.implementationByRank(0);
+            address mostVotedImpl = votingData.mostVotedImpl;
 
-            if (_isQuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl)) {
-                revert QuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl);
+            if (_isQuorumAndMinLockedSupplyReached(mostVotedImpl)) {
+                revert QuorumAndMinLockedSupplyReached(mostVotedImpl);
             }
         }
 
@@ -289,17 +309,14 @@ contract XanV1 is
 
     /// @notice @inheritdoc IXanV1
     function vetoCouncilUpgrade() external override {
-        // Get the best ranked implementation.
-        address bestRankedImplementation = _getVotingData().implementationByRank(0);
-        if (bestRankedImplementation == address(0)) {
-            revert ImplementationRankNonExistent({limit: 0, rank: 0});
-        }
+        // Get the most voted implementation.
+        address mostVotedImpl = _getVotingData().mostVotedImpl;
 
         // Check if the most voted implementation has reached quorum.
-        if (!_isQuorumAndMinLockedSupplyReached(bestRankedImplementation)) {
+        if (!_isQuorumAndMinLockedSupplyReached(mostVotedImpl)) {
             // The voter body has not reached quorum on any implementation.
             // This means that vetoing the council is not allowed.
-            revert QuorumOrMinLockedSupplyNotReached(bestRankedImplementation);
+            revert QuorumOrMinLockedSupplyNotReached(mostVotedImpl);
         }
 
         Council.Data storage data = _getCouncilData();
@@ -317,18 +334,8 @@ contract XanV1 is
     }
 
     /// @notice @inheritdoc IXanV1
-    function proposedImplementationByRank(uint48 rank) external view override returns (address impl) {
-        Voting.Data storage data = _getVotingData();
-
-        impl = data.implementationByRank(rank);
-        if (impl == address(0)) {
-            revert ImplementationRankNonExistent({limit: data.implCount, rank: rank});
-        }
-    }
-
-    /// @notice @inheritdoc IXanV1
-    function proposedImplementationsCount() external view override returns (uint48 count) {
-        count = _getVotingData().implementationsCount();
+    function mostVotedImplementation() external view override returns (address mostVotedImpl) {
+        mostVotedImpl = _getVotingData().mostVotedImpl;
     }
 
     /// @notice @inheritdoc IXanV1
@@ -435,15 +442,15 @@ contract XanV1 is
         assert(!(isScheduledByVoterBody && isScheduledByCouncil));
 
         // Cache the best ranked implementation proposed by the voter body.
-        address bestRankedVoterBodyImpl = votingData.implementationByRank(0);
+        address mostVotedImpl = votingData.mostVotedImpl;
 
         if (isScheduledByVoterBody) {
-            if (newImpl != bestRankedVoterBodyImpl) {
-                revert ImplementationNotRankedBest({expected: bestRankedVoterBodyImpl, actual: newImpl});
+            if (newImpl != mostVotedImpl) {
+                revert ImplementationNotMostVoted({notMostVotedImpl: newImpl});
             }
 
-            if (!_isQuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl)) {
-                revert QuorumOrMinLockedSupplyNotReached(bestRankedVoterBodyImpl);
+            if (!_isQuorumAndMinLockedSupplyReached(mostVotedImpl)) {
+                revert QuorumOrMinLockedSupplyNotReached(mostVotedImpl);
             }
             _checkDelayCriterion({endTime: votingData.scheduledEndTime});
 
@@ -452,11 +459,11 @@ contract XanV1 is
 
         if (isScheduledByCouncil) {
             // Check if the best ranked implementation exists.
-            if (bestRankedVoterBodyImpl != address(0)) {
+            if (mostVotedImpl != address(0)) {
                 // Revert if the quorum and minimum locked supply is reached for best ranked implementation proposed by
                 // the voter body and it could therefore could be scheduled.
-                if (_isQuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl)) {
-                    revert QuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl);
+                if (_isQuorumAndMinLockedSupplyReached(mostVotedImpl)) {
+                    revert QuorumAndMinLockedSupplyReached(mostVotedImpl);
                 }
             }
             _checkDelayCriterion({endTime: councilData.scheduledEndTime});

@@ -65,6 +65,10 @@ interface IXanV1 {
     /// @param proposedImpl The proposed implementation to revoke the vote for.
     function revokeVote(address proposedImpl) external;
 
+    /// @notice Sets the most voted implementation.
+    /// @param newMostVotedImpl The new most voted implementation to set.
+    function updateMostVotedImplementation(address newMostVotedImpl) external;
+
     /// @notice Schedules the upgrade to the best-ranked implementation proposed by the voter body.
     function scheduleVoterBodyUpgrade() external;
 
@@ -128,15 +132,9 @@ interface IXanV1 {
     /// @return current The current implementation.
     function implementation() external view returns (address current);
 
-    /// @notice Returns the proposed implementation with the respective rank or an error if no implementation with this
-    /// rank has been proposed yet.
-    /// @param rank The rank to return the implementation for.
-    /// @return impl The proposed implementation with the respective rank.
-    function proposedImplementationByRank(uint48 rank) external view returns (address impl);
-
-    /// @notice Returns the number of implementations proposed by the voter body.
-    /// @return count The proposed implementation count.
-    function proposedImplementationsCount() external view returns (uint48 count);
+    /// @notice Returns the most voted implementation.
+    /// @return mostVotedImpl The most voted implementation.
+    function mostVotedImplementation() external view returns (address mostVotedImpl);
 
     /// @notice Returns the address of the governance council.
     /// @return council The governance council address.
