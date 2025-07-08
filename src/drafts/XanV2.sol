@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
-import {IXanV2} from "../interfaces/IXanV2.sol";
 import {Parameters} from "../libs/Parameters.sol";
 import {XanV1} from "../XanV1.sol";
+import {IXanV2} from "./interfaces/IXanV2.sol";
 
 /// @title XanV2
 /// @author Anoma Foundation, 2025
