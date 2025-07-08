@@ -154,7 +154,7 @@ contract XanV1 is
         {
             address currentMostVotedImpl = data.mostVotedImpl;
 
-            // Check if the proposed implementation now has the most votes
+            // Check if the proposed implementation now has more votes than the current most voted implementation.
             if (data.ballots[currentMostVotedImpl].totalVotes < data.ballots[proposedImpl].totalVotes) {
                 // Update the most voted implementation to the proposed implementation
                 data.mostVotedImpl = proposedImpl;
