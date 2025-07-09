@@ -1,12 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
-import {IERC1967} from "@openzeppelin/contracts/interfaces/IERC1967.sol";
-
-import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
-import {Upgrades, UnsafeUpgrades, Options} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
+import {Upgrades, UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {Parameters} from "../src/libs/Parameters.sol";
@@ -14,7 +10,6 @@ import {MockXanV1, XanV1} from "./mocks/XanV1.m.sol";
 
 contract MockXanV1CriteriaTest is Test {
     using UnsafeUpgrades for address;
-    using ERC1967Utils for address;
     using SafeERC20 for MockXanV1;
 
     address internal constant _COUNCIL = address(uint160(1));
