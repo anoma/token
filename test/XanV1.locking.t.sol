@@ -187,7 +187,6 @@ contract XanV1LockingTest is Test {
         assertEq(_xanProxy.lockedSupply(), 3 * valueToLock);
     }
 
-    // TODO Revisit if duplication of the tests below makes sense.
     function testFuzz_lockedBalanceOf_and_unlockedBalanceOf_sum_to_balanceOf(address owner) public view {
         assertEq(_xanProxy.lockedBalanceOf(owner) + _xanProxy.unlockedBalanceOf(owner), _xanProxy.balanceOf(owner));
     }

@@ -56,14 +56,11 @@ contract XanV1 is
 
     error UnlockedBalanceInsufficient(address sender, uint256 unlockedBalance, uint256 valueToLock);
     error LockedBalanceInsufficient(address sender, uint256 lockedBalance);
-    error NoVotesToRevoke(address sender, address proposedImpl);
 
     error ImplementationZero();
-    error ImplementationRankNonExistent(uint48 limit, uint48 rank);
-    error ImplementationNotRankedBest(address expected, address actual);
+    error ImplementationNotMostVoted(address notMostVotedImpl);
 
     error UpgradeNotScheduled(address impl);
-    error UpgradeScheduledTwice(address impl);
     error UpgradeAlreadyScheduled(address impl, uint48 endTime);
     error UpgradeCancellationInvalid(address impl, uint48 endTime);
 
@@ -121,67 +118,50 @@ contract XanV1 is
         address voter = msg.sender;
 
         Voting.Data storage data = _getVotingData();
-        Voting.Ballot storage ballot = data.ballots[proposedImpl];
 
-        if (!ballot.exists) {
-            data.assignWorstRank(proposedImpl);
+        // Cast the vote for the proposed implementation
+        {
+            Voting.Ballot storage ballot = data.ballots[proposedImpl];
+
+            // Cache the old votum of the voter.
+            uint256 oldVotum = ballot.vota[voter];
+
+            // Cache the locked balance.
+            uint256 lockedBalance = lockedBalanceOf(voter);
+
+            // Check that the locked balance is larger than the old votum.
+            if (lockedBalance < oldVotum + 1) {
+                revert LockedBalanceInsufficient({sender: voter, lockedBalance: lockedBalance});
+            }
+
+            // Calculate the votes that must be added.
+            uint256 delta;
+            unchecked {
+                // Skip the underflow check because `lockedBalance > oldVotum` has been checked before.
+                delta = lockedBalance - oldVotum;
+            }
+
+            // Update the votum.
+            ballot.vota[voter] = lockedBalance;
+
+            // Update the total votes.
+            ballot.totalVotes += delta;
+
+            emit VoteCast({voter: voter, impl: proposedImpl, value: delta});
         }
 
-        // Cache the old votum of the voter.
-        uint256 oldVotum = ballot.vota[voter];
+        // Update the most voted implementation if it has changed
+        {
+            address currentMostVotedImpl = data.mostVotedImpl;
 
-        // Cache the locked balance.
-        uint256 lockedBalance = lockedBalanceOf(voter);
+            // Check if the proposed implementation now has more votes than the current most voted implementation.
+            if (data.ballots[currentMostVotedImpl].totalVotes < data.ballots[proposedImpl].totalVotes) {
+                // Update the most voted implementation to the proposed implementation
+                data.mostVotedImpl = proposedImpl;
 
-        // Check that the locked balance is larger than the old votum.
-        if (lockedBalance < oldVotum + 1) {
-            revert LockedBalanceInsufficient({sender: voter, lockedBalance: lockedBalance});
+                emit MostVotedImplementationUpdated({newMostVotedImpl: proposedImpl});
+            }
         }
-
-        // Calculate the votes that must be added.
-        uint256 delta;
-        unchecked {
-            // Skip the underflow check because `lockedBalance > oldVotum` has been checked before.
-            delta = lockedBalance - oldVotum;
-        }
-
-        // Update the votum.
-        ballot.vota[voter] = lockedBalance;
-
-        // Update the total votes.
-        ballot.totalVotes += delta;
-
-        // Bubble the proposed implementation up in the ranking.
-        data.bubbleUp(proposedImpl);
-
-        emit VoteCast({voter: voter, implementation: proposedImpl, value: delta});
-    }
-
-    /// @inheritdoc IXanV1
-    function revokeVote(address proposedImpl) external override {
-        address voter = msg.sender;
-
-        Voting.Data storage data = _getVotingData();
-        Voting.Ballot storage ballot = data.ballots[proposedImpl];
-
-        // Cache the old votum of the voter.
-        uint256 oldVotum = ballot.vota[voter];
-
-        // Check if there has been an old votum to revoke.
-        if (oldVotum == 0) {
-            revert NoVotesToRevoke({sender: voter, proposedImpl: proposedImpl});
-        }
-
-        // Set the votum of the voter to zero.
-        ballot.vota[voter] = 0;
-
-        // Revoke the old votum by subtracting it from the total votes.
-        ballot.totalVotes -= oldVotum;
-
-        // Bubble the proposed implementation down in the ranking.
-        data.bubbleDown(proposedImpl);
-
-        emit VoteRevoked({voter: voter, implementation: proposedImpl, value: oldVotum});
     }
 
     /// @inheritdoc IXanV1
@@ -193,15 +173,15 @@ contract XanV1 is
             revert UpgradeAlreadyScheduled(votingData.scheduledImpl, votingData.scheduledEndTime);
         }
 
-        // Check if the proposed implementation is the best ranked implementation
+        // Check if the most voted implementation has reached quorum
         {
-            address bestRankedVoterBodyImpl = votingData.implementationByRank(0);
-            if (!_isQuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl)) {
-                revert QuorumOrMinLockedSupplyNotReached(bestRankedVoterBodyImpl);
+            address mostVotedImpl = votingData.mostVotedImpl;
+            if (!_isQuorumAndMinLockedSupplyReached(mostVotedImpl)) {
+                revert QuorumOrMinLockedSupplyNotReached(mostVotedImpl);
             }
 
             // Schedule the upgrade and emit the associated event.
-            votingData.scheduledImpl = bestRankedVoterBodyImpl;
+            votingData.scheduledImpl = mostVotedImpl;
             votingData.scheduledEndTime = Time.timestamp() + Parameters.DELAY_DURATION;
 
             emit VoterBodyUpgradeScheduled(votingData.scheduledImpl, votingData.scheduledEndTime);
@@ -228,13 +208,9 @@ contract XanV1 is
         _checkDelayCriterion(data.scheduledEndTime);
 
         // Revert the cancellation if the currently scheduled implementation still
-        // * meets the quorum and minimum locked supply for the
-        // * is the best ranked implementation
-        // and revert the cancellation if this is the case.
-        if (
-            _isQuorumAndMinLockedSupplyReached(data.scheduledImpl)
-                && (data.scheduledImpl == data.implementationByRank(0))
-        ) {
+        // * meets the quorum and minimum locked supply
+        // * is the most voted implementation
+        if (_isQuorumAndMinLockedSupplyReached(data.scheduledImpl) && (data.scheduledImpl == data.mostVotedImpl)) {
             revert UpgradeCancellationInvalid(data.scheduledImpl, data.scheduledEndTime);
         }
 
@@ -251,16 +227,16 @@ contract XanV1 is
         {
             Voting.Data storage votingData = _getVotingData();
 
-            address bestRankedVoterBodyImpl = votingData.implementationByRank(0);
+            address mostVotedImpl = votingData.mostVotedImpl;
 
-            if (_isQuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl)) {
-                revert QuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl);
+            if (_isQuorumAndMinLockedSupplyReached(mostVotedImpl)) {
+                revert QuorumAndMinLockedSupplyReached(mostVotedImpl);
             }
         }
 
         Council.Data storage data = _getCouncilData();
 
-        // Check if the council upgrade is already scheduled
+        // Check if an council upgrade is already scheduled
         if (data.scheduledImpl != address(0) && data.scheduledEndTime != 0) {
             revert UpgradeAlreadyScheduled(data.scheduledImpl, data.scheduledEndTime);
         }
@@ -289,17 +265,14 @@ contract XanV1 is
 
     /// @notice @inheritdoc IXanV1
     function vetoCouncilUpgrade() external override {
-        // Get the best ranked implementation.
-        address bestRankedImplementation = _getVotingData().implementationByRank(0);
-        if (bestRankedImplementation == address(0)) {
-            revert ImplementationRankNonExistent({limit: 0, rank: 0});
-        }
+        // Get the most voted implementation.
+        address mostVotedImpl = _getVotingData().mostVotedImpl;
 
         // Check if the most voted implementation has reached quorum.
-        if (!_isQuorumAndMinLockedSupplyReached(bestRankedImplementation)) {
+        if (!_isQuorumAndMinLockedSupplyReached(mostVotedImpl)) {
             // The voter body has not reached quorum on any implementation.
             // This means that vetoing the council is not allowed.
-            revert QuorumOrMinLockedSupplyNotReached(bestRankedImplementation);
+            revert QuorumOrMinLockedSupplyNotReached(mostVotedImpl);
         }
 
         Council.Data storage data = _getCouncilData();
@@ -312,23 +285,13 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
-    function votum(address proposedImpl) external view override returns (uint256 votes) {
-        votes = _getVotingData().ballots[proposedImpl].vota[msg.sender];
+    function votum(address voter, address proposedImpl) external view override returns (uint256 votes) {
+        votes = _getVotingData().ballots[proposedImpl].vota[voter];
     }
 
     /// @notice @inheritdoc IXanV1
-    function proposedImplementationByRank(uint48 rank) external view override returns (address impl) {
-        Voting.Data storage data = _getVotingData();
-
-        impl = data.implementationByRank(rank);
-        if (impl == address(0)) {
-            revert ImplementationRankNonExistent({limit: data.implCount, rank: rank});
-        }
-    }
-
-    /// @notice @inheritdoc IXanV1
-    function proposedImplementationsCount() external view override returns (uint48 count) {
-        count = _getVotingData().implementationsCount();
+    function mostVotedImplementation() external view override returns (address mostVotedImpl) {
+        mostVotedImpl = _getVotingData().mostVotedImpl;
     }
 
     /// @notice @inheritdoc IXanV1
@@ -435,36 +398,31 @@ contract XanV1 is
         assert(!(isScheduledByVoterBody && isScheduledByCouncil));
 
         // Cache the best ranked implementation proposed by the voter body.
-        address bestRankedVoterBodyImpl = votingData.implementationByRank(0);
+        address mostVotedImpl = votingData.mostVotedImpl;
 
         if (isScheduledByVoterBody) {
-            if (newImpl != bestRankedVoterBodyImpl) {
-                revert ImplementationNotRankedBest({expected: bestRankedVoterBodyImpl, actual: newImpl});
+            if (newImpl != mostVotedImpl) {
+                revert ImplementationNotMostVoted({notMostVotedImpl: newImpl});
             }
 
-            if (!_isQuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl)) {
-                revert QuorumOrMinLockedSupplyNotReached(bestRankedVoterBodyImpl);
+            // This check is redundant, but kept for defense in depth.
+            if (!_isQuorumAndMinLockedSupplyReached(mostVotedImpl)) {
+                revert QuorumOrMinLockedSupplyNotReached(mostVotedImpl);
             }
             _checkDelayCriterion({endTime: votingData.scheduledEndTime});
-
-            return;
-        }
-
-        if (isScheduledByCouncil) {
+        } else if (isScheduledByCouncil) {
             // Check if the best ranked implementation exists.
-            if (bestRankedVoterBodyImpl != address(0)) {
+            if (mostVotedImpl != address(0)) {
                 // Revert if the quorum and minimum locked supply is reached for best ranked implementation proposed by
                 // the voter body and it could therefore could be scheduled.
-                if (_isQuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl)) {
-                    revert QuorumAndMinLockedSupplyReached(bestRankedVoterBodyImpl);
+                if (_isQuorumAndMinLockedSupplyReached(mostVotedImpl)) {
+                    revert QuorumAndMinLockedSupplyReached(mostVotedImpl);
                 }
             }
             _checkDelayCriterion({endTime: councilData.scheduledEndTime});
-
-            return;
+        } else {
+            revert UpgradeNotScheduled(newImpl);
         }
-
-        revert UpgradeNotScheduled(newImpl);
     }
 
     /// @notice Throws if the sender is not the governance council.
@@ -474,7 +432,7 @@ contract XanV1 is
         }
     }
 
-    /// @notice Returns `true` if the quorum and minimum locked supply is reached for a given mplementation.
+    /// @notice Returns `true` if the quorum and minimum locked supply is reached for a given implementation.
     /// @param impl The implementation to check the quorum criteria for.
     /// @return isReached Whether the quorum and minimum locked supply is reached or not.
     function _isQuorumAndMinLockedSupplyReached(address impl) internal view returns (bool isReached) {

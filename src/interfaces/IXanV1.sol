@@ -13,15 +13,13 @@ interface IXanV1 {
 
     /// @notice Emitted when a vote is cast for a implementation.
     /// @param voter The voter address.
-    /// @param implementation The implementation the vote was cast for.
+    /// @param impl The implementation the vote was cast for.
     /// @param value The number of votes cast.
-    event VoteCast(address indexed voter, address indexed implementation, uint256 value);
+    event VoteCast(address indexed voter, address indexed impl, uint256 value);
 
-    /// @notice Emitted when a vote is revoked from a new implementation.
-    /// @param voter The voting account.
-    /// @param implementation The implementation the vote was revoked from.
-    /// @param value The number of votes revoked.
-    event VoteRevoked(address indexed voter, address indexed implementation, uint256 value);
+    /// @notice Emitted when the most voted implementation gets updated.
+    /// @param newMostVotedImpl The new most-voted implementation.
+    event MostVotedImplementationUpdated(address indexed newMostVotedImpl);
 
     /// @notice Emitted when the upgrade to a new implementation proposed by the voter body is scheduled.
     /// @param impl The implementation that has been scheduled.
@@ -61,10 +59,6 @@ interface IXanV1 {
     /// @param proposedImpl The proposed implementation to cast the vote for.
     function castVote(address proposedImpl) external;
 
-    /// @notice Revokes the vote from a proposed implementation.
-    /// @param proposedImpl The proposed implementation to revoke the vote for.
-    function revokeVote(address proposedImpl) external;
-
     /// @notice Schedules the upgrade to the best-ranked implementation proposed by the voter body.
     function scheduleVoterBodyUpgrade() external;
 
@@ -88,10 +82,11 @@ interface IXanV1 {
     /// @return threshold The calculated quorum threshold.
     function calculateQuorumThreshold() external view returns (uint256 threshold);
 
-    /// @notice Returns the votum of the caller for a proposed implementation.
+    /// @notice Returns the votum of a voter for a proposed implementation.
+    /// @param voter The voter to return the votum for.
     /// @param proposedImpl The proposed implementation to return the votum for.
     /// @return votes The votum of the caller.
-    function votum(address proposedImpl) external view returns (uint256 votes);
+    function votum(address voter, address proposedImpl) external view returns (uint256 votes);
 
     /// @notice Returns the total votes for a proposed implementation.
     /// @param proposedImpl The proposed implementation to return the total votes for.
@@ -112,31 +107,25 @@ interface IXanV1 {
     /// @return locked The locked supply.
     function lockedSupply() external view returns (uint256 locked);
 
-    /// @notice Returns the upgrade scheduled by the voter body or `ScheduledUpgrade(0)`
+    /// @notice Returns the upgrade scheduled by the voter body or zero.
     /// if no implementation has reached quorum yet.
-    /// @return impl The implementation to upgrade to.
-    /// @return endTime The end time of the scheduled delay.
+    /// @return impl The implementation to upgrade to or the zero address.
+    /// @return endTime The end time of the scheduled delay or zero.
     function scheduledVoterBodyUpgrade() external view returns (address impl, uint48 endTime);
 
-    /// @notice Returns the upgrade scheduled by the council or `ScheduledUpgrade(0)`
+    /// @notice Returns the upgrade scheduled by the council or zero.
     /// if no implementation has reached quorum yet.
-    /// @return impl The implementation to upgrade to.
-    /// @return endTime The end time of the scheduled delay.
+    /// @return impl The implementation to upgrade to or the zero address.
+    /// @return endTime The end time of the scheduled delay or zero.
     function scheduledCouncilUpgrade() external view returns (address impl, uint48 endTime);
 
     /// @notice Returns the current implementation
     /// @return current The current implementation.
     function implementation() external view returns (address current);
 
-    /// @notice Returns the proposed implementation with the respective rank or an error if no implementation with this
-    /// rank has been proposed yet.
-    /// @param rank The rank to return the implementation for.
-    /// @return impl The proposed implementation with the respective rank.
-    function proposedImplementationByRank(uint48 rank) external view returns (address impl);
-
-    /// @notice Returns the number of implementations proposed by the voter body.
-    /// @return count The proposed implementation count.
-    function proposedImplementationsCount() external view returns (uint48 count);
+    /// @notice Returns the most voted implementation.
+    /// @return mostVotedImpl The most voted implementation.
+    function mostVotedImplementation() external view returns (address mostVotedImpl);
 
     /// @notice Returns the address of the governance council.
     /// @return council The governance council address.

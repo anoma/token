@@ -41,6 +41,7 @@ contract XanV1CouncilTest is Test {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));
         _xanProxy.castVote(_NEW_IMPL);
+
         vm.stopPrank();
         // Schedule the `_NEW_IMPL`
         _xanProxy.scheduleVoterBodyUpgrade();
@@ -186,7 +187,7 @@ contract XanV1CouncilTest is Test {
         vm.prank(_defaultSender);
         vm.expectRevert(
             abi.encodeWithSelector(
-                XanV1.QuorumOrMinLockedSupplyNotReached.selector, _xanProxy.proposedImplementationByRank(0)
+                XanV1.QuorumOrMinLockedSupplyNotReached.selector, _xanProxy.mostVotedImplementation()
             ),
             address(_xanProxy)
         );
