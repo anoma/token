@@ -1,14 +1,20 @@
 [profile.default]
-evm_version = "cancun"
-solc = "0.8.28"
+evm_version = "prague"
+solc = "0.8.30"
 optimizer = true
 via_ir = true
 ffi = true
 ast = true
 build_info = true
 extra_output = ["storageLayout"]
-#cbor_metadata = false
-#bytecode_hash = "none"
+
+remappings = [
+    "forge-std/=lib/forge-std/src/",
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/",
+    "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
+    "@openzeppelin/foundry-upgrades/=lib/openzeppelin-foundry-upgrades/src/",
+    "@anoma/evm-protocol-adapter/=lib/evm-protocol-adapter/contracts/src/",
+]
 
 optimizer_runs = 10_000
 fuzz = { runs = 1_000 }
@@ -19,10 +25,7 @@ libs = ["lib"]
 test = "test"
 script = "script"
 
-gas_reports = [
-    "Xan",
-    "MerkleDistributor",
-]
+gas_reports = ["XanV1", "ForeignReserveV1", "XanV2", "XanV2Forwarder"]
 
 allow_internal_expect_revert = true
 
@@ -41,16 +44,6 @@ mainnet = { key = "${API_KEY_ETHERSCAN}" }
 optimism = { key = "${API_KEY_OPTIMISTIC_ETHERSCAN}" }
 polygon = { key = "${API_KEY_POLYGONSCAN}" }
 sepolia = { key = "${API_KEY_ETHERSCAN}" }
-
-[fmt]
-bracket_spacing = true
-int_types = "long"
-line_length = 120
-multiline_func_header = "all"
-number_underscore = "thousands"
-quote_style = "double"
-tab_width = 4
-wrap_comments = false
 
 [rpc_endpoints]
 arbitrum = "https://arbitrum-mainnet.infura.io/v3/${API_KEY_INFURA}"

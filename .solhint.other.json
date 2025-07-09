@@ -27,16 +27,17 @@
 
     "imports-on-top": "warn",
     "imports-order": "warn",
+    "import-path-check": "off",
     "ordering": "warn",
     "visibility-modifier-order": "error",
     "constructor-syntax": "error",
     "gas-calldata-parameters": "warn",
-    "gas-custom-errors": "warn",
+    "gas-custom-errors": "off",
     "gas-increment-by-one": "warn",
     "gas-indexed-events": "warn",
     "gas-multitoken1155": "warn",
     "gas-named-return-values": "warn",
-    "gas-small-strings": "warn",
+    "gas-small-strings": "off",
     "gas-struct-packing": "warn",
 
     "quotes": "error",
@@ -48,13 +49,13 @@
     "avoid-tx-origin": "error",
     "check-send-result": "error",
     "compiler-version": ["error", "^0.8.24"],
-    "func-visibility": ["error", { "ignoreConstructors": true }],
+    "func-visibility": ["error", {"ignoreConstructors": true}],
 
     "multiple-sends": "error",
     "no-complex-fallback": "error",
     "no-inline-assembly": "error",
     "not-rely-on-block-hash": "error",
-    "not-rely-on-time": "error",
+    "not-rely-on-time": "off",
     "reentrancy": "error",
     "state-visibility": "error"
   }

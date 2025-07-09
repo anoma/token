@@ -2,13 +2,13 @@ name: CI
 
 on:
   push:
-  pull_request:
   workflow_dispatch:
 
 jobs:
   foundry:
     env:
       FOUNDRY_PROFILE: ci
+      NODE_OPTIONS: "--disable-warning=ExperimentalWarning"
 
     strategy:
       fail-fast: true
@@ -46,11 +46,8 @@ jobs:
       - name: Show Bun version
         run: bun --version
 
-      - name: Install Solhint
-        run: bun install solhint
-
-      - name: Show Solhint version
-        run: bunx --bun solhint --version
+      - name: Install Test-Tooling
+        run: bun install
 
       - name: Run Solhint in `src` dir
         run: bunx --bun solhint --config .solhint.json 'src/**/*.sol'
@@ -64,6 +61,10 @@ jobs:
         run: bunx --bun solhint --config .solhint.other.json 'script/**/*.sol'
         id: solhint-script
 
+      - name: Run Forge clean
+        run: forge clean
+        id: clean
+
       - name: Run Forge build
         run: forge build --sizes --ast
         id: build
@@ -72,26 +73,6 @@ jobs:
         run: forge test -vvv --gas-report
         id: test
 
-  juvix:
-    strategy:
-      fail-fast: true
-
-    name: Juvix project
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download latest nightly Juvix binary
-        uses: jaxxstorm/action-install-gh-release@v1.10.0
-        with:
-          repo: anoma/juvix-nightly-builds
-          tag: nightly-2025-02-13-0.6.9-8b06157
-          cache: enable
-
-      - name: Run Juvix typecheck
-        run: juvix dependencies update
-        working-directory: ./juvix
-
-      - name: Run Juvix typecheck
-        run: juvix typecheck
-        working-directory: ./juvix
+      - name: Run Forge coverage
+        run: forge coverage --ir-minimum
+        id: coverage

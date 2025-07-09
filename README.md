@@ -1,9 +1,5 @@
 # Token
 
-> [!WARNING]  
-> This repo features a prototype and is work in progress. Do NOT use in
-> production.
-
 ## Installation
 
 1. Get an up-to-date version of [Foundry](https://github.com/foundry-rs/foundry)
@@ -26,34 +22,25 @@
 Run
 
 ```sh
-forge test
+forge test --force --gas-report
 ```
 
-### Deployment
+> [!NOTE]  
+> The `--force` flag is required for the [openzeppelin-foundry-upgrades](https://github.com/OpenZeppelin/openzeppelin-foundry-upgrades) package to work.
+> The `--gas-report` flag prints selected gas reports.
 
-To simulate deployment on sepolia, run
+### Coverage
+
+Run
 
 ```sh
-forge script script/Deploy.s.sol:Deploy \
-   --rpc-url sepolia
+forge coverage
 ```
 
-Append the
+### Documentation
 
-- `--broadcast` flag to deploy on sepolia
-- `--verify` flag for subsequent contract verification on Etherscan
-- `--account <ACCOUNT_NAME>` flag to use a previously imported keystore (see
-  `cast wallet --help` for more info)
-
-#### Block Explorer Verification
-
-For post-deployment verification on Etherscan run
+Run
 
 ```sh
-forge verify-contract \
-   <ADDRESS> \
-   src/MerkleDistributor.sol:MerkleDistributor \
-   --chain sepolia
+forge doc
 ```
-
-after replacing `<ADDRESS>` with the respective contract address.
