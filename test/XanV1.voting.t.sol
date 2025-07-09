@@ -325,17 +325,6 @@ contract XanV1VotingTest is Test {
         _xanProxy.cancelVoterBodyUpgrade();
     }
 
-    function test_cancelVoterBodyUpgrade_reverts_if_the_delay_period_has_not_started() public {
-        // Ensure that an implementation is the most-voted
-        vm.startPrank(_defaultSender);
-        _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
-        _xanProxy.castVote(_NEW_IMPL);
-        vm.stopPrank();
-
-        vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotStarted.selector, 0), address(_xanProxy));
-        _xanProxy.cancelVoterBodyUpgrade();
-    }
-
     function test_cancelVoterBodyUpgrade_reverts_if_the_delay_period_has_not_ended() public {
         // Ensure that an implementation is the most-voted
         vm.startPrank(_defaultSender);

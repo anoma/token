@@ -31,6 +31,7 @@ contract XanV1 is
     UUPSUpgradeable
 {
     using Voting for Voting.Data;
+    using Council for Council.Data;
 
     /// @notice A struct containing data associated with the current implementation.
     /// @param lockingData The state associated with the locking mechanism for the current implementation.
@@ -169,7 +170,7 @@ contract XanV1 is
         Voting.Data storage votingData = _getVotingData();
 
         // Revert if another upgrade is scheduled by the voter body
-        if (votingData.scheduledImpl != address(0) && votingData.scheduledEndTime != 0) {
+        if (votingData.isUpgradeScheduled()) {
             revert UpgradeAlreadyScheduled(votingData.scheduledImpl, votingData.scheduledEndTime);
         }
 
@@ -204,8 +205,8 @@ contract XanV1 is
     function cancelVoterBodyUpgrade() external override {
         Voting.Data storage votingData = _getVotingData();
 
-        // Revert if no voter upgrade is scheduled
-        if (votingData.scheduledImpl == address(0) && votingData.scheduledEndTime == 0) {
+        // Revert if no voter body upgrade is scheduled
+        if (!votingData.isUpgradeScheduled()) {
             revert UpgradeNotScheduled(address(0));
         }
 
@@ -244,7 +245,7 @@ contract XanV1 is
         Council.Data storage councilData = _getCouncilData();
 
         // Revert if a council upgrade is already scheduled
-        if (councilData.scheduledImpl != address(0) && councilData.scheduledEndTime != 0) {
+        if (councilData.isUpgradeScheduled()) {
             revert UpgradeAlreadyScheduled(councilData.scheduledImpl, councilData.scheduledEndTime);
         }
 
@@ -260,7 +261,7 @@ contract XanV1 is
         Council.Data storage councilData = _getCouncilData();
 
         // Revert if no council upgrade is scheduled
-        if (councilData.scheduledImpl == address(0) && councilData.scheduledEndTime == 0) {
+        if (!councilData.isUpgradeScheduled()) {
             revert UpgradeNotScheduled(address(0));
         }
 

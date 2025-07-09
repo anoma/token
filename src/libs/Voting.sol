@@ -25,4 +25,11 @@ library Voting {
         mapping(address voter => uint256 votes) vota;
         uint256 totalVotes;
     }
+
+    /// @notice Returns whether a voter body upgrade is scheduled or not.
+    /// @param data The voting data.
+    /// @return isScheduled Whether an upgrade is scheduled or not.
+    function isUpgradeScheduled(Data storage data) internal view returns (bool isScheduled) {
+        isScheduled = data.scheduledImpl != address(0) && data.scheduledEndTime != 0;
+    }
 }

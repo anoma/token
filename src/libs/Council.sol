@@ -16,4 +16,11 @@ library Council {
         address scheduledImpl;
         uint48 scheduledEndTime;
     }
+
+    /// @notice Returns whether a council upgrade is scheduled or not.
+    /// @param data The council data.
+    /// @return isScheduled Whether an upgrade is scheduled or not.
+    function isUpgradeScheduled(Data storage data) internal view returns (bool isScheduled) {
+        isScheduled = data.scheduledImpl != address(0) && data.scheduledEndTime != 0;
+    }
 }
