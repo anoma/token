@@ -82,7 +82,7 @@ interface IXanV1 {
     /// @return threshold The calculated quorum threshold.
     function calculateQuorumThreshold() external view returns (uint256 threshold);
 
-    /// @notice Returns the votum of the caller for a proposed implementation.
+    /// @notice Returns the votum of a voter for a proposed implementation.
     /// @param voter The voter to return the votum for.
     /// @param proposedImpl The proposed implementation to return the votum for.
     /// @return votes The votum of the caller.
