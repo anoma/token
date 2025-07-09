@@ -273,6 +273,13 @@ contract XanV1 is
 
     /// @notice @inheritdoc IXanV1
     function vetoCouncilUpgrade() external override {
+        Council.Data storage councilData = _getCouncilData();
+
+        // Revert if no council upgrade is scheduled
+        if (!councilData.isUpgradeScheduled()) {
+            revert UpgradeNotScheduled(address(0));
+        }
+
         // Get the most voted implementation.
         address mostVotedImpl = _getVotingData().mostVotedImpl;
 
@@ -282,8 +289,6 @@ contract XanV1 is
             // This means that vetoing the council is not allowed.
             revert QuorumOrMinLockedSupplyNotReached(mostVotedImpl);
         }
-
-        Council.Data storage councilData = _getCouncilData();
 
         emit CouncilUpgradeVetoed(councilData.scheduledImpl);
 
