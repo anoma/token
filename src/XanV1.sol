@@ -176,13 +176,12 @@ contract XanV1 is
 
         // Revert if the most voted implementation has not reached quorum
         {
-            address mostVotedImpl = votingData.mostVotedImpl;
-            if (!_isQuorumAndMinLockedSupplyReached(mostVotedImpl)) {
-                revert QuorumOrMinLockedSupplyNotReached(mostVotedImpl);
+            if (!_isQuorumAndMinLockedSupplyReached(votingData.mostVotedImpl)) {
+                revert QuorumOrMinLockedSupplyNotReached(votingData.mostVotedImpl);
             }
 
             // Schedule the upgrade and emit the associated event.
-            votingData.scheduledImpl = mostVotedImpl;
+            votingData.scheduledImpl = votingData.mostVotedImpl;
             votingData.scheduledEndTime = Time.timestamp() + Parameters.DELAY_DURATION;
 
             emit VoterBodyUpgradeScheduled(votingData.scheduledImpl, votingData.scheduledEndTime);
