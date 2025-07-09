@@ -190,7 +190,7 @@ contract XanV1 is
         // Check if the council has proposed an upgrade and, if so, cancel
         {
             Council.Data storage councilData = _getCouncilData();
-            if (councilData.scheduledImpl != address(0) && councilData.scheduledEndTime != 0) {
+            if (councilData.isUpgradeScheduled()) {
                 emit CouncilUpgradeVetoed(councilData.scheduledImpl);
 
                 // Reset the scheduled upgrade
