@@ -124,26 +124,26 @@ contract XanV1 is
         {
             Voting.Ballot storage ballot = votingData.ballots[proposedImpl];
 
-            // Cache the old votum of the voter.
-            uint256 oldVotum = ballot.vota[voter];
+            // Cache the old votes of the voter.
+            uint256 oldVotes = ballot.votes[voter];
 
             // Cache the locked balance.
-            uint256 newVotum = lockedBalanceOf(voter);
+            uint256 newVotes = lockedBalanceOf(voter);
 
-            // Revert if the votum is less or equal to the old votum.
-            if (newVotum < oldVotum + 1) {
-                revert LockedBalanceInsufficient({sender: voter, lockedBalance: newVotum});
+            // Revert if the votes are not larger than the old votes.
+            if (newVotes < oldVotes + 1) {
+                revert LockedBalanceInsufficient({sender: voter, lockedBalance: newVotes});
             }
 
             // Calculate the votes that must be added.
             uint256 delta;
             unchecked {
-                // Skip the underflow check because `lockedBalance > oldVotum` has been checked before.
-                delta = newVotum - oldVotum;
+                // Skip the underflow check because `lockedBalance > oldVotes` has been checked before.
+                delta = newVotes - oldVotes;
             }
 
-            // Update the votum.
-            ballot.vota[voter] = newVotum;
+            // Update the votes.
+            ballot.votes[voter] = newVotes;
 
             // Update the total votes.
             ballot.totalVotes += delta;
@@ -298,8 +298,8 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
-    function votum(address voter, address proposedImpl) external view override returns (uint256 votes) {
-        votes = _getVotingData().ballots[proposedImpl].vota[voter];
+    function getVotes(address voter, address proposedImpl) external view override returns (uint256 votes) {
+        votes = _getVotingData().ballots[proposedImpl].votes[voter];
     }
 
     /// @notice @inheritdoc IXanV1

@@ -36,8 +36,8 @@ contract MockXanV1CriteriaTest is Test {
         _xanProxyMock.lock(Parameters.MIN_LOCKED_SUPPLY / 2);
         _xanProxyMock.castVote(_NEW_IMPL);
 
-        uint256 votum = _xanProxyMock.votum(_tokenHolder, _NEW_IMPL);
-        _xanProxyMock.lock(Parameters.MIN_LOCKED_SUPPLY - votum);
+        uint256 votes = _xanProxyMock.getVotes(_tokenHolder, _NEW_IMPL);
+        _xanProxyMock.lock(Parameters.MIN_LOCKED_SUPPLY - votes);
 
         assertEq(_xanProxyMock.lockedSupply(), Parameters.MIN_LOCKED_SUPPLY);
         assertEq(_xanProxyMock.isQuorumAndMinLockedSupplyReached(_NEW_IMPL), false);
@@ -50,8 +50,8 @@ contract MockXanV1CriteriaTest is Test {
         _xanProxyMock.lock(Parameters.MIN_LOCKED_SUPPLY / 2 + 1);
         _xanProxyMock.castVote(_NEW_IMPL);
 
-        uint256 votum = _xanProxyMock.votum(_tokenHolder, _NEW_IMPL);
-        _xanProxyMock.lock(Parameters.MIN_LOCKED_SUPPLY - votum);
+        uint256 votes = _xanProxyMock.getVotes(_tokenHolder, _NEW_IMPL);
+        _xanProxyMock.lock(Parameters.MIN_LOCKED_SUPPLY - votes);
 
         assertEq(_xanProxyMock.lockedSupply(), Parameters.MIN_LOCKED_SUPPLY);
         assertEq(_xanProxyMock.isQuorumAndMinLockedSupplyReached(_NEW_IMPL), true);

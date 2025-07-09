@@ -22,7 +22,7 @@ library Voting {
     /// @param vota The vota of the individual identities.
     /// @param totalVotes The total votes casted.
     struct Ballot {
-        mapping(address voter => uint256 votes) vota;
+        mapping(address voter => uint256) votes;
         uint256 totalVotes;
     }
 
