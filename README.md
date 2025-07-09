@@ -1,9 +1,5 @@
 # Token
 
-> [!WARNING]  
-> This repo features a prototype and is work in progress. Do NOT use in
-> production.
-
 ## Installation
 
 1. Get an up-to-date version of [Foundry](https://github.com/foundry-rs/foundry)
