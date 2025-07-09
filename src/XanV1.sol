@@ -204,12 +204,16 @@ contract XanV1 is
     function cancelVoterBodyUpgrade() external override {
         Voting.Data storage data = _getVotingData();
 
+        // Revert if no voter upgrade is scheduled
+        if (data.scheduledImpl == address(0) && data.scheduledEndTime == 0) {
+            revert UpgradeNotScheduled(address(0));
+        }
+
         // Check that the delay period is over.
         _checkDelayCriterion(data.scheduledEndTime);
 
-        // Revert the cancellation if the currently scheduled implementation still
-        // * meets the quorum and minimum locked supply
-        // * is the most voted implementation
+        // Revert if the scheduled implementation still meets the quorum and minimum locked
+        // supply requirements and is still the most voted implementation.
         if (_isQuorumAndMinLockedSupplyReached(data.scheduledImpl) && (data.scheduledImpl == data.mostVotedImpl)) {
             revert UpgradeCancellationInvalid(data.scheduledImpl, data.scheduledEndTime);
         }

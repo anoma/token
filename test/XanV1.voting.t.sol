@@ -320,6 +320,11 @@ contract XanV1VotingTest is Test {
         _xanProxy.scheduleVoterBodyUpgrade();
     }
 
+    function test_cancelVoterBodyUpgrade_reverts_if_no_upgrade_is_scheduled() public {
+        vm.expectRevert(abi.encodeWithSelector(XanV1.UpgradeNotScheduled.selector, address(0)), address(_xanProxy));
+        _xanProxy.cancelVoterBodyUpgrade();
+    }
+
     function test_cancelVoterBodyUpgrade_reverts_if_the_delay_period_has_not_started() public {
         // Ensure that an implementation is the most-voted
         vm.startPrank(_defaultSender);
