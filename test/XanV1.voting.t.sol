@@ -211,7 +211,7 @@ contract XanV1VotingTest is Test {
         assertEq(scheduledImpl, _NEW_IMPL);
     }
 
-    function test_scheduleVoterBodyUpgrade_starts_the_delay_if_locked_supply_and_quorum_are_met_and_the_impl_is_ranked_best(
+    function test_scheduleVoterBodyUpgrade_starts_the_delay_if_locked_supply_and_quorum_are_met_and_the_impl_is_the_most_voted(
     ) public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
@@ -321,7 +321,7 @@ contract XanV1VotingTest is Test {
     }
 
     function test_cancelVoterBodyUpgrade_reverts_if_the_delay_period_has_not_started() public {
-        // Ensure that an implementation is the best-ranked
+        // Ensure that an implementation is the most-voted
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_NEW_IMPL);
@@ -332,7 +332,7 @@ contract XanV1VotingTest is Test {
     }
 
     function test_cancelVoterBodyUpgrade_reverts_if_the_delay_period_has_not_ended() public {
-        // Ensure that an implementation is the best-ranked
+        // Ensure that an implementation is the most-voted
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_NEW_IMPL);
@@ -346,7 +346,7 @@ contract XanV1VotingTest is Test {
         _xanProxy.cancelVoterBodyUpgrade();
     }
 
-    function test_cancelVoterBodyUpgrade_reverts_after_the_delay_has_passed_when_attempting_to_cancel_the_best_ranked_implementation(
+    function test_cancelVoterBodyUpgrade_reverts_after_the_delay_has_passed_when_attempting_to_cancel_the_most_voted_implementation(
     ) public {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
@@ -419,7 +419,7 @@ contract XanV1VotingTest is Test {
         assertEq(scheduledEndTime, 0);
     }
 
-    function test_cancelVoterBodyUpgrade_cancels_a_scheduled_upgrade_after_the_delay_if_the_implementation_is_not_the_best_ranked_anymore(
+    function test_cancelVoterBodyUpgrade_cancels_a_scheduled_upgrade_after_the_delay_if_the_implementation_is_not_the_most_voted_anymore(
     ) public {
         // Vote for `_NEW_IMPL`
         vm.startPrank(_defaultSender);
@@ -439,7 +439,7 @@ contract XanV1VotingTest is Test {
         _xanProxy.castVote(_OTHER_NEW_IMPL);
         vm.stopPrank();
 
-        // Check that `_OTHER_NEW_IMPL` is now the best-ranked implementation.
+        // Check that `_OTHER_NEW_IMPL` is now the most-voted implementation.
         assertEq(_xanProxy.mostVotedImplementation(), _OTHER_NEW_IMPL);
 
         // Cancel the upgrade for `_NEW_IMPL`;
