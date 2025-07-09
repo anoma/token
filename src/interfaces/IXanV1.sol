@@ -59,10 +59,10 @@ interface IXanV1 {
     /// @param proposedImpl The proposed implementation to cast the vote for.
     function castVote(address proposedImpl) external;
 
-    /// @notice Schedules the upgrade to the best-ranked implementation proposed by the voter body.
+    /// @notice Schedules the upgrade to the most-voted implementation proposed by the voter body.
     function scheduleVoterBodyUpgrade() external;
 
-    /// @notice Cancels the upgrade if the scheduled implementation is not the best-ranked anymore and the delay period
+    /// @notice Cancels the upgrade if the scheduled implementation is not the most-voted anymore and the delay period
     /// has passed.
     function cancelVoterBodyUpgrade() external;
 

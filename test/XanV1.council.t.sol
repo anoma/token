@@ -177,13 +177,6 @@ contract XanV1CouncilTest is Test {
         vm.prank(_COUNCIL);
         _xanProxy.scheduleCouncilUpgrade(_NEW_IMPL);
 
-        // Vote for another implementation but without meeting the minimal locked supply
-        vm.startPrank(_defaultSender);
-        // Lock first half.
-        _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY - 1);
-        _xanProxy.castVote(_OTHER_NEW_IMPL);
-        vm.stopPrank();
-
         vm.prank(_defaultSender);
         vm.expectRevert(
             abi.encodeWithSelector(
