@@ -204,7 +204,7 @@ contract XanV1 is
     function cancelVoterBodyUpgrade() external override {
         Voting.Data storage votingData = _getVotingData();
 
-        // Revert if no voter body upgrade is scheduled
+        // Revert if no voter-body upgrade is scheduled
         if (!votingData.isUpgradeScheduled()) {
             revert UpgradeNotScheduled(address(0));
         }
@@ -230,7 +230,7 @@ contract XanV1 is
 
     /// @notice @inheritdoc IXanV1
     function scheduleCouncilUpgrade(address impl) external override onlyCouncil {
-        // Revert if a voter body upgrade could be scheduled
+        // Revert if a voter-body upgrade could be scheduled
         {
             Voting.Data storage votingData = _getVotingData();
 
@@ -482,7 +482,7 @@ contract XanV1 is
         }
     }
 
-    /// @notice Returns the data associated with locked token balance for the current implementation 
+    /// @notice Returns the data associated with locked token balance for the current implementation
     /// from the contract storage location.
     /// @return lockingData The data associated with locked tokens.
     function _getLockingData() internal view returns (Locking.Data storage lockingData) {
@@ -496,7 +496,7 @@ contract XanV1 is
         votingData = _getXanV1Storage().implementationSpecificData[implementation()].votingData;
     }
 
-    /// @notice Returns the data associated with the upgrade from the current implementation proposed by the council 
+    /// @notice Returns the data associated with the upgrade from the current implementation proposed by the council
     /// from the contract storage location.
     /// @return councilData Data associated with an upgrade from the current implementation proposed by the council.
     function _getCouncilData() internal view returns (Council.Data storage councilData) {

@@ -150,7 +150,7 @@ contract XanV1UpgradeTest is Test {
         // Schedule the `_councilProposedImpl`
         _xanProxy.scheduleVoterBodyUpgrade();
 
-        // Advance time after the end time of the scheduled voter body upgrade.
+        // Advance time after the end time of the scheduled voter-body upgrade.
         (, uint48 endTime) = _xanProxy.scheduledVoterBodyUpgrade();
         skip(endTime);
 
@@ -175,7 +175,7 @@ contract XanV1UpgradeTest is Test {
         // Schedule the `_councilProposedImpl`
         _xanProxy.scheduleVoterBodyUpgrade();
 
-        // Advance time after the end time of the scheduled voter body upgrade.
+        // Advance time after the end time of the scheduled voter-body upgrade.
         (, uint48 endTime) = _xanProxy.scheduledVoterBodyUpgrade();
         skip(endTime);
 

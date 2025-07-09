@@ -19,14 +19,14 @@ library Voting {
     }
 
     /// @notice The vote data of a proposed implementation.
-    /// @param vota The vota of the individual identities.
+    /// @param votes The votes of the individual identities.
     /// @param totalVotes The total votes casted.
     struct Ballot {
         mapping(address voter => uint256) votes;
         uint256 totalVotes;
     }
 
-    /// @notice Returns whether a voter body upgrade is scheduled or not.
+    /// @notice Returns whether a voter-body upgrade is scheduled or not.
     /// @param data The voting data.
     /// @return isScheduled Whether an upgrade is scheduled or not.
     function isUpgradeScheduled(Data storage data) internal view returns (bool isScheduled) {
