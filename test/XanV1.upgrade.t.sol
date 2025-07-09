@@ -219,6 +219,45 @@ contract XanV1UpgradeTest is Test {
         _xanProxy.upgradeToAndCall({newImplementation: _councilProposedImpl, data: ""});
     }
 
+    function test_authorizeUpgrade_resets_the_scheduled_council_upgrade_data_on_upgrade_execution() public {
+        // Cache the current implementation
+        address currentImpl = _xanProxy.implementation();
+
+        // Schedule and upgrade to the current implementation as the council
+        vm.prank(_COUNCIL);
+        _xanProxy.scheduleCouncilUpgrade(currentImpl);
+        (, uint48 endTime) = _xanProxy.scheduledCouncilUpgrade();
+        skip(endTime);
+        _xanProxy.upgradeToAndCall({newImplementation: currentImpl, data: ""});
+        assertEq(_xanProxy.implementation(), currentImpl);
+
+        // Check that the scheduled upgrade has been reset to 0
+        (address scheduledImplPostUpgrade, uint48 scheduledEndTimePostUpgrade) = _xanProxy.scheduledCouncilUpgrade();
+        assertEq(scheduledImplPostUpgrade, address(0));
+        assertEq(scheduledEndTimePostUpgrade, 0);
+    }
+
+    function test_authorizeUpgrade_resets_the_scheduled_voter_body_upgrade_data_on_upgrade_execution() public {
+        // Cache the current implementation
+        address currentImpl = _xanProxy.implementation();
+
+        // Schedule and upgrade to the current implementation as the voter body
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
+        _xanProxy.castVote(currentImpl);
+        vm.stopPrank();
+        _xanProxy.scheduleVoterBodyUpgrade();
+        (, uint48 endTime) = _xanProxy.scheduledVoterBodyUpgrade();
+        skip(endTime);
+        _xanProxy.upgradeToAndCall({newImplementation: currentImpl, data: ""});
+        assertEq(_xanProxy.implementation(), currentImpl);
+
+        // Check that the scheduled upgrade has been reset to 0
+        (address scheduledImplPostUpgrade, uint48 scheduledEndTimePostUpgrade) = _xanProxy.scheduledVoterBodyUpgrade();
+        assertEq(scheduledImplPostUpgrade, address(0));
+        assertEq(scheduledEndTimePostUpgrade, 0);
+    }
+
     function test_upgradeToAndCall_emits_the_Upgraded_event() public {
         vm.prank(_COUNCIL);
         _xanProxy.scheduleCouncilUpgrade(_councilProposedImpl);

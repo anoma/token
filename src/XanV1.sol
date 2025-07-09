@@ -384,7 +384,7 @@ contract XanV1 is
 
     /// @notice Authorizes an upgrade.
     /// @param newImpl The new implementation to authorize the upgrade to.
-    function _authorizeUpgrade(address newImpl) internal view override {
+    function _authorizeUpgrade(address newImpl) internal override {
         if (newImpl == address(0)) {
             revert ImplementationZero();
         }
@@ -410,6 +410,10 @@ contract XanV1 is
                 revert QuorumOrMinLockedSupplyNotReached(mostVotedImpl);
             }
             _checkDelayCriterion({endTime: votingData.scheduledEndTime});
+
+            // Reset the scheduled upgrade
+            votingData.scheduledImpl = address(0);
+            votingData.scheduledEndTime = 0;
         } else if (isScheduledByCouncil) {
             // Check if the best ranked implementation exists.
             if (mostVotedImpl != address(0)) {
@@ -420,6 +424,10 @@ contract XanV1 is
                 }
             }
             _checkDelayCriterion({endTime: councilData.scheduledEndTime});
+
+            // Reset the scheduled upgrade
+            councilData.scheduledImpl = address(0);
+            councilData.scheduledEndTime = 0;
         } else {
             revert UpgradeNotScheduled(newImpl);
         }
