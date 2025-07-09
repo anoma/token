@@ -35,7 +35,7 @@ contract ForeignReserveV1 is
         emit NativeTokenReceived(msg.sender, msg.value);
     }
 
-    /// @notice Initializes the contract and sets the owner
+    /// @notice Initializes the contract and sets the owner.
     /// @param initialOwner The initial owner.
     function initializeV1( /* solhint-disable-line comprehensive-interface*/ address initialOwner)
         external

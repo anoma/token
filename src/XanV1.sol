@@ -124,26 +124,26 @@ contract XanV1 is
         {
             Voting.Ballot storage ballot = votingData.ballots[proposedImpl];
 
-            // Cache the old votum of the voter.
-            uint256 oldVotum = ballot.vota[voter];
+            // Cache the old votes of the voter.
+            uint256 oldVotes = ballot.votes[voter];
 
             // Cache the locked balance.
-            uint256 newVotum = lockedBalanceOf(voter);
+            uint256 newVotes = lockedBalanceOf(voter);
 
-            // Revert if the votum is less or equal to the old votum.
-            if (newVotum < oldVotum + 1) {
-                revert LockedBalanceInsufficient({sender: voter, lockedBalance: newVotum});
+            // Revert if the votes are not larger than the old votes.
+            if (newVotes < oldVotes + 1) {
+                revert LockedBalanceInsufficient({sender: voter, lockedBalance: newVotes});
             }
 
             // Calculate the votes that must be added.
             uint256 delta;
             unchecked {
-                // Skip the underflow check because `lockedBalance > oldVotum` has been checked before.
-                delta = newVotum - oldVotum;
+                // Skip the underflow check because `lockedBalance > oldVotes` has been checked before.
+                delta = newVotes - oldVotes;
             }
 
-            // Update the votum.
-            ballot.vota[voter] = newVotum;
+            // Update the votes.
+            ballot.votes[voter] = newVotes;
 
             // Update the total votes.
             ballot.totalVotes += delta;
@@ -204,7 +204,7 @@ contract XanV1 is
     function cancelVoterBodyUpgrade() external override {
         Voting.Data storage votingData = _getVotingData();
 
-        // Revert if no voter body upgrade is scheduled
+        // Revert if no voter-body upgrade is scheduled
         if (!votingData.isUpgradeScheduled()) {
             revert UpgradeNotScheduled(address(0));
         }
@@ -230,7 +230,7 @@ contract XanV1 is
 
     /// @notice @inheritdoc IXanV1
     function scheduleCouncilUpgrade(address impl) external override onlyCouncil {
-        // Revert if a voter body upgrade could be scheduled
+        // Revert if a voter-body upgrade could be scheduled
         {
             Voting.Data storage votingData = _getVotingData();
 
@@ -298,8 +298,8 @@ contract XanV1 is
     }
 
     /// @inheritdoc IXanV1
-    function votum(address voter, address proposedImpl) external view override returns (uint256 votes) {
-        votes = _getVotingData().ballots[proposedImpl].vota[voter];
+    function getVotes(address voter, address proposedImpl) external view override returns (uint256 votes) {
+        votes = _getVotingData().ballots[proposedImpl].votes[voter];
     }
 
     /// @notice @inheritdoc IXanV1
@@ -370,8 +370,11 @@ contract XanV1 is
             uint256 unlockedBalance = unlockedBalanceOf(from);
 
             if (value > unlockedBalance) {
-                // solhint-disable-next-line max-line-length
-                revert UnlockedBalanceInsufficient({sender: from, unlockedBalance: unlockedBalance, valueToLock: value});
+                revert UnlockedBalanceInsufficient({ // force linebreak
+                    sender: from,
+                    unlockedBalance: unlockedBalance,
+                    valueToLock: value
+                });
             }
         }
 
@@ -379,8 +382,8 @@ contract XanV1 is
     }
 
     /// @notice Permanently locks tokens for an account for the current implementation until it gets upgraded.
-    /// @param account The account to lock  the tokens for.
-    /// @param value The value to be locked.
+    /// @param account The account to lock the tokens for.
+    /// @param value The value to lock.
     function _lock(address account, uint256 value) internal {
         Locking.Data storage data = _getLockingData();
 
@@ -446,15 +449,16 @@ contract XanV1 is
         }
     }
 
-    /// @notice Throws if the sender is not the governance council.
+    /// @notice Throws an error if the sender is not the governance council.
     function _checkCouncil() internal view {
         if (governanceCouncil() != msg.sender) {
             revert UnauthorizedCaller({caller: msg.sender});
         }
     }
 
-    /// @notice Returns `true` if the quorum and minimum locked supply is reached for a given implementation.
-    /// @param impl The implementation to check the quorum criteria for.
+    /// @notice Returns whether the the quorum is reached for an implementation and whether the minimum locked supply
+    /// is met.
+    /// @param impl The implementation to check the quorum for.
     /// @return isReached Whether the quorum and minimum locked supply is reached or not.
     function _isQuorumAndMinLockedSupplyReached(address impl) internal view returns (bool isReached) {
         if (totalVotes(impl) < calculateQuorumThreshold() + 1) {
@@ -478,21 +482,23 @@ contract XanV1 is
         }
     }
 
-    /// @notice Returns the locking data for the current implementation from the contract storage location.
+    /// @notice Returns the data associated with locked token balance for the current implementation
+    /// from the contract storage location.
     /// @return lockingData The data associated with locked tokens.
     function _getLockingData() internal view returns (Locking.Data storage lockingData) {
         lockingData = _getXanV1Storage().implementationSpecificData[implementation()].lockingData;
     }
 
-    /// @notice Returns the proposed upgrades from the current implementation from the contract storage location.
-    /// @return votingData The data associated with proposed upgrades from the current implementation.
+    /// @notice Returns the data associated with upgrades from the current implementation proposed by the voter body
+    /// from the contract storage location.
+    /// @return votingData Data associated with upgrades from the current implementation proposed by the voter body.
     function _getVotingData() internal view returns (Voting.Data storage votingData) {
         votingData = _getXanV1Storage().implementationSpecificData[implementation()].votingData;
     }
 
-    /// @notice Returns the data of the upgrade proposed by the council from the current implementation
+    /// @notice Returns the data associated with the upgrade from the current implementation proposed by the council
     /// from the contract storage location.
-    /// @return councilData The data associated with upgrade proposed by the council from the current implementation.
+    /// @return councilData Data associated with an upgrade from the current implementation proposed by the council.
     function _getCouncilData() internal view returns (Council.Data storage councilData) {
         councilData = _getXanV1Storage().implementationSpecificData[implementation()].councilData;
     }
