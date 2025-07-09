@@ -45,7 +45,7 @@ contract XanV1 is
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the contract.
     /// @custom:storage-location erc7201:anoma.storage.Xan.v1
     struct XanV1Storage {
-        mapping(address current => ImplementationData) implementationSpecificData;
+        mapping(address currentProxyImplementation => ImplementationData) implementationSpecificData;
     }
 
     /// @notice The ERC-7201 storage location of the Xan V1 contract (see https://eips.ethereum.org/EIPS/eip-7201).
