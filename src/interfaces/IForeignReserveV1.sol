@@ -14,7 +14,7 @@ interface IForeignReserveV1 {
 
     /// @notice Executes arbitrary calls.
     /// @param target The target address to call.
-    /// @param value The value to send.
+    /// @param value The native token value to send with the call.
     /// @param data The data to send with the call.
     /// @return result The result of the call.
     function execute(address target, uint256 value, bytes calldata data)

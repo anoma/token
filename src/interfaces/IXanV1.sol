@@ -11,7 +11,7 @@ interface IXanV1 {
     /// @param value The number of tokens being locked.
     event Locked(address indexed account, uint256 value);
 
-    /// @notice Emitted when a vote is cast for a implementation.
+    /// @notice Emitted when a vote is cast for an implementation.
     /// @param voter The voter address.
     /// @param impl The implementation the vote was cast for.
     /// @param value The number of votes cast.
@@ -26,7 +26,7 @@ interface IXanV1 {
     /// @param endTime The end time of the delay period.
     event VoterBodyUpgradeScheduled(address indexed impl, uint48 endTime);
 
-    /// @notice Emitted  when the upgrade to a new implementation proposed by the voter body is cancelled.
+    /// @notice Emitted when the upgrade to a new implementation proposed by the voter body is cancelled.
     /// @param impl The implementation that has been cancelled.
     event VoterBodyUpgradeCancelled(address indexed impl);
 
@@ -44,8 +44,8 @@ interface IXanV1 {
     /// @param impl The implementation to which the upgrade has been vetoed by the voter body.
     event CouncilUpgradeVetoed(address indexed impl);
 
-    /// @notice Permanently locks tokens for the current implementation until it gets upgraded.
-    /// @param value The value to be locked.
+    /// @notice Permanently locks tokens for the current implementation until the token gets upgraded.
+    /// @param value The value to lock.
     function lock(uint256 value) external;
 
     /// @notice Transfers tokens and immediately locks them.
@@ -54,8 +54,7 @@ interface IXanV1 {
     function transferAndLock(address to, uint256 value) external;
 
     /// @notice Casts the vote with the currently locked balance for a new implementation.
-    /// An old votum will only get updated if the new locked balance is larger than the old votum.
-    /// Otherwise, the function will revert with an error.
+    /// An existing votes will be updated if the votes increase. Otherwise, the call reverts with an error.
     /// @param proposedImpl The proposed implementation to cast the vote for.
     function castVote(address proposedImpl) external;
 
@@ -74,8 +73,9 @@ interface IXanV1 {
     /// This is only callable by the council.
     function cancelCouncilUpgrade() external;
 
-    /// @notice Vetos the council upgrade, which cancels it.
-    /// This can be called by anyone, if there is an implementation proposed by the voter body that has reached quorum.
+    /// @notice Vetos the upgrade proposed by the governance council.
+    /// This can only happen if there is an implementation proposed by the voter body that has reached quorum and
+    /// the minimal locked supply is met.
     function vetoCouncilUpgrade() external;
 
     /// @notice Calculates the quorum based on the current locked supply.
