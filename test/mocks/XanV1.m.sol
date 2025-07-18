@@ -6,6 +6,10 @@ import {XanV1} from "../../src/XanV1.sol";
 /// @notice This mock makes internal functions of the XanV1 token accessible to external callers.
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
 contract MockXanV1 is XanV1 {
+    function update(address from, address to, uint256 value) external {
+        XanV1._update({from: from, to: to, value: value});
+    }
+
     function isQuorumAndMinLockedSupplyReached(address impl) external view returns (bool isReached) {
         isReached = _isQuorumAndMinLockedSupplyReached(impl);
     }
