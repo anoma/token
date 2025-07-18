@@ -55,7 +55,7 @@ contract XanV1 is
     bytes32 internal constant _XAN_V1_STORAGE_LOCATION =
         0x52f7d5fb153315ca313a5634db151fa7e0b41cd83fe6719e93ed3cd02b69d200;
 
-    error UnlockedBalanceInsufficient(address sender, uint256 unlockedBalance, uint256 requested);
+    error UnlockedBalanceInsufficient(address sender, uint256 unlockedBalance, uint256 valueToLock);
     error LockedBalanceInsufficient(address sender, uint256 lockedBalance);
 
     error ImplementationZero();
@@ -370,7 +370,11 @@ contract XanV1 is
             uint256 unlockedBalance = unlockedBalanceOf(from);
 
             if (value > unlockedBalance) {
-                revert UnlockedBalanceInsufficient({sender: from, unlockedBalance: unlockedBalance, requested: value});
+                revert UnlockedBalanceInsufficient({ // force linebreak
+                    sender: from,
+                    unlockedBalance: unlockedBalance,
+                    valueToLock: value
+                });
             }
         }
 
@@ -385,7 +389,7 @@ contract XanV1 is
 
         uint256 unlockedBalance = unlockedBalanceOf(account);
         if (value > unlockedBalance) {
-            revert UnlockedBalanceInsufficient({sender: account, unlockedBalance: unlockedBalance, requested: value});
+            revert UnlockedBalanceInsufficient({sender: account, unlockedBalance: unlockedBalance, valueToLock: value});
         }
 
         data.lockedSupply += value;
