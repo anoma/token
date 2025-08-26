@@ -12,8 +12,6 @@ contract XanV1Handler is Test {
     address[] public actors;
     mapping(address => bool) internal isActor;
 
-    uint256 public sum;
-
     // Valid implementation addresses for testing
     address[5] public validImpls = [address(0x1111), address(0x2222), address(0x3333), address(0x4444), address(0x5555)];
 
@@ -26,7 +24,6 @@ contract XanV1Handler is Test {
         token = _token;
         initialHolder = _initialHolder;
         _addActor(_initialHolder);
-        sum = 0;
     }
 
     function _addActor(address a) internal {
@@ -106,7 +103,6 @@ contract XanV1Handler is Test {
         uint256 unlocked = token.unlockedBalanceOf(who);
         amount = bound(amount, 0, unlocked);
 
-        // Update state tracking for the account locking tokens
         updateStateTrackingFor(who);
 
         vm.prank(who);
@@ -168,8 +164,6 @@ contract XanV1Handler is Test {
             vm.warp(endTime);
         }
 
-        // Update state tracking before cancellation
-        // This is done to prove that certain variants hold
         updateStateTracking();
 
         token.cancelVoterBodyUpgrade();
@@ -179,7 +173,6 @@ contract XanV1Handler is Test {
         // Council-only; prank as council.
         address council = token.governanceCouncil();
 
-        // Restrict to only valid implementation addresses
         implIndex = bound(implIndex, 0, validImpls.length - 1);
         address impl = validImpls[implIndex];
 
@@ -191,7 +184,6 @@ contract XanV1Handler is Test {
         // Council-only; no waiting period required for cancellation.
         address council = token.governanceCouncil();
 
-        // Update state tracking before cancellation
         updateStateTracking();
 
         vm.prank(council);

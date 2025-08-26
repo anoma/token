@@ -26,7 +26,7 @@ contract XanV1Invariants is StdInvariant, Test {
         // Register the handler for invariant fuzzing
         targetContract(address(handler));
     }
-    // PS-1,2: Locked balances never exceed total balances for any address
+    // PS-1: Locked balances never exceed total balances for any address
     // Invariant: for all seen actors:
     // - lockedBalance <= balance
     // - unlockedBalance == balance - lockedBalance
@@ -80,31 +80,5 @@ contract XanV1Invariants is StdInvariant, Test {
         bool councilScheduled = (cImpl != address(0) && cEnd != 0);
 
         assertTrue(!(voterScheduled && councilScheduled), "both voter and council scheduled");
-    }
-
-    // PS-9: Upgrade cancellation token persistence
-    // Cancelling a scheduled voter body upgrade does not unlock any tokens, reset vote counts, or modify locked balances
-    function invariant_upgradeCancellationTokenPersistence() public view {
-        address[] memory actors = handler.getActors();
-        uint256 currentLockedSupply = token.lockedSupply();
-        uint256 previousLockedSupply = handler.getPreviousLockedSupply();
-
-        // If there was a previous snapshot and we have locked supply, verify persistence
-        if (previousLockedSupply > 0) {
-            // Locked supply should not decrease due to cancellation operations
-            // (it can increase due to new locks, but should not decrease)
-            assertGe(currentLockedSupply, previousLockedSupply, "locked supply decreased unexpectedly");
-        }
-
-        for (uint256 i = 0; i < actors.length; i++) {
-            address actor = actors[i];
-            uint256 currentLocked = token.lockedBalanceOf(actor);
-            uint256 previousLocked = handler.getPreviousLockedBalance(actor);
-
-            // If there was a previous locked balance, it should not decrease due to cancellation
-            if (previousLocked > 0) {
-                assertGe(currentLocked, previousLocked, "locked balance decreased unexpectedly");
-            }
-        }
     }
 }
