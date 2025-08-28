@@ -55,8 +55,8 @@ contract ForeignReserveV1 is
         external
         payable
         override
-        onlyOwner
         nonReentrant
+        onlyOwner
         returns (bytes memory result)
     {
         result = target.functionCallWithValue(data, value);
