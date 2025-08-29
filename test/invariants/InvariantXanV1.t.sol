@@ -50,24 +50,36 @@ contract XanV1Invariants is StdInvariant, Test {
         assertEq(sumLocked, token.lockedSupply(), "sum(locked) != lockedSupply");
     }
 
+    // PS-2: locked token transfer immutability =>
+    // Locked balances can never decrease (be transferred) for any address
+    function invariant_lockedBalanceMonotonicity() public view {
+        address[] memory actors = handler.getActors();
+
+        for (uint256 i = 0; i < actors.length; i++) {
+            address account = actors[i];
+            uint256 currentLocked = token.lockedBalanceOf(account);
+            uint256 previousLocked = handler.getPreviousLockedBalance(account);
+
+            assertGe(currentLocked, previousLocked, "locked balance decreased for account");
+        }
+    }
+
     // PS-4: Vote monotonicity
     // Individual vote counts can only increase (never decrease) for any voter-implementation pair
     function invariant_voteMonotonicity() public view {
         address[] memory actors = handler.getActors();
+        address[5] memory validImpls = handler.getValidImpls();
 
         for (uint256 i = 0; i < actors.length; i++) {
             address voter = actors[i];
 
             // Check all valid implementation addresses to verify monotonicity
-            for (uint256 j = 0; j < 5; j++) {
-                address impl = handler.validImpls(j);
+            for (uint256 j = 0; j < validImpls.length; j++) {
+                address impl = validImpls[j];
                 uint256 currentVotes = token.getVotes(voter, impl);
                 uint256 previousVotes = handler.getPreviousVotes(voter, impl);
 
-                // Vote counts should never decrease
-                if (previousVotes > 0) {
-                    assertGe(currentVotes, previousVotes, "vote count decreased for voter-implementation pair");
-                }
+                assertGe(currentVotes, previousVotes, "vote count decreased for voter-implementation pair");
             }
         }
     }
@@ -81,4 +93,6 @@ contract XanV1Invariants is StdInvariant, Test {
 
         assertTrue(!(voterScheduled && councilScheduled), "both voter and council scheduled");
     }
+
+    //PS-9 (upgrade cancellation token persistence) is implicitly proved by invariant tests above
 }
