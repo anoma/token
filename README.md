@@ -15,6 +15,15 @@ Anoma smart contracts undergo regular audits:
 
    [📄 Full Report (pdf)](./audits/2025-07-17_Zellic_Anoma_Token_&_TokenDistributor.pdf)
 
+2. Informal Systems Audit
+
+   - Company Website: https://informal.systems/
+   - Commit ID: [e4b0034454612c0ff018f239d841fc3024d62151](https://github.com/anoma/token/tree/e4b0034454612c0ff018f239d841fc3024d62151)
+   - Started: 2025-08-18
+   - Finished: 2025-08-17
+
+   [📄 Full Report (pdf)](./audits/2025-09-03_Informal_Systems_Anoma_Token_&_TokenDistributor.pdf)
+
 ## Security
 
 If you believe you've found a security issue, we encourage you to notify us via Email at [security@anoma.foundation](mailto:security@anoma.foundation). Please do not use the issue tracker for security issues. We welcome working with you to resolve the issue promptly.
