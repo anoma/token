@@ -13,7 +13,7 @@ Anoma smart contracts undergo regular audits:
    - Started: 2025-07-10
    - Finished: 2025-07-14
 
-   [📄 Full Report (pdf)](./audits/Zellic_Anoma_Token_&_TokenDistributor_2025-07-17.pdf)
+   [📄 Full Report (pdf)](./audits/2025-07-17_Zellic_Anoma_Token_&_TokenDistributor.pdf)
 
 ## Security
 
