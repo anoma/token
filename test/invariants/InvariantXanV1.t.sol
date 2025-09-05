@@ -28,13 +28,13 @@ contract XanV1Invariants is StdInvariant, Test {
         // Register the handler for invariant fuzzing
         targetContract(address(handler));
     }
+
     // PS-1: Locked balances never exceed total balances for any address
     // Invariant: for all seen actors:
     // - lockedBalance <= balance
     // - unlockedBalance == balance - lockedBalance
     // - sum(lockedBalances) == lockedSupply
-
-    function invariant_lockedAccountingHolds() public view {
+    function invariant_locked_accounting_holds() public view {
         address[] memory actors = handler.getActors();
         uint256 sumLocked = 0;
 
@@ -54,7 +54,7 @@ contract XanV1Invariants is StdInvariant, Test {
 
     // PS-2: locked token transfer immutability =>
     // Locked balances can never decrease (be transferred) for any address
-    function invariant_lockedBalanceMonotonicity() public view {
+    function invariant_locked_balance_monotonicity() public view {
         address[] memory actors = handler.getActors();
 
         for (uint256 i = 0; i < actors.length; ++i) {
@@ -68,7 +68,7 @@ contract XanV1Invariants is StdInvariant, Test {
 
     // PS-4: Vote monotonicity
     // Individual vote counts can only increase (never decrease) for any voter-implementation pair
-    function invariant_voteMonotonicity() public view {
+    function invariant_vote_monotonicity() public view {
         address[] memory actors = handler.getActors();
         address[5] memory validImpls = handler.getValidImpls();
 
@@ -87,7 +87,7 @@ contract XanV1Invariants is StdInvariant, Test {
     }
 
     // PS-5: Upgrade mutual exclusion — never both scheduled at once
-    function invariant_upgradeMutualExclusion() public view {
+    function invariant_upgrade_mutual_exclusion() public view {
         (address vImpl, uint48 vEnd) = token.scheduledVoterBodyUpgrade();
         (address cImpl, uint48 cEnd) = token.scheduledCouncilUpgrade();
         bool voterScheduled = (vImpl != address(0) && vEnd != 0);
