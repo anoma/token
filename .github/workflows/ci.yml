@@ -72,7 +72,3 @@ jobs:
       - name: Run Forge tests
         run: forge test -vvv --gas-report
         id: test
-
-      - name: Run Forge coverage
-        run: forge coverage --ir-minimum
-        id: coverage
