@@ -62,7 +62,7 @@ forge test --force --gas-report
 Run
 
 ```sh
-forge coverage
+forge coverage --ir-minimum
 ```
 
 ### Linting & Static Analysis
