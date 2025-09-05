@@ -20,7 +20,7 @@ Anoma smart contracts undergo regular audits:
    - Company Website: https://informal.systems/
    - Commit ID: [e4b0034454612c0ff018f239d841fc3024d62151](https://github.com/anoma/token/tree/e4b0034454612c0ff018f239d841fc3024d62151)
    - Started: 2025-08-18
-   - Finished: 2025-08-17
+   - Finished: 2025-08-27
 
    [📄 Full Report (pdf)](./audits/2025-09-03_Informal_Systems_Anoma_Token_&_TokenDistributor.pdf)
 
