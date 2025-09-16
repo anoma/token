@@ -48,7 +48,8 @@ interface IXanV1 {
     /// @param value The value to lock.
     function lock(uint256 value) external;
 
-    /// @notice Transfers tokens and immediately locks them.
+    /// @notice Transfers tokens and immediately locks them. This function is only callable by the authorized token
+    /// distributor address.
     /// @param to The receiver.
     /// @param value The value to be transferred and locked.
     function transferAndLock(address to, uint256 value) external;
