@@ -28,7 +28,7 @@ contract XanV2ForwarderUnitTest is Test {
         });
 
         _xanV2Proxy.initializeV2({
-            initialMintRecipient: _defaultSender,
+            distributor: _defaultSender,
             council: _governanceCouncil,
             xanV2Forwarder: address(_xanV2Forwarder)
         });
