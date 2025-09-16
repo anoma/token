@@ -9,8 +9,10 @@ library Locking {
     /// @notice A struct containing data associated with the token-locking mechanism.
     /// @param lockedBalances The locked balances associated with the current implementation.
     /// @param lockedSupply The locked total supply associated with the current implementation.
+    /// @param transferAndLockCaller The address being authorized to call the `transferAndLock` function.
     struct Data {
         mapping(address owner => uint256) lockedBalances;
         uint256 lockedSupply;
+        address transferAndLockCaller;
     }
 }

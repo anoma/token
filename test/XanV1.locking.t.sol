@@ -108,6 +108,23 @@ contract XanV1LockingTest is Test {
         _xanProxy.transferAndLock({to: _RECEIVER, value: 1});
     }
 
+    function test_transferAndLock_reverts_if_the_caller_is_not_authorized(address other) public {
+        vm.assume(other != _defaultSender && other != address(0));
+
+        // Fund an address that is not the authorized `transferAndLock` caller.
+        uint256 value = 100;
+        {
+            vm.prank(_defaultSender);
+            _xanProxy.transfer(other, value);
+            assertEq(_xanProxy.unlockedBalanceOf(other), 100);
+        }
+
+        // Attempt to call `transferAndLock`
+        vm.prank(other);
+        vm.expectRevert(abi.encodeWithSelector(XanV1.UnauthorizedCaller.selector, other), address(_xanProxy));
+        _xanProxy.transferAndLock({to: _RECEIVER, value: value});
+    }
+
     function test_transfer_transfers_and_locks_tokens() public {
         uint256 supply = _xanProxy.totalSupply();
 
