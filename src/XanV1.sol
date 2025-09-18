@@ -228,7 +228,7 @@ contract XanV1 is
         votingData.scheduledEndTime = 0;
     }
 
-    /// @notice @inheritdoc IXanV1
+    /// @inheritdoc IXanV1
     function scheduleCouncilUpgrade(address impl) external override onlyCouncil {
         // Revert if a voter-body upgrade could be scheduled
         {
@@ -255,7 +255,7 @@ contract XanV1 is
         emit CouncilUpgradeScheduled(councilData.scheduledImpl, councilData.scheduledEndTime);
     }
 
-    /// @notice @inheritdoc IXanV1
+    /// @inheritdoc IXanV1
     function cancelCouncilUpgrade() external override onlyCouncil {
         Council.Data storage councilData = _getCouncilData();
 
@@ -271,7 +271,7 @@ contract XanV1 is
         councilData.scheduledEndTime = 0;
     }
 
-    /// @notice @inheritdoc IXanV1
+    /// @inheritdoc IXanV1
     function vetoCouncilUpgrade() external override {
         Council.Data storage councilData = _getCouncilData();
 
@@ -302,17 +302,17 @@ contract XanV1 is
         votes = _getVotingData().ballots[proposedImpl].votes[voter];
     }
 
-    /// @notice @inheritdoc IXanV1
+    /// @inheritdoc IXanV1
     function mostVotedImplementation() external view override returns (address mostVotedImpl) {
         mostVotedImpl = _getVotingData().mostVotedImpl;
     }
 
-    /// @notice @inheritdoc IXanV1
+    /// @inheritdoc IXanV1
     function lockedSupply() public view override returns (uint256 locked) {
         locked = _getLockingData().lockedSupply;
     }
 
-    /// @notice @inheritdoc IXanV1
+    /// @inheritdoc IXanV1
     function calculateQuorumThreshold() public view override returns (uint256 threshold) {
         threshold = (lockedSupply() * Parameters.QUORUM_RATIO_NUMERATOR) / Parameters.QUORUM_RATIO_DENOMINATOR;
     }
@@ -322,7 +322,7 @@ contract XanV1 is
         votes = _getVotingData().ballots[proposedImpl].totalVotes;
     }
 
-    /// @notice @inheritdoc IXanV1
+    /// @inheritdoc IXanV1
     function implementation() public view override returns (address thisImplementation) {
         thisImplementation = ERC1967Utils.getImplementation();
     }
