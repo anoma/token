@@ -32,13 +32,13 @@ contract XanV2 is IXanV2, XanV1 {
     }
 
     /// @notice Initializes the XanV2 contract.
-    /// @param distributor The distributor address being the initial recipient of the minted tokens and authorized
-    /// caller of the `transferAndLock` function.
+    /// @param initialMintRecipient The distributor address being the initial recipient of the minted tokens and
+    /// authorized caller of the `transferAndLock` function.
     /// @param council The address of the governance council contract.
     /// @param xanV2Forwarder The XanV2 forwarder contract.
     /// @custom:oz-upgrades-validate-as-initializer
     function initializeV2( /* solhint-disable-line comprehensive-interface*/
-        address distributor,
+        address initialMintRecipient,
         address council,
         address xanV2Forwarder
     ) external reinitializer(2) {
@@ -49,7 +49,7 @@ contract XanV2 is IXanV2, XanV1 {
         __UUPSUpgradeable_init();
 
         // Initialize the XanV1 contract
-        _mint(distributor, Parameters.SUPPLY);
+        _mint(initialMintRecipient, Parameters.SUPPLY);
         _getCouncilData().council = council;
 
         // Initialize the XanV2 contract

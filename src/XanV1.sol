@@ -86,13 +86,13 @@ contract XanV1 is
     }
 
     /// @notice Initializes the XanV1 contract.
-    /// @param distributor The distributor address being the initial recipient of the minted tokens and authorized
-    /// caller of the `transferAndLock` function.
+    /// @param initialMintRecipient The distributor address being the initial recipient of the minted tokens and
+    /// authorized caller of the `transferAndLock` function.
     /// @param council The address of the governance council contract.
-    function initializeV1( /* solhint-disable-line comprehensive-interface*/ address distributor, address council)
-        external
-        initializer
-    {
+    function initializeV1( /* solhint-disable-line comprehensive-interface*/
+        address initialMintRecipient,
+        address council
+    ) external initializer {
         // Initialize inherited contracts
         __ERC20_init({name_: Parameters.NAME, symbol_: Parameters.SYMBOL});
         __ERC20Permit_init({name: Parameters.NAME});
@@ -100,8 +100,8 @@ contract XanV1 is
         __UUPSUpgradeable_init();
 
         // Initialize the XanV1 contract
-        _mint(distributor, Parameters.SUPPLY);
-        _getLockingData().transferAndLockCaller = distributor;
+        _mint(initialMintRecipient, Parameters.SUPPLY);
+        _getLockingData().transferAndLockCaller = initialMintRecipient;
         _getCouncilData().council = council;
     }
 
