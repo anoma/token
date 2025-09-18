@@ -32,7 +32,8 @@ contract XanV2 is IXanV2, XanV1 {
     }
 
     /// @notice Initializes the XanV2 contract.
-    /// @param initialMintRecipient The initial recipient of the minted tokens.
+    /// @param initialMintRecipient The distributor address being the initial recipient of the minted tokens and
+    /// authorized caller of the `transferAndLock` function.
     /// @param council The address of the governance council contract.
     /// @param xanV2Forwarder The XanV2 forwarder contract.
     /// @custom:oz-upgrades-validate-as-initializer

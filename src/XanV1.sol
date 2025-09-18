@@ -86,7 +86,8 @@ contract XanV1 is
     }
 
     /// @notice Initializes the XanV1 contract.
-    /// @param initialMintRecipient The initial recipient of the minted tokens.
+    /// @param initialMintRecipient The distributor address being the initial recipient of the minted tokens and
+    /// authorized caller of the `transferAndLock` function.
     /// @param council The address of the governance council contract.
     function initializeV1( /* solhint-disable-line comprehensive-interface*/
         address initialMintRecipient,
@@ -100,6 +101,7 @@ contract XanV1 is
 
         // Initialize the XanV1 contract
         _mint(initialMintRecipient, Parameters.SUPPLY);
+        _getLockingData().transferAndLockCaller = initialMintRecipient;
         _getCouncilData().council = council;
     }
 
@@ -110,6 +112,9 @@ contract XanV1 is
 
     /// @inheritdoc IXanV1
     function transferAndLock(address to, uint256 value) external override {
+        if (_getLockingData().transferAndLockCaller != msg.sender) {
+            revert UnauthorizedCaller({caller: msg.sender});
+        }
         _transfer({from: msg.sender, to: to, value: value});
         _lock({account: to, value: value});
     }
