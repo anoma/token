@@ -10,15 +10,12 @@ interface IForeignReserveV1 {
     /// @notice Emitted when the contract has received native tokens.
     /// @param sender The sender of the native token.
     /// @param value The native token value.
-    event NativeTokenReceived(address sender, uint256 value);
+    event NativeTokenReceived(address indexed sender, uint256 value);
 
     /// @notice Executes arbitrary calls.
     /// @param target The target address to call.
     /// @param value The native token value to send with the call.
     /// @param data The data to send with the call.
     /// @return result The result of the call.
-    function execute(address target, uint256 value, bytes calldata data)
-        external
-        payable
-        returns (bytes memory result);
+    function execute(address target, uint256 value, bytes calldata data) external payable returns (bytes memory result);
 }

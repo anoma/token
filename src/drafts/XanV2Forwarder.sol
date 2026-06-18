@@ -38,13 +38,12 @@ contract XanV2Forwarder {
             _kind({logicRef: calldataCarrierLogicRef, labelRef: sha256(abi.encode(address(this)))});
     }
 
+    /* solhint-disable comprehensive-interface */
+
     /// @notice Forwards mint calls to the XAN proxy contract pointing to the `XanV2` implementation.
     /// @param input The `bytes` encoded mint calldata (including the `bytes4` function selector).
     /// @return output The empty output of the call.
-    function forwardCall(bytes calldata input /* solhint-disable-line comprehensive-interface*/ )
-        external
-        returns (bytes memory output)
-    {
+    function forwardCall(bytes calldata input) external returns (bytes memory output) {
         if (msg.sender != _PROTOCOL_ADAPTER) {
             revert UnauthorizedCaller(msg.sender);
         }
@@ -69,6 +68,8 @@ contract XanV2Forwarder {
         // NOTE: The calldata carrier resource must ensure that the recipient receives corresponding XAN resources.
         _XAN_PROXY.mint({account: address(this), value: value});
     }
+
+    /* solhint-enable comprehensive-interface */
 
     /// @notice Computes the resource kind.
     /// @param logicRef The resource logic reference.

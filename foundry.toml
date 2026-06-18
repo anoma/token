@@ -1,6 +1,6 @@
 [profile.default]
-evm_version = "prague"
-solc = "0.8.30"
+evm_version = "osaka"
+solc = "0.8.35"
 optimizer = true
 via_ir = true
 ffi = true
@@ -14,6 +14,11 @@ remappings = [
     "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
     "@openzeppelin/foundry-upgrades/=lib/openzeppelin-foundry-upgrades/src/",
     "@anoma/evm-protocol-adapter/=lib/evm-protocol-adapter/contracts/src/",
+]
+
+ignored_warnings_from = [
+    "lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/utils", # Warning 6335: "error" will be promoted to keyword in the future and will not be allowed as an identifier anymore.
+    "lib/openzeppelin-foundry-upgrades",                                                 # Warning 2018: Function state mutability can be restricted to pure
 ]
 
 optimizer_runs = 10_000

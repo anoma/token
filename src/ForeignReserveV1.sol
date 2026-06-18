@@ -4,8 +4,9 @@ pragma solidity ^0.8.30;
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {ReentrancyGuardTransientUpgradeable} from
-    "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardTransientUpgradeable.sol";
+import {
+    ReentrancyGuardTransientUpgradeable
+} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardTransientUpgradeable.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {IForeignReserveV1} from "./interfaces/IForeignReserveV1.sol";
@@ -31,13 +32,15 @@ contract ForeignReserveV1 is
     }
 
     /// @notice Emits an event if native tokens are received.
-    receive() external payable /* solhint-disable-line comprehensive-interface*/ {
+    receive() external payable /* solhint-disable-line comprehensive-interface*/  {
         emit NativeTokenReceived(msg.sender, msg.value);
     }
 
     /// @notice Initializes the contract and sets the owner.
     /// @param initialOwner The initial owner.
-    function initializeV1( /* solhint-disable-line comprehensive-interface*/ address initialOwner)
+    function initializeV1( /* solhint-disable-line comprehensive-interface*/
+        address initialOwner
+    )
         external
         initializer
     {
@@ -64,7 +67,6 @@ contract ForeignReserveV1 is
 
     /// @notice Restricts upgrades to a new implementation to the owner.
     /// @param newImplementation The new implementation.
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner 
     // solhint-disable-next-line no-empty-blocks
-    {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }

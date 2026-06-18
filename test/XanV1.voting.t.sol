@@ -132,8 +132,9 @@ contract XanV1VotingTest is Test {
         vm.stopPrank();
     }
 
-    function test_castVote_does_not_update_the_most_voted_implementation_if_the_proposed_implementation_has_the_same_number_of_votes(
-    ) public {
+    function test_castVote_does_not_update_the_most_voted_implementation_if_the_proposed_implementation_has_the_same_number_of_votes()
+        public
+    {
         // Vote with one token for `_NEW_IMPL`
         vm.startPrank(_defaultSender);
         _xanProxy.lock(1);
@@ -211,8 +212,9 @@ contract XanV1VotingTest is Test {
         assertEq(scheduledImpl, _NEW_IMPL);
     }
 
-    function test_scheduleVoterBodyUpgrade_starts_the_delay_if_locked_supply_and_quorum_are_met_and_the_impl_is_the_most_voted(
-    ) public {
+    function test_scheduleVoterBodyUpgrade_starts_the_delay_if_locked_supply_and_quorum_are_met_and_the_impl_is_the_most_voted()
+        public
+    {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_NEW_IMPL);
@@ -283,8 +285,9 @@ contract XanV1VotingTest is Test {
         _xanProxy.scheduleVoterBodyUpgrade();
     }
 
-    function test_scheduleVoterBodyUpgrade_cancels_a_scheduled_upgrade_by_the_council_and_resets_the_scheduled_upgrade_to_zero(
-    ) public {
+    function test_scheduleVoterBodyUpgrade_cancels_a_scheduled_upgrade_by_the_council_and_resets_the_scheduled_upgrade_to_zero()
+        public
+    {
         // Schedule `_OTHER_NEW_IMPL` with the council.
         vm.prank(_COUNCIL);
         uint48 expectedEndTime = Time.timestamp() + Parameters.DELAY_DURATION;
@@ -340,8 +343,9 @@ contract XanV1VotingTest is Test {
         _xanProxy.cancelVoterBodyUpgrade();
     }
 
-    function test_cancelVoterBodyUpgrade_reverts_after_the_delay_has_passed_when_attempting_to_cancel_the_most_voted_implementation(
-    ) public {
+    function test_cancelVoterBodyUpgrade_reverts_after_the_delay_has_passed_when_attempting_to_cancel_the_most_voted_implementation()
+        public
+    {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_NEW_IMPL);
@@ -413,8 +417,9 @@ contract XanV1VotingTest is Test {
         assertEq(scheduledEndTime, 0);
     }
 
-    function test_cancelVoterBodyUpgrade_cancels_a_scheduled_upgrade_after_the_delay_if_the_implementation_is_not_the_most_voted_anymore(
-    ) public {
+    function test_cancelVoterBodyUpgrade_cancels_a_scheduled_upgrade_after_the_delay_if_the_implementation_is_not_the_most_voted_anymore()
+        public
+    {
         // Vote for `_NEW_IMPL`
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
