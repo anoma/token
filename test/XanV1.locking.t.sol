@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 
 import {Test} from "forge-std/Test.sol";
@@ -9,6 +10,8 @@ import {Test} from "forge-std/Test.sol";
 import {IXanV1, XanV1} from "../src/XanV1.sol";
 
 contract XanV1LockingTest is Test {
+    using SafeERC20 for XanV1;
+
     address internal constant _COUNCIL = address(uint160(1));
     address internal constant _RECEIVER = address(uint160(2));
 
@@ -115,7 +118,7 @@ contract XanV1LockingTest is Test {
         uint256 value = 100;
         {
             vm.prank(_defaultSender);
-            _xanProxy.transfer(other, value);
+            _xanProxy.safeTransfer(other, value);
             assertEq(_xanProxy.unlockedBalanceOf(other), 100);
         }
 
