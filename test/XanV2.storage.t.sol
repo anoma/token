@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
+import {SlotDerivation} from "@openzeppelin/contracts/utils/SlotDerivation.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {XanV2} from "../src/drafts/XanV2.sol";
+import {XanV2} from "../src/XanV2.sol";
 
 contract XanV2StorageTest is Test, XanV2 {
-    function test_storageLocation() external pure {
-        bytes32 expected =
-            keccak256(abi.encode(uint256(keccak256("anoma.storage.Xan.v2")) - 1)) & ~bytes32(uint256(0xff));
+    // The values are irrelevant: this harness only reads the compile-time storage-location constant.
+    constructor() XanV2(address(1), 2, 3) {}
 
-        assertEq(_XAN_V2_STORAGE_LOCATION, expected);
+    function test_storage_slot() public pure {
+        assertEq(_XAN_V2_STORAGE_LOCATION, SlotDerivation.erc7201Slot("anoma.storage.Xan.v2"));
     }
 }

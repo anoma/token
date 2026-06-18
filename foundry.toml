@@ -30,7 +30,7 @@ libs = ["lib"]
 test = "test"
 script = "script"
 
-gas_reports = ["XanV1", "XanV2", "XanV2Forwarder"]
+gas_reports = ["XanV1", "XanV2"]
 
 allow_internal_expect_revert = true
 
@@ -43,13 +43,10 @@ fail_on_revert = false
 fuzz = { runs = 10_000 }
 verbosity = 4
 
-[etherscan]
-mainnet = { key = "${API_KEY_ETHERSCAN}" }
-sepolia = { key = "${API_KEY_ETHERSCAN}" }
 
 [rpc_endpoints]
-mainnet = "https://mainnet.infura.io/v3/${API_KEY_INFURA}"
-sepolia = "https://sepolia.infura.io/v3/${API_KEY_INFURA}"
+mainnet = "https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
+sepolia = "https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
 localhost = "http://localhost:8545"
 
 # Full reference https://github.com/foundry-rs/foundry/tree/master/crates/config
