@@ -26,4 +26,12 @@ library Parameters {
 
     /// @notice The delay duration that must pass to upgrade to a new implementation.
     uint32 internal constant DELAY_DURATION = 2 weeks;
+
+    /// @notice The timestamp at which the linear vesting of the formerly locked balances starts in `XanV2`.
+    /// @dev Thu Oct 01 2026 12:00:00 UTC.
+    uint48 internal constant VESTING_START = 1_790_856_000;
+
+    /// @notice The duration over which formerly locked balances vest linearly in `XanV2`.
+    /// @dev Three years. Vesting is continuous (every block).
+    uint48 internal constant VESTING_DURATION = 3 * 365 days;
 }

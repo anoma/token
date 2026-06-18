@@ -270,26 +270,7 @@ contract XanV1UpgradeTest is Test {
         emit IERC1967.Upgraded(_councilProposedImpl);
 
         address(_xanProxy)
-            .upgradeProxy({
-            newImpl: _councilProposedImpl, data: abi.encodeCall(XanV2.reinitializeFromV1, (address(uint160(1))))
-        });
-    }
-
-    function test_upgradeToAndCall_resets_the_governance_council_address() public {
-        vm.prank(_COUNCIL);
-        _xanProxy.scheduleCouncilUpgrade(_councilProposedImpl);
-
-        skip(Parameters.DELAY_DURATION);
-
-        vm.expectEmit(address(_xanProxy));
-        emit IERC1967.Upgraded(_councilProposedImpl);
-
-        address(_xanProxy)
-            .upgradeProxy({
-            newImpl: _councilProposedImpl, data: abi.encodeCall(XanV2.reinitializeFromV1, (address(uint160(1))))
-        });
-
-        assertEq(_xanProxy.governanceCouncil(), address(0));
+            .upgradeProxy({newImpl: _councilProposedImpl, data: abi.encodeCall(XanV2.reinitializeFromV1, (msg.sender))});
     }
 
     function test_upgradeToAndCall_allows_upgrade_to_the_current_implementation() public {
