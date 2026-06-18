@@ -19,17 +19,24 @@ contract XanV2ForwarderUnitTest is Test {
     function setUp() public {
         (, _defaultSender,) = vm.readCallers();
 
-        _xanV2Proxy = XanV2(Upgrades.deployUUPSProxy({contractName: "XanV2.sol:XanV2", initializerData: ""}));
+        address predictedAddressProxy = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 2);
 
         _xanV2Forwarder = new XanV2Forwarder({
-            xanProxy: address(_xanV2Proxy),
+            xanProxy: address(predictedAddressProxy),
             protocolAdapter: address(_mockProtocolAdapter),
             calldataCarrierLogicRef: bytes32(uint256(1))
         });
 
-        _xanV2Proxy.initializeV2({
-            initialMintRecipient: _defaultSender, council: _governanceCouncil, xanV2Forwarder: address(_xanV2Forwarder)
-        });
+        _xanV2Proxy = XanV2(
+            Upgrades.deployUUPSProxy({
+                contractName: "XanV2.sol:XanV2",
+                initializerData: abi.encodeCall(
+                    XanV2.initializeV2, (_defaultSender, _governanceCouncil, address(_xanV2Forwarder))
+                )
+            })
+        );
+
+        assertEq(address(_xanV2Proxy), predictedAddressProxy);
     }
 
     function test_forwardCall_reverts_if_the_caller_is_not_the_protocol_adapter() public {
