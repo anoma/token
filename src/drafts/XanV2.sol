@@ -49,7 +49,6 @@ contract XanV2 is IXanV2, XanV1 {
         __ERC20_init({name_: Parameters.NAME, symbol_: Parameters.SYMBOL});
         __ERC20Permit_init({name: Parameters.NAME});
         __ERC20Burnable_init();
-        __UUPSUpgradeable_init();
 
         // Initialize the XanV1 contract
         _mint(initialMintRecipient, Parameters.SUPPLY);

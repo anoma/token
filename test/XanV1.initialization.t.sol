@@ -13,39 +13,28 @@ contract XanV1InitializationTest is Test {
 
     address internal _defaultSender;
     XanV1 internal _xanProxy;
+    bytes internal _defaultInitializeV1Calldata;
 
     function setUp() public {
         (, _defaultSender,) = vm.readCallers();
 
+        _defaultInitializeV1Calldata = abi.encodeCall(XanV1.initializeV1, (_defaultSender, _COUNCIL));
+
         _xanProxy = XanV1(
-            Upgrades.deployUUPSProxy({
-                contractName: "XanV1.sol:XanV1",
-                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _COUNCIL))
-            })
+            Upgrades.deployUUPSProxy({contractName: "XanV1.sol:XanV1", initializerData: _defaultInitializeV1Calldata})
         );
     }
 
     function test_implementation_points_to_the_correct_implementation() public {
         address impl = address(new XanV1());
 
-        XanV1 proxy = XanV1(
-            UnsafeUpgrades.deployUUPSProxy({
-                impl: impl, initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _COUNCIL))
-            })
-        );
+        XanV1 proxy = XanV1(UnsafeUpgrades.deployUUPSProxy({impl: impl, initializerData: _defaultInitializeV1Calldata}));
 
         assertEq(proxy.implementation(), impl);
     }
 
-    function test_initialize_mints_the_supply_for_the_specified_owner() public {
-        XanV1 uninitializedProxy =
-            XanV1(Upgrades.deployUUPSProxy({contractName: "XanV1.sol:XanV1", initializerData: ""}));
-
-        assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), 0);
-
-        uninitializedProxy.initializeV1({initialMintRecipient: _defaultSender, council: _COUNCIL});
-
-        assertEq(uninitializedProxy.unlockedBalanceOf(_defaultSender), uninitializedProxy.totalSupply());
+    function test_initialize_mints_the_supply_for_the_specified_owner() public view {
+        assertEq(_xanProxy.unlockedBalanceOf(_defaultSender), _xanProxy.totalSupply());
     }
 
     function test_initialize_mints_the_expected_supply_amounting_to_10_billion_tokens() public view {

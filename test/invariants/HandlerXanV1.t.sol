@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {XanV1} from "../../src/XanV1.sol";
 
 contract XanV1Handler is Test {
+    using SafeERC20 for XanV1;
     XanV1 public token;
     address public initialHolder;
 
@@ -41,7 +44,7 @@ contract XanV1Handler is Test {
         updateStateTrackingFor(initialHolder, to);
 
         vm.prank(initialHolder);
-        token.transfer(to, amount);
+        token.safeTransfer(to, amount);
     }
 
     function transfer(address from, address to, uint256 amount) external {
@@ -57,7 +60,7 @@ contract XanV1Handler is Test {
         updateStateTrackingFor(from, to);
 
         vm.prank(from);
-        token.transfer(to, amount);
+        token.safeTransfer(to, amount);
     }
 
     function lock(address who, uint256 amount) external {
@@ -104,7 +107,7 @@ contract XanV1Handler is Test {
             if (airdropable == 0) return; // nothing to do
             uint256 amount = 1;
             vm.startPrank(initialHolder);
-            token.transfer(who, amount);
+            token.safeTransfer(who, amount);
             vm.stopPrank();
 
             vm.prank(who);
@@ -123,8 +126,11 @@ contract XanV1Handler is Test {
     function cancelVoterBodyUpgrade() external {
         // Respect the waiting period by advancing time to the scheduled end time if needed.
         (, uint48 endTime) = token.scheduledVoterBodyUpgrade();
-        if (endTime == 0) return; // nothing scheduled
-        if (block.timestamp < endTime) {
+        if (endTime == 0) {
+            return; // nothing scheduled
+        }
+
+        if (Time.timestamp() < endTime) {
             vm.warp(endTime + 1);
         }
 
