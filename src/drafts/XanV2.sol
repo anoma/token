@@ -59,19 +59,18 @@ contract XanV2 is IXanV2, XanV1 {
         _getXanV2Storage().forwarder = xanV2Forwarder;
     }
 
+    /* solhint-disable comprehensive-interface */
+
     /// @notice Reinitializes the XanV2 contract after an upgrade from XanV1.
     /// @param xanV2Forwarder The XanV2 forwarder contract.
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
     /// @custom:oz-upgrades-validate-as-initializer
-    function reinitializeFromV1(
-        address xanV2Forwarder /* solhint-disable-line comprehensive-interface*/
-    )
-        external
-        reinitializer(2)
-    {
+    function reinitializeFromV1(address xanV2Forwarder) external reinitializer(2) {
         // Initialize the XanV2 contract
         _getXanV2Storage().forwarder = xanV2Forwarder;
     }
+
+    /* solhint-enable comprehensive-interface */
 
     /// @inheritdoc IXanV2
     function mint(address account, uint256 value) external override onlyForwarder {

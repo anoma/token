@@ -10,7 +10,7 @@ interface IForeignReserveV1 {
     /// @notice Emitted when the contract has received native tokens.
     /// @param sender The sender of the native token.
     /// @param value The native token value.
-    event NativeTokenReceived(address sender, uint256 value);
+    event NativeTokenReceived(address indexed sender, uint256 value);
 
     /// @notice Executes arbitrary calls.
     /// @param target The target address to call.

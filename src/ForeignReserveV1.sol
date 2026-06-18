@@ -67,11 +67,6 @@ contract ForeignReserveV1 is
 
     /// @notice Restricts upgrades to a new implementation to the owner.
     /// @param newImplementation The new implementation.
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyOwner
-        // solhint-disable-next-line no-empty-blocks
-
-    {}
+    // solhint-disable-next-line no-empty-blocks
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }
