@@ -14,19 +14,17 @@ contract XanV2VotesTest is Test {
     XanV2 internal _xanV2Proxy;
     address internal _xanV2Impl;
     address internal _defaultSender;
-    address internal _other;
-    address internal _governanceCouncil;
+    address internal immutable _OTHER = makeAddr("other");
+    address internal immutable _GOVERNANCE_COUNCIL = makeAddr("governanceCouncil");
 
     function setUp() public {
         (, _defaultSender,) = vm.readCallers();
-        _other = address(uint160(1));
-        _governanceCouncil = address(uint160(2));
 
         // Deploy proxy and mint tokens for the `_defaultSender`.
         _xanV1Proxy = XanV1(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV1.sol:XanV1",
-                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _governanceCouncil))
+                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _GOVERNANCE_COUNCIL))
             })
         );
 
@@ -61,19 +59,19 @@ contract XanV2VotesTest is Test {
     function test_transfer_moves_voting_power_between_delegates() public {
         vm.prank(_defaultSender);
         _xanV2Proxy.delegate(_defaultSender);
-        vm.prank(_other);
-        _xanV2Proxy.delegate(_other);
+        vm.prank(_OTHER);
+        _xanV2Proxy.delegate(_OTHER);
 
-        // Unlock half the vested principal and transfer it to `_other`.
+        // Unlock half the vested principal and transfer it to `_OTHER`.
         vm.warp(Parameters.VESTING_START + Parameters.VESTING_DURATION / 2);
         vm.startPrank(_defaultSender);
         _xanV2Proxy.unlock();
         // forge-lint: disable-next-line(erc20-unchecked-transfer)
-        _xanV2Proxy.transfer(_other, Parameters.SUPPLY / 2);
+        _xanV2Proxy.transfer(_OTHER, Parameters.SUPPLY / 2);
         vm.stopPrank();
 
         assertEq(_xanV2Proxy.getVotes(_defaultSender), Parameters.SUPPLY / 2);
-        assertEq(_xanV2Proxy.getVotes(_other), Parameters.SUPPLY / 2);
+        assertEq(_xanV2Proxy.getVotes(_OTHER), Parameters.SUPPLY / 2);
     }
 
     function test_self_delegation_grants_voting_power_equal_to_balance() public {

@@ -16,10 +16,10 @@ contract XanV2NoncesTest is Test {
     uint256 internal constant _ALICE_PRIVATE_KEY = 0xA11CE;
 
     address internal _alice;
-    address internal _spender;
-    address internal _delegatee;
+    address internal immutable _SPENDER = makeAddr("spender");
+    address internal immutable _DELEGATEE = makeAddr("delegatee");
     address internal _defaultSender;
-    address internal _governanceCouncil;
+    address internal immutable _GOVERNANCE_COUNCIL = makeAddr("governanceCouncil");
     XanV1 internal _xanV1Proxy;
     XanV2 internal _xanV2Proxy;
     address internal _xanV2Impl;
@@ -27,15 +27,12 @@ contract XanV2NoncesTest is Test {
     function setUp() public {
         (, _defaultSender,) = vm.readCallers();
         _alice = vm.addr(_ALICE_PRIVATE_KEY);
-        _spender = address(uint160(1));
-        _delegatee = address(uint160(2));
-        _governanceCouncil = address(uint160(3));
 
         // Deploy proxy and mint tokens for the `_defaultSender`.
         _xanV1Proxy = XanV1(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV1.sol:XanV1",
-                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _governanceCouncil))
+                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _GOVERNANCE_COUNCIL))
             })
         );
 
@@ -64,17 +61,17 @@ contract XanV2NoncesTest is Test {
 
         // `permit` consumes nonce 0 (its nonce is taken from the shared counter internally).
         (uint8 pv, bytes32 pr, bytes32 ps) =
-            _signPermit({owner: _alice, spender: _spender, value: 500, nonce: 0, deadline: deadline});
-        _xanV2Proxy.permit({owner: _alice, spender: _spender, value: 500, deadline: deadline, v: pv, r: pr, s: ps});
+            _signPermit({owner: _alice, spender: _SPENDER, value: 500, nonce: 0, deadline: deadline});
+        _xanV2Proxy.permit({owner: _alice, spender: _SPENDER, value: 500, deadline: deadline, v: pv, r: pr, s: ps});
 
-        assertEq(_xanV2Proxy.allowance(_alice, _spender), 500);
+        assertEq(_xanV2Proxy.allowance(_alice, _SPENDER), 500);
         assertEq(_xanV2Proxy.nonces(_alice), 1);
 
         // `delegateBySig` must now use nonce 1 — the value the permit left in the shared counter.
-        (uint8 dv, bytes32 dr, bytes32 ds) = _signDelegation(_delegatee, 1, deadline);
-        _xanV2Proxy.delegateBySig({delegatee: _delegatee, nonce: 1, expiry: deadline, v: dv, r: dr, s: ds});
+        (uint8 dv, bytes32 dr, bytes32 ds) = _signDelegation(_DELEGATEE, 1, deadline);
+        _xanV2Proxy.delegateBySig({delegatee: _DELEGATEE, nonce: 1, expiry: deadline, v: dv, r: dr, s: ds});
 
-        assertEq(_xanV2Proxy.delegates(_alice), _delegatee);
+        assertEq(_xanV2Proxy.delegates(_alice), _DELEGATEE);
         assertEq(_xanV2Proxy.nonces(_alice), 2);
     }
 
@@ -83,18 +80,18 @@ contract XanV2NoncesTest is Test {
         uint256 deadline = block.timestamp + 1 hours;
 
         // `delegateBySig` consumes nonce 0.
-        (uint8 dv, bytes32 dr, bytes32 ds) = _signDelegation(_delegatee, 0, deadline);
-        _xanV2Proxy.delegateBySig({delegatee: _delegatee, nonce: 0, expiry: deadline, v: dv, r: dr, s: ds});
+        (uint8 dv, bytes32 dr, bytes32 ds) = _signDelegation(_DELEGATEE, 0, deadline);
+        _xanV2Proxy.delegateBySig({delegatee: _DELEGATEE, nonce: 0, expiry: deadline, v: dv, r: dr, s: ds});
 
-        assertEq(_xanV2Proxy.delegates(_alice), _delegatee);
+        assertEq(_xanV2Proxy.delegates(_alice), _DELEGATEE);
         assertEq(_xanV2Proxy.nonces(_alice), 1);
 
         // `permit` must now sign over nonce 1 — the value the delegation left in the shared counter.
         (uint8 pv, bytes32 pr, bytes32 ps) =
-            _signPermit({owner: _alice, spender: _spender, value: 500, nonce: 1, deadline: deadline});
-        _xanV2Proxy.permit({owner: _alice, spender: _spender, value: 500, deadline: deadline, v: pv, r: pr, s: ps});
+            _signPermit({owner: _alice, spender: _SPENDER, value: 500, nonce: 1, deadline: deadline});
+        _xanV2Proxy.permit({owner: _alice, spender: _SPENDER, value: 500, deadline: deadline, v: pv, r: pr, s: ps});
 
-        assertEq(_xanV2Proxy.allowance(_alice, _spender), 500);
+        assertEq(_xanV2Proxy.allowance(_alice, _SPENDER), 500);
         assertEq(_xanV2Proxy.nonces(_alice), 2);
     }
 
@@ -104,13 +101,13 @@ contract XanV2NoncesTest is Test {
         uint256 deadline = block.timestamp + 1 hours;
 
         (uint8 pv, bytes32 pr, bytes32 ps) =
-            _signPermit({owner: _alice, spender: _spender, value: 500, nonce: 0, deadline: deadline});
-        _xanV2Proxy.permit({owner: _alice, spender: _spender, value: 500, deadline: deadline, v: pv, r: pr, s: ps});
+            _signPermit({owner: _alice, spender: _SPENDER, value: 500, nonce: 0, deadline: deadline});
+        _xanV2Proxy.permit({owner: _alice, spender: _SPENDER, value: 500, deadline: deadline, v: pv, r: pr, s: ps});
 
         // Sign a delegation over the already-consumed nonce 0; the shared counter now stands at 1.
-        (uint8 dv, bytes32 dr, bytes32 ds) = _signDelegation(_delegatee, 0, deadline);
+        (uint8 dv, bytes32 dr, bytes32 ds) = _signDelegation(_DELEGATEE, 0, deadline);
         vm.expectRevert(abi.encodeWithSelector(NoncesUpgradeable.InvalidAccountNonce.selector, _alice, 1));
-        _xanV2Proxy.delegateBySig({delegatee: _delegatee, nonce: 0, expiry: deadline, v: dv, r: dr, s: ds});
+        _xanV2Proxy.delegateBySig({delegatee: _DELEGATEE, nonce: 0, expiry: deadline, v: dv, r: dr, s: ds});
     }
 
     function _winUpgradeVoteForV2Impl(XanV1 xanV1Proxy) internal {

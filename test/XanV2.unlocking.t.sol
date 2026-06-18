@@ -14,19 +14,17 @@ contract XanV2UnlockingTest is Test {
     XanV2 internal _xanV2Proxy;
     address internal _xanV2Impl;
     address internal _defaultSender;
-    address internal _other;
-    address internal _governanceCouncil;
+    address internal immutable _OTHER = makeAddr("other");
+    address internal immutable _GOVERNANCE_COUNCIL = makeAddr("governanceCouncil");
 
     function setUp() public {
         (, _defaultSender,) = vm.readCallers();
-        _other = address(uint160(1));
-        _governanceCouncil = address(uint160(2));
 
         // Deploy proxy and mint tokens for the `_defaultSender`.
         _xanV1Proxy = XanV1(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV1.sol:XanV1",
-                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _governanceCouncil))
+                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _GOVERNANCE_COUNCIL))
             })
         );
 
@@ -84,13 +82,13 @@ contract XanV2UnlockingTest is Test {
         // The unlocked tokens can now be transferred; the still-locked ones cannot.
         vm.prank(_defaultSender);
         // forge-lint: disable-next-line(erc20-unchecked-transfer)
-        _xanV2Proxy.transfer(_other, Parameters.SUPPLY / 2);
-        assertEq(_xanV2Proxy.balanceOf(_other), Parameters.SUPPLY / 2);
+        _xanV2Proxy.transfer(_OTHER, Parameters.SUPPLY / 2);
+        assertEq(_xanV2Proxy.balanceOf(_OTHER), Parameters.SUPPLY / 2);
 
         vm.prank(_defaultSender);
         vm.expectRevert(abi.encodeWithSelector(XanV2.UnlockedBalanceInsufficient.selector, _defaultSender, 0, 1));
         // forge-lint: disable-next-line(erc20-unchecked-transfer)
-        _xanV2Proxy.transfer(_other, 1);
+        _xanV2Proxy.transfer(_OTHER, 1);
     }
 
     function test_fully_vested_after_duration() public {

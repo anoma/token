@@ -15,19 +15,17 @@ contract XanV2UpgradeTest is Test {
     XanV2 internal _xanV2Proxy;
     address internal _xanV2Impl;
     address internal _defaultSender;
-    address internal _other;
-    address internal _governanceCouncil;
+    address internal immutable _OTHER = makeAddr("other");
+    address internal immutable _GOVERNANCE_COUNCIL = makeAddr("governanceCouncil");
 
     function setUp() public {
         (, _defaultSender,) = vm.readCallers();
-        _other = address(uint160(1));
-        _governanceCouncil = address(uint160(2));
 
         // Deploy proxy and mint tokens for the `_defaultSender`.
         _xanV1Proxy = XanV1(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV1.sol:XanV1",
-                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _governanceCouncil))
+                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _GOVERNANCE_COUNCIL))
             })
         );
 
@@ -50,8 +48,8 @@ contract XanV2UpgradeTest is Test {
     function test_authorizeUpgrade_reverts_if_the_caller_is_not_the_owner() public {
         address newImpl = address(new XanV2());
 
-        vm.prank(_other);
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, _other));
+        vm.prank(_OTHER);
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, _OTHER));
         _xanV2Proxy.upgradeToAndCall(newImpl, "");
     }
 
