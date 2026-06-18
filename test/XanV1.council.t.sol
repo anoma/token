@@ -35,8 +35,9 @@ contract XanV1CouncilTest is Test {
         _xanProxy.scheduleCouncilUpgrade(_NEW_IMPL);
     }
 
-    function test_scheduleCouncilUpgrade_reverts_if_an_voter_body_upgrade_has_quorum_and_the_minimal_locked_supply_is_reached(
-    ) public {
+    function test_scheduleCouncilUpgrade_reverts_if_an_voter_body_upgrade_has_quorum_and_the_minimal_locked_supply_is_reached()
+        public
+    {
         // Voter body votes on `_NEW_IMPL`
         vm.startPrank(_defaultSender);
         _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));
@@ -54,8 +55,9 @@ contract XanV1CouncilTest is Test {
         _xanProxy.scheduleCouncilUpgrade(_OTHER_NEW_IMPL);
     }
 
-    function test_scheduleCouncilUpgrade_reverts_if_an_voter_body_upgrade_has_quorum_and_the_minimal_locked_supply_is_reached_even_if_it_is_the_same_implementation(
-    ) public {
+    function test_scheduleCouncilUpgrade_reverts_if_an_voter_body_upgrade_has_quorum_and_the_minimal_locked_supply_is_reached_even_if_it_is_the_same_implementation()
+        public
+    {
         // Voter body votes on `_NEW_IMPL`
         vm.startPrank(_defaultSender);
         _xanProxy.lock(_xanProxy.unlockedBalanceOf(_defaultSender));

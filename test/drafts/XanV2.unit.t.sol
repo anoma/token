@@ -61,7 +61,9 @@ contract XanV2UnitTest is Test {
         XanV2 v2Proxy = XanV2(
             Upgrades.deployUUPSProxy({
                 contractName: "XanV2.sol:XanV2",
-                initializerData: abi.encodeCall(XanV2.initializeV2, (_defaultSender, _governanceCouncil, _xanV2Forwarder))
+                initializerData: abi.encodeCall(
+                    XanV2.initializeV2, (_defaultSender, _governanceCouncil, _xanV2Forwarder)
+                )
             })
         );
         assertEq(v2Proxy.forwarder(), _xanV2Forwarder);

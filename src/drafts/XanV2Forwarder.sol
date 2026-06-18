@@ -41,7 +41,9 @@ contract XanV2Forwarder {
     /// @notice Forwards mint calls to the XAN proxy contract pointing to the `XanV2` implementation.
     /// @param input The `bytes` encoded mint calldata (including the `bytes4` function selector).
     /// @return output The empty output of the call.
-    function forwardCall(bytes calldata input /* solhint-disable-line comprehensive-interface*/ )
+    function forwardCall(
+        bytes calldata input /* solhint-disable-line comprehensive-interface*/
+    )
         external
         returns (bytes memory output)
     {

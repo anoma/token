@@ -66,8 +66,9 @@ contract XanV1UpgradeTest is Test {
         _xanProxy.upgradeToAndCall({newImplementation: _voterProposedImpl, data: ""});
     }
 
-    function test_authorizeUpgrade_reverts_voter_body_upgrade_if_the_delay_period_has_passed_for_a_different_implementation(
-    ) public {
+    function test_authorizeUpgrade_reverts_voter_body_upgrade_if_the_delay_period_has_passed_for_a_different_implementation()
+        public
+    {
         vm.startPrank(_defaultSender);
         _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
         _xanProxy.castVote(_voterProposedImpl2);
@@ -160,8 +161,9 @@ contract XanV1UpgradeTest is Test {
         _xanProxy.upgradeToAndCall({newImplementation: _councilProposedImpl, data: ""});
     }
 
-    function test_authorizeUpgrade_passes_if_the_voter_body_has_scheduled_the_upgrade_in_the_same_block_as_the_council_(
-    ) public {
+    function test_authorizeUpgrade_passes_if_the_voter_body_has_scheduled_the_upgrade_in_the_same_block_as_the_council_()
+        public
+    {
         // Council proposes `_councilProposedImpl`
         vm.prank(_COUNCIL);
         _xanProxy.scheduleCouncilUpgrade(_councilProposedImpl);
@@ -267,9 +269,9 @@ contract XanV1UpgradeTest is Test {
         vm.expectEmit(address(_xanProxy));
         emit IERC1967.Upgraded(_councilProposedImpl);
 
-        address(_xanProxy).upgradeProxy({
-            newImpl: _councilProposedImpl,
-            data: abi.encodeCall(XanV2.reinitializeFromV1, (address(uint160(1))))
+        address(_xanProxy)
+            .upgradeProxy({
+            newImpl: _councilProposedImpl, data: abi.encodeCall(XanV2.reinitializeFromV1, (address(uint160(1))))
         });
     }
 
@@ -282,9 +284,9 @@ contract XanV1UpgradeTest is Test {
         vm.expectEmit(address(_xanProxy));
         emit IERC1967.Upgraded(_councilProposedImpl);
 
-        address(_xanProxy).upgradeProxy({
-            newImpl: _councilProposedImpl,
-            data: abi.encodeCall(XanV2.reinitializeFromV1, (address(uint160(1))))
+        address(_xanProxy)
+            .upgradeProxy({
+            newImpl: _councilProposedImpl, data: abi.encodeCall(XanV2.reinitializeFromV1, (address(uint160(1))))
         });
 
         assertEq(_xanProxy.governanceCouncil(), address(0));

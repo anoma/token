@@ -41,7 +41,10 @@ contract XanV2 is IXanV2, XanV1 {
         address initialMintRecipient,
         address council,
         address xanV2Forwarder
-    ) external reinitializer(2) {
+    )
+        external
+        reinitializer(2)
+    {
         // Initialize inherited contracts
         __ERC20_init({name_: Parameters.NAME, symbol_: Parameters.SYMBOL});
         __ERC20Permit_init({name: Parameters.NAME});
@@ -60,7 +63,9 @@ contract XanV2 is IXanV2, XanV1 {
     /// @param xanV2Forwarder The XanV2 forwarder contract.
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
     /// @custom:oz-upgrades-validate-as-initializer
-    function reinitializeFromV1(address xanV2Forwarder /* solhint-disable-line comprehensive-interface*/ )
+    function reinitializeFromV1(
+        address xanV2Forwarder /* solhint-disable-line comprehensive-interface*/
+    )
         external
         reinitializer(2)
     {

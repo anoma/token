@@ -30,8 +30,7 @@ contract XanV1InitializationTest is Test {
 
         XanV1 proxy = XanV1(
             UnsafeUpgrades.deployUUPSProxy({
-                impl: impl,
-                initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _COUNCIL))
+                impl: impl, initializerData: abi.encodeCall(XanV1.initializeV1, (_defaultSender, _COUNCIL))
             })
         );
 

@@ -2,8 +2,9 @@
 pragma solidity ^0.8.30;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {ReentrancyGuardTransientUpgradeable} from
-    "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardTransientUpgradeable.sol";
+import {
+    ReentrancyGuardTransientUpgradeable
+} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardTransientUpgradeable.sol";
 import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -21,9 +22,9 @@ contract ForeignReserveV1Test is Test {
 
     function setUp() public {
         _reserve = ForeignReserveV1(
-            payable(
-                Upgrades.deployUUPSProxy({contractName: "ForeignReserveV1.sol:ForeignReserveV1", initializerData: ""})
-            )
+            payable(Upgrades.deployUUPSProxy({
+                    contractName: "ForeignReserveV1.sol:ForeignReserveV1", initializerData: ""
+                }))
         );
 
         _owner = address(new MockOwner(_reserve));
