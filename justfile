@@ -57,3 +57,81 @@ check:
     @just build
     @echo "==> Testing..."
     @just test
+
+# --- Deployment ---
+
+# Simulate the XanV1 deployment (dry-run)
+deploy-simulate initial-mint-recipient council chain *args:
+    @echo "Cleaning contracts to ensure reproducible build..."
+    @just clean
+    forge script script/DeployXanV1.s.sol:Upgrade \
+        --sig "run(address,address)" {{ initial-mint-recipient }} {{ council }} \
+        --rpc-url {{ chain }} {{ args }}
+
+# Deploy XanV1 behind a UUPS proxy
+deploy deployer initial-mint-recipient council chain *args:
+    @echo "Cleaning contracts to ensure reproducible build..."
+    @just clean
+    forge script script/DeployXanV1.s.sol:Upgrade \
+        --sig "run(address,address)" {{ initial-mint-recipient }} {{ council }} \
+        --broadcast --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
+
+# Simulate the XanV1 -> XanV2 upgrade (dry-run)
+upgrade-simulate owner chain *args:
+    @echo "Cleaning contracts to ensure reproducible build..."
+    @just clean
+    forge script script/UpgradeXanV1ToXanV2.s.sol:Upgrade \
+        --sig "run(address)" {{ owner }} \
+        --rpc-url {{ chain }} --sender {{ owner }} {{ args }}
+
+# Upgrade the proxy from XanV1 to XanV2
+upgrade deployer owner chain *args:
+    @echo "Cleaning contracts to ensure reproducible build..."
+    @just clean
+    forge script script/UpgradeXanV1ToXanV2.s.sol:Upgrade \
+        --sig "run(address)" {{ owner }} \
+        --broadcast --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
+
+# --- Verification ---
+
+# Verify an implementation contract on sourcify (e.g. contract=src/XanV1.sol:XanV1)
+verify-impl-sourcify address contract chain *args:
+    env -u API_KEY_ETHERSCAN forge verify-contract {{ address }} {{ contract }} \
+        --chain {{ chain }} --verifier sourcify --watch {{ args }}
+
+# Verify an implementation contract on etherscan (e.g. contract=src/XanV1.sol:XanV1)
+verify-impl-etherscan address contract chain *args:
+    forge verify-contract {{ address }} {{ contract }} \
+        --chain {{ chain }} --verifier etherscan --watch {{ args }}
+
+# Verify an implementation contract on a custom explorer
+verify-impl-custom address contract chain verifier-url *args:
+    forge verify-contract {{ address }} {{ contract }} \
+        --chain {{ chain }} --verifier-url {{ verifier-url }} --watch {{ args }}
+
+# Verify an implementation contract on both sourcify and etherscan
+verify-impl address contract chain: (verify-impl-sourcify address contract chain) (verify-impl-etherscan address contract chain)
+
+# Verify the ERC1967 proxy on sourcify (encodes the constructor args from the deploy inputs)
+verify-proxy-sourcify proxy implementation initial-mint-recipient council chain *args:
+    env -u API_KEY_ETHERSCAN forge verify-contract {{ proxy }} \
+        lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy \
+        --chain {{ chain }} --verifier sourcify --watch \
+        --constructor-args "$(cast abi-encode 'c(address,bytes)' {{ implementation }} "$(cast calldata 'initializeV1(address,address)' {{ initial-mint-recipient }} {{ council }})")" {{ args }}
+
+# Verify the ERC1967 proxy on etherscan (encodes the constructor args from the deploy inputs)
+verify-proxy-etherscan proxy implementation initial-mint-recipient council chain *args:
+    forge verify-contract {{ proxy }} \
+        lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy \
+        --chain {{ chain }} --verifier etherscan --watch \
+        --constructor-args "$(cast abi-encode 'c(address,bytes)' {{ implementation }} "$(cast calldata 'initializeV1(address,address)' {{ initial-mint-recipient }} {{ council }})")" {{ args }}
+
+# Verify the ERC1967 proxy on a custom explorer (encodes the constructor args from the deploy inputs)
+verify-proxy-custom proxy implementation initial-mint-recipient council chain verifier-url *args:
+    forge verify-contract {{ proxy }} \
+        lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy \
+        --chain {{ chain }} --verifier-url {{ verifier-url }} --watch \
+        --constructor-args "$(cast abi-encode 'c(address,bytes)' {{ implementation }} "$(cast calldata 'initializeV1(address,address)' {{ initial-mint-recipient }} {{ council }})")" {{ args }}
+
+# Verify the ERC1967 proxy on both sourcify and etherscan
+verify-proxy proxy implementation initial-mint-recipient council chain: (verify-proxy-sourcify proxy implementation initial-mint-recipient council chain) (verify-proxy-etherscan proxy implementation initial-mint-recipient council chain)

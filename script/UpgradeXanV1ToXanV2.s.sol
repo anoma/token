@@ -9,12 +9,14 @@ import {Script} from "forge-std/Script.sol";
 import {XanV2} from "../src/drafts/XanV2.sol";
 
 contract Upgrade is Script {
-    function run(address owner) public {
+    function run(address proxy, address owner) public returns (address newImplementation) {
         vm.startBroadcast();
 
         Upgrades.upgradeProxy({
-            proxy: _XAN_PROXY, contractName: "XanV2.sol:XanV2", data: abi.encodeCall(XanV2.reinitializeFromV1, (owner))
+            proxy: proxy, contractName: "XanV2.sol:XanV2", data: abi.encodeCall(XanV2.reinitializeFromV1, (owner))
         });
+
+        newImplementation = proxy.implementation();
 
         vm.stopBroadcast();
     }
