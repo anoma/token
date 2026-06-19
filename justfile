@@ -41,7 +41,7 @@ static-analysis:
 
 # Run contract tests
 test *args:
-    forge test -vvv --gas-report {{ args }}
+    forge test --force {{ args }}
 
 # Prerequisites check (mirrors CI)
 check:
