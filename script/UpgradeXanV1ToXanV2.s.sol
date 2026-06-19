@@ -9,10 +9,6 @@ import {Script} from "forge-std/Script.sol";
 import {XanV2} from "../src/drafts/XanV2.sol";
 
 contract Upgrade is Script {
-    address internal constant _XAN_PROXY = address(0);
-    address internal constant _PROTOCOL_ADAPTER = address(0);
-    bytes32 internal constant _CALLDATA_CARRIER_LOGIC_REF = bytes32(0);
-
     function run(address owner) public {
         vm.startBroadcast();
 
