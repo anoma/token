@@ -64,7 +64,7 @@ check:
 deploy-simulate initial-mint-recipient council chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
-    forge script script/DeployXanV1.s.sol:Upgrade \
+    forge script script/DeployXanV1.s.sol:DeployXanV1 \
         --sig "run(address,address)" {{ initial-mint-recipient }} {{ council }} \
         --rpc-url {{ chain }} {{ args }}
 
@@ -72,31 +72,47 @@ deploy-simulate initial-mint-recipient council chain *args:
 deploy deployer initial-mint-recipient council chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
-    forge script script/DeployXanV1.s.sol:Upgrade \
+    forge script script/DeployXanV1.s.sol:DeployXanV1 \
         --sig "run(address,address)" {{ initial-mint-recipient }} {{ council }} \
         --broadcast --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
 
-# Simulate the XanV1 -> XanV2 upgrade (dry-run)
-upgrade-simulate owner chain *args:
+# Simulate scheduling the council upgrade to XanV2 (dry-run)
+schedule-council-upgrade-simulate proxy sender chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
-    forge script script/UpgradeXanV1ToXanV2.s.sol:Upgrade \
-        --sig "run(address)" {{ owner }} \
+    forge script script/ScheduleCouncilUpgradeToXanV2.s.sol:ScheduleCouncilUpgradeToXanV2 \
+        --sig "run(address)" {{ proxy }} \
+        --rpc-url {{ chain }} --sender {{ sender }} {{ args }}
+
+# Schedule the council upgrade to XanV2
+schedule-council-upgrade deployer proxy sender chain *args:
+    @echo "Cleaning contracts to ensure reproducible build..."
+    @just clean
+    forge script script/ScheduleCouncilUpgradeToXanV2.s.sol:ScheduleCouncilUpgradeToXanV2 \
+        --sig "run(address)" {{ proxy }} \
+        --broadcast --rpc-url {{ chain }} --account {{ deployer }} --sender {{ sender }} {{ args }}
+
+# Simulate the upgrade to XanV2 (dry-run)
+upgrade-simulate proxy owner chain *args:
+    @echo "Cleaning contracts to ensure reproducible build..."
+    @just clean
+    forge script script/UpgradeToXanV2.s.sol:UpgradeToXanV2 \
+        --sig "run(address,address)" {{ proxy }} {{ owner }} \
         --rpc-url {{ chain }} --sender {{ owner }} {{ args }}
 
-# Upgrade the proxy from XanV1 to XanV2
-upgrade deployer owner chain *args:
+# Upgrade the proxy to XanV2
+upgrade deployer proxy owner chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
-    forge script script/UpgradeXanV1ToXanV2.s.sol:Upgrade \
-        --sig "run(address)" {{ owner }} \
+    forge script script/UpgradeToXanV2.s.sol:UpgradeToXanV2 \
+        --sig "run(address,address)" {{ proxy }} {{ owner }} \
         --broadcast --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
 
 # --- Verification ---
 
 # Verify an implementation contract on sourcify (e.g. contract=src/XanV1.sol:XanV1)
 verify-impl-sourcify address contract chain *args:
-    env -u API_KEY_ETHERSCAN forge verify-contract {{ address }} {{ contract }} \
+    ETHERSCAN_API_KEY="" forge verify-contract {{ address }} {{ contract }} \
         --chain {{ chain }} --verifier sourcify --watch {{ args }}
 
 # Verify an implementation contract on etherscan (e.g. contract=src/XanV1.sol:XanV1)
@@ -114,7 +130,7 @@ verify-impl address contract chain: (verify-impl-sourcify address contract chain
 
 # Verify the ERC1967 proxy on sourcify (encodes the constructor args from the deploy inputs)
 verify-proxy-sourcify proxy implementation initial-mint-recipient council chain *args:
-    env -u API_KEY_ETHERSCAN forge verify-contract {{ proxy }} \
+    ETHERSCAN_API_KEY="" forge verify-contract {{ proxy }} \
         lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy \
         --chain {{ chain }} --verifier sourcify --watch \
         --constructor-args "$(cast abi-encode 'c(address,bytes)' {{ implementation }} "$(cast calldata 'initializeV1(address,address)' {{ initial-mint-recipient }} {{ council }})")" {{ args }}

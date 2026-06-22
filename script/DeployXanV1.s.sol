@@ -8,8 +8,8 @@ import {Script} from "forge-std/Script.sol";
 
 import {XanV1} from "../src/XanV1.sol";
 
-contract Upgrade is Script {
-    function run(address initialMintRecipient, address council) public returns (address proxy, address impl) {
+contract DeployXanV1 is Script {
+    function run(address initialMintRecipient, address council) public returns (address proxy, address implementation) {
         vm.startBroadcast();
 
         proxy = Upgrades.deployUUPSProxy({
@@ -17,7 +17,7 @@ contract Upgrade is Script {
             initializerData: abi.encodeCall(XanV1.initializeV1, (initialMintRecipient, council))
         });
 
-        impl = XanV1(proxy).implementation();
+        implementation = XanV1(proxy).implementation();
 
         vm.stopBroadcast();
     }
