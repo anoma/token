@@ -12,8 +12,8 @@ contract MockXanV1CriteriaTest is Test {
     using UnsafeUpgrades for address;
     using SafeERC20 for MockXanV1;
 
-    address internal constant _COUNCIL = address(uint160(1));
-    address internal constant _NEW_IMPL = address(uint160(2));
+    address internal immutable _COUNCIL = makeAddr("council");
+    address internal immutable _NEW_IMPL = makeAddr("newImpl");
 
     address internal _tokenHolder;
     MockXanV1 internal _xanProxyMock;

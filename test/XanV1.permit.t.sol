@@ -11,8 +11,8 @@ import {XanV1} from "../src/XanV1.sol";
 contract XanV1PermitTest is Test {
     uint256 internal constant _ALICE_PRIVATE_KEY = 0xA11CE;
     address internal constant _ALICE = 0xe05fcC23807536bEe418f142D19fa0d21BB0cfF7; // `vm.addr(_ALICE_PRIVATE_KEY)`
-    address internal constant _BOB = address(uint160(2));
-    address internal constant _CAROL = address(uint160(3));
+    address internal immutable _BOB = makeAddr("bob");
+    address internal immutable _CAROL = makeAddr("carol");
 
     XanV1 internal _xanProxy;
 

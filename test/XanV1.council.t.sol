@@ -10,10 +10,10 @@ import {Parameters} from "../src/libs/Parameters.sol";
 import {IXanV1, XanV1} from "../src/XanV1.sol";
 
 contract XanV1CouncilTest is Test {
-    address internal constant _NEW_IMPL = address(uint160(1));
-    address internal constant _OTHER_NEW_IMPL = address(uint160(2));
-    address internal constant _RECEIVER = address(uint160(3));
-    address internal constant _COUNCIL = address(uint160(4));
+    address internal immutable _NEW_IMPL = makeAddr("newImpl");
+    address internal immutable _OTHER_NEW_IMPL = makeAddr("otherNewImpl");
+    address internal immutable _RECEIVER = makeAddr("receiver");
+    address internal immutable _COUNCIL = makeAddr("council");
 
     address internal _defaultSender;
     XanV1 internal _xanProxy;
