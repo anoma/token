@@ -76,4 +76,11 @@ contract MockXanV1CriteriaTest is Test {
         assertEq(_xanProxyMock.lockedSupply(), Parameters.MIN_LOCKED_SUPPLY);
         assertEq(_xanProxyMock.isQuorumAndMinLockedSupplyReached(_NEW_IMPL), true);
     }
+
+    function test_checkDelayCriterion_reverts_if_the_delay_period_has_not_started() public {
+        // `endTime == 0` means no upgrade is scheduled: a defense-in-depth guard that the scheduling flow, which
+        // always sets a non-zero end time alongside the implementation, never reaches.
+        vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotStarted.selector, uint48(0)));
+        _xanProxyMock.checkDelayCriterion(0);
+    }
 }
