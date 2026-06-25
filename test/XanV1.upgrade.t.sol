@@ -16,7 +16,7 @@ contract XanV1UpgradeTest is Test {
     using UnsafeUpgrades for address;
     using ERC1967Utils for address;
 
-    address internal constant _COUNCIL = address(uint160(1));
+    address internal immutable _COUNCIL = makeAddr("council");
 
     address internal _defaultSender;
     address internal _voterProposedImpl;

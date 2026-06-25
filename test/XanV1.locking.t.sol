@@ -12,8 +12,8 @@ import {IXanV1, XanV1} from "../src/XanV1.sol";
 contract XanV1LockingTest is Test {
     using SafeERC20 for XanV1;
 
-    address internal constant _COUNCIL = address(uint160(1));
-    address internal constant _RECEIVER = address(uint160(2));
+    address internal immutable _COUNCIL = makeAddr("council");
+    address internal immutable _RECEIVER = makeAddr("receiver");
 
     address internal _defaultSender;
     XanV1 internal _xanProxy;

@@ -9,7 +9,7 @@ import {MockXanV1, XanV1} from "./mocks/XanV1.m.sol";
 contract MockXanV1ERC20Test is Test {
     using UnsafeUpgrades for address;
 
-    address internal constant _COUNCIL = address(uint160(1));
+    address internal immutable _COUNCIL = makeAddr("council");
 
     address internal _alice;
     address internal _bob;

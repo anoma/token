@@ -9,7 +9,7 @@ import {Parameters} from "../src/libs/Parameters.sol";
 import {XanV1} from "../src/XanV1.sol";
 
 contract XanV1InitializationTest is Test {
-    address internal constant _COUNCIL = address(uint160(1));
+    address internal immutable _COUNCIL = makeAddr("council");
 
     address internal _defaultSender;
     XanV1 internal _xanProxy;
