@@ -20,7 +20,6 @@ import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
 import {Council} from "../libs/Council.sol";
 import {Locking} from "../libs/Locking.sol";
-import {Parameters} from "../libs/Parameters.sol";
 import {Voting} from "../libs/Voting.sol";
 import {IXanV2} from "./interfaces/IXanV2.sol";
 
@@ -78,6 +77,18 @@ contract XanV2 is
     bytes32 internal constant _XAN_V1_STORAGE_LOCATION =
         0x52f7d5fb153315ca313a5634db151fa7e0b41cd83fe6719e93ed3cd02b69d200;
 
+    /// @notice The owner who can upgrade the proxy.
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    address private immutable _OWNER;
+
+    /// @notice The timestamp at which the linear vesting of the formerly locked balances starts.
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    uint48 private immutable _VESTING_START;
+
+    /// @notice The duration over which the formerly locked balances vest linearly.
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    uint48 private immutable _VESTING_DURATION;
+
     /// @notice The ERC-7201 storage location of the Xan V2 contract (see https://eips.ethereum.org/EIPS/eip-7201).
     /// @dev Obtained from
     /// `keccak256(abi.encode(uint256(keccak256("anoma.storage.Xan.v2")) - 1)) & ~bytes32(uint256(0xff))`.
@@ -90,34 +101,29 @@ contract XanV2 is
     /// @notice Thrown when `unlock` is called but no tokens have vested since the last unlock.
     error NothingToUnlock(address account);
 
-    /// @notice Disables the initializers on the implementation contract to prevent it from being left uninitialized.
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
+    /// @notice Disables the initializers on the implementation contract to prevent it from being left uninitialized,
+    /// and binds the owner and vesting schedule into the implementation bytecode.
+    /// @param owner The owner to install on the proxy after the upgrade (e.g. a multisig or DAO).
+    /// @param vestingStartTimestamp The timestamp at which the linear vesting of the formerly locked balances starts.
+    /// @param vestingDuration The duration over which the formerly locked balances vest linearly.
+    /// @custom:oz-upgrades-unsafe-allow constructor state-variable-immutable
+    constructor(address owner, uint48 vestingStartTimestamp, uint48 vestingDuration) {
+        _OWNER = owner;
+        _VESTING_START = vestingStartTimestamp;
+        _VESTING_DURATION = vestingDuration;
         _disableInitializers();
     }
 
-    /// @notice Reinitializes the contract after the upgrade from V1, installing the owner and starting vesting.
-    /// @param owner The owner of the contract (e.g. a multisig or DAO).
+    /// @notice Reinitializes the contract after the upgrade from V1, installing the owner and scheduling vesting.
     /// @custom:oz-upgrades-validate-as-initializer
     /// @custom:oz-upgrades-unsafe-allow incorrect-initializer-order
     /// @custom:oz-upgrades-unsafe-allow missing-initializer-call
-    /// @dev The V1 parents (`ERC20`, `ERC20Permit`, `ERC20Burnable`) are intentionally not re-initialized: their
-    /// state already lives in the proxy from `initializeV1` and must be preserved. Only the parents new to V2
-    /// (`ERC20Votes`, `Ownable`) are initialized. The two `oz-upgrades-unsafe-allow` annotations suppress the
-    /// resulting (expected) "missing parent initializer" and "incorrect initializer order" warnings.
-    function reinitializeFromV1( /* solhint-disable-line comprehensive-interface*/
-        address owner
-    )
-        external
-        reinitializer(2)
-    {
+    function reinitializeFromV1() external reinitializer(2) /* solhint-disable-line comprehensive-interface */  {
         __ERC20Votes_init();
-        __Ownable_init({initialOwner: owner});
+        __Ownable_init({initialOwner: _OWNER});
 
-        emit VestingStarted({start: Parameters.VESTING_START, duration: Parameters.VESTING_DURATION});
+        emit VestingScheduled({start: _VESTING_START, duration: _VESTING_DURATION});
     }
-
-    /* solhint-enable comprehensive-interface */
 
     /// @inheritdoc IXanV2
     function unlock() external override returns (uint256 value) {
@@ -184,13 +190,13 @@ contract XanV2 is
     }
 
     /// @inheritdoc IXanV2
-    function vestingStart() public pure override returns (uint48 start) {
-        start = Parameters.VESTING_START;
+    function vestingStart() public view override returns (uint48 start) {
+        start = _VESTING_START;
     }
 
     /// @inheritdoc IXanV2
-    function vestingEnd() public pure override returns (uint48 end) {
-        end = Parameters.VESTING_START + Parameters.VESTING_DURATION;
+    function vestingEnd() public view override returns (uint48 end) {
+        end = _VESTING_START + _VESTING_DURATION;
     }
 
     /// @notice Updates the balances. Only the unlocked token balances can be moved, except for the minting case,
@@ -231,7 +237,7 @@ contract XanV2 is
     /// @param principal The account's formerly locked V1 balance.
     /// @return vested The vested amount, linearly interpolated and capped at `principal`.
     function _vestedAmount(uint256 principal) internal view returns (uint256 vested) {
-        uint48 start = Parameters.VESTING_START;
+        uint48 start = _VESTING_START;
         uint48 nowTs = Time.timestamp();
 
         if (nowTs < start + 1) {
@@ -239,11 +245,11 @@ contract XanV2 is
         }
 
         uint48 elapsed = nowTs - start;
-        if (elapsed > Parameters.VESTING_DURATION - 1) {
+        if (elapsed > _VESTING_DURATION - 1) {
             return vested = principal;
         }
 
-        vested = (principal * elapsed) / Parameters.VESTING_DURATION;
+        vested = (principal * elapsed) / _VESTING_DURATION;
     }
 
     /// @notice Returns the formerly locked V1 balance of an account that is the principal subject to vesting.

@@ -37,6 +37,9 @@ contract XanV1UpgradeTest is Test {
         );
 
         Options memory opts;
+        // `XanV2` binds the owner and vesting schedule as constructor immutables, so the prepared implementations
+        // need encoded constructor arguments.
+        opts.constructorData = abi.encode(_defaultSender, Parameters.VESTING_START, Parameters.VESTING_DURATION);
         _voterProposedImpl = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});
         _voterProposedImpl2 = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});
         _councilProposedImpl = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});
@@ -270,7 +273,7 @@ contract XanV1UpgradeTest is Test {
         emit IERC1967.Upgraded(_councilProposedImpl);
 
         address(_xanProxy)
-            .upgradeProxy({newImpl: _councilProposedImpl, data: abi.encodeCall(XanV2.reinitializeFromV1, (msg.sender))});
+            .upgradeProxy({newImpl: _councilProposedImpl, data: abi.encodeCall(XanV2.reinitializeFromV1, ())});
     }
 
     function test_upgradeToAndCall_allows_upgrade_to_the_current_implementation() public {

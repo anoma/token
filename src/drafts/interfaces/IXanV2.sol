@@ -6,10 +6,10 @@ pragma solidity ^0.8.30;
 /// @notice A draft of the interface of the Anoma (XAN) token contract version 2.
 /// @custom:security-contact security@anoma.foundation
 interface IXanV2 {
-    /// @notice Emitted when vesting of the formerly locked balances starts.
-    /// @param start The timestamp at which vesting starts.
+    /// @notice Emitted when the vesting schedule for the formerly locked balances is set, at upgrade time.
+    /// @param start The timestamp at which vesting starts (may be in the future).
     /// @param duration The duration over which the locked balances vest linearly.
-    event VestingStarted(uint48 start, uint48 duration);
+    event VestingScheduled(uint48 start, uint48 duration);
 
     /// @notice Emitted when an account unlocks vested tokens.
     /// @param account The account that unlocked tokens.

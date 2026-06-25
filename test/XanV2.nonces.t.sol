@@ -37,16 +37,18 @@ contract XanV2NoncesTest is Test {
         );
 
         // Point the V2 mock at the locally deployed V1 implementation (the vesting principal is stored under it).
-        _xanV2Impl = address(new MockXanV2(_xanV1Proxy.implementation()));
+        _xanV2Impl = address(
+            new MockXanV2(
+                _xanV1Proxy.implementation(), msg.sender, Parameters.VESTING_START, Parameters.VESTING_DURATION
+            )
+        );
 
         _winUpgradeVoteForV2Impl(_xanV1Proxy);
 
         skip(Parameters.DELAY_DURATION);
 
         UnsafeUpgrades.upgradeProxy({
-            proxy: address(_xanV1Proxy),
-            newImpl: _xanV2Impl,
-            data: abi.encodeCall(XanV2.reinitializeFromV1, (msg.sender))
+            proxy: address(_xanV1Proxy), newImpl: _xanV2Impl, data: abi.encodeCall(XanV2.reinitializeFromV1, ())
         });
 
         _xanV2Proxy = XanV2(address(_xanV1Proxy));

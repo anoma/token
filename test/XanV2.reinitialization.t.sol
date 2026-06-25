@@ -13,7 +13,6 @@ import {MockXanV2} from "./mocks/XanV2.m.sol";
 
 contract XanV2ReinitializationTest is Test {
     address internal immutable _COUNCIL = makeAddr("council");
-    address internal immutable _OTHER = makeAddr("other");
     address internal immutable _OWNER = makeAddr("owner");
 
     address internal _defaultSender;
@@ -28,26 +27,26 @@ contract XanV2ReinitializationTest is Test {
         (_xanV1Proxy, _xanV2Impl) = _deployV1AndPrepareUpgrade();
 
         UnsafeUpgrades.upgradeProxy({
-            proxy: address(_xanV1Proxy), newImpl: _xanV2Impl, data: abi.encodeCall(XanV2.reinitializeFromV1, (_OWNER))
+            proxy: address(_xanV1Proxy), newImpl: _xanV2Impl, data: abi.encodeCall(XanV2.reinitializeFromV1, ())
         });
 
         _xanV2Proxy = XanV2(address(_xanV1Proxy));
     }
 
-    function test_reinitialize_emits_the_VestingStarted_event() public {
+    function test_reinitialize_emits_the_VestingScheduled_event() public {
         (XanV1 v1Proxy, address v2Impl) = _deployV1AndPrepareUpgrade();
 
         vm.expectEmit(address(v1Proxy));
-        emit IXanV2.VestingStarted({start: Parameters.VESTING_START, duration: Parameters.VESTING_DURATION});
+        emit IXanV2.VestingScheduled({start: Parameters.VESTING_START, duration: Parameters.VESTING_DURATION});
 
         UnsafeUpgrades.upgradeProxy({
-            proxy: address(v1Proxy), newImpl: v2Impl, data: abi.encodeCall(XanV2.reinitializeFromV1, (_OWNER))
+            proxy: address(v1Proxy), newImpl: v2Impl, data: abi.encodeCall(XanV2.reinitializeFromV1, ())
         });
     }
 
     function test_reinitialize_reverts_when_called_again() public {
         vm.expectRevert(abi.encodeWithSelector(Initializable.InvalidInitialization.selector));
-        _xanV2Proxy.reinitializeFromV1(_OTHER);
+        _xanV2Proxy.reinitializeFromV1();
     }
 
     function test_reinitialize_sets_the_owner() public view {
@@ -65,7 +64,9 @@ contract XanV2ReinitializationTest is Test {
         );
 
         // Point the V2 mock at the locally deployed V1 implementation (the vesting principal is stored under it).
-        v2Impl = address(new MockXanV2(v1Proxy.implementation()));
+        v2Impl = address(
+            new MockXanV2(v1Proxy.implementation(), _OWNER, Parameters.VESTING_START, Parameters.VESTING_DURATION)
+        );
 
         vm.startPrank(_defaultSender);
         v1Proxy.lock(v1Proxy.unlockedBalanceOf(_defaultSender));
