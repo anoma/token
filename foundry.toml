@@ -30,7 +30,7 @@ libs = ["lib"]
 test = "test"
 script = "script"
 
-gas_reports = ["XanV1", "XanV2"]
+gas_reports = ["XanV1", "XanV2", "XanGovernor"]
 
 allow_internal_expect_revert = true
 
