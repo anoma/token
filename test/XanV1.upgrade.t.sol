@@ -135,6 +135,28 @@ contract XanV1UpgradeTest is Test {
         _xanProxy.upgradeToAndCall({newImplementation: _voterProposedImpl, data: ""});
     }
 
+    function test_authorizeUpgrade_reverts_voter_body_upgrade_if_quorum_is_lost_after_scheduling() public {
+        vm.startPrank(_defaultSender);
+
+        // Reach quorum, vote, and schedule the upgrade for `_voterProposedImpl`.
+        _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
+        _xanProxy.castVote(_voterProposedImpl);
+        _xanProxy.scheduleVoterBodyUpgrade();
+
+        // Lock more without re-voting. The quorum threshold is half of the locked supply, so doubling the locked
+        // supply lifts the threshold above the scheduled implementation's now-stale vote count, dropping it below
+        // quorum while it remains the most voted and scheduled implementation.
+        _xanProxy.lock(Parameters.MIN_LOCKED_SUPPLY);
+        vm.stopPrank();
+
+        // The quorum check precedes the delay check, so authorization reverts here regardless of the delay.
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV1.QuorumOrMinLockedSupplyNotReached.selector, _voterProposedImpl),
+            address(_xanProxy)
+        );
+        _xanProxy.upgradeToAndCall({newImplementation: _voterProposedImpl, data: ""});
+    }
+
     function test_authorizeUpgrade_passes_if_the_voter_body_has_scheduled_the_upgrade_after_the_council() public {
         // Council proposes `_councilProposedImpl`
         vm.prank(_COUNCIL);
