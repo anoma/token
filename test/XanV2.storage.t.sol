@@ -8,7 +8,7 @@ import {XanV2} from "../src/drafts/XanV2.sol";
 
 contract XanV2StorageTest is Test, XanV2 {
     // The values are irrelevant: this harness only reads the compile-time storage-location constant.
-    constructor() XanV2(address(0), 0, 0) {}
+    constructor() XanV2(address(1), 2, 3) {}
 
     function test_storage_slot() public pure {
         assertEq(_XAN_V2_STORAGE_LOCATION, SlotDerivation.erc7201Slot("anoma.storage.Xan.v2"));
