@@ -7,8 +7,8 @@ import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 
 import {Script} from "forge-std/Script.sol";
 
-import {XanV1} from "../src/XanV1.sol";
 import {XanV2} from "../src/drafts/XanV2.sol";
+import {XanV1} from "../src/XanV1.sol";
 
 contract UpgradeToXanV2 is Script {
     function run(address proxy) public returns (address newImplementation) {

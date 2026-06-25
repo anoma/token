@@ -15,13 +15,15 @@ import {MockXanV2} from "./mocks/XanV2.m.sol";
 contract XanV2NoncesTest is Test {
     uint256 internal constant _ALICE_PRIVATE_KEY = 0xA11CE;
 
-    address internal _alice;
     address internal immutable _SPENDER = makeAddr("spender");
     address internal immutable _DELEGATEE = makeAddr("delegatee");
-    address internal _defaultSender;
     address internal immutable _GOVERNANCE_COUNCIL = makeAddr("governanceCouncil");
+
     XanV1 internal _xanV1Proxy;
     XanV2 internal _xanV2Proxy;
+
+    address internal _alice;
+    address internal _defaultSender;
     address internal _xanV2Impl;
 
     function setUp() public {

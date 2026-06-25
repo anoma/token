@@ -3,11 +3,10 @@
 pragma solidity ^0.8.30;
 
 import {Upgrades, Options} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
-
 import {Script} from "forge-std/Script.sol";
 
-import {XanV1} from "../src/XanV1.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
+import {XanV1} from "../src/XanV1.sol";
 
 contract ScheduleCouncilUpgradeToXanV2 is Script {
     function run(address proxy, address owner) public returns (address implV2) {

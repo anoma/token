@@ -77,6 +77,12 @@ contract XanV2 is
     bytes32 internal constant _XAN_V1_STORAGE_LOCATION =
         0x52f7d5fb153315ca313a5634db151fa7e0b41cd83fe6719e93ed3cd02b69d200;
 
+    /// @notice The ERC-7201 storage location of the Xan V2 contract (see https://eips.ethereum.org/EIPS/eip-7201).
+    /// @dev Obtained from
+    /// `keccak256(abi.encode(uint256(keccak256("anoma.storage.Xan.v2")) - 1)) & ~bytes32(uint256(0xff))`.
+    bytes32 internal constant _XAN_V2_STORAGE_LOCATION =
+        0x52ac9b9514a24171c0416c0576d612fe5fab9f5a41dcf77ddbf6be60ca9da600;
+
     /// @notice The owner who can upgrade the proxy.
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     address private immutable _OWNER;
@@ -89,17 +95,14 @@ contract XanV2 is
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint48 private immutable _VESTING_DURATION;
 
-    /// @notice The ERC-7201 storage location of the Xan V2 contract (see https://eips.ethereum.org/EIPS/eip-7201).
-    /// @dev Obtained from
-    /// `keccak256(abi.encode(uint256(keccak256("anoma.storage.Xan.v2")) - 1)) & ~bytes32(uint256(0xff))`.
-    bytes32 internal constant _XAN_V2_STORAGE_LOCATION =
-        0x52ac9b9514a24171c0416c0576d612fe5fab9f5a41dcf77ddbf6be60ca9da600;
-
     /// @notice Thrown when an account tries to move more than its unlocked (spendable) balance.
     error UnlockedBalanceInsufficient(address sender, uint256 unlockedBalance, uint256 valueToLock);
 
     /// @notice Thrown when `unlock` is called but no tokens have vested since the last unlock.
     error NothingToUnlock(address account);
+
+    /// @notice Thrown if the zero address is provided as owner in the constructor.
+    error ZeroOwnerNotAllowed();
 
     /// @notice Disables the initializers on the implementation contract to prevent it from being left uninitialized,
     /// and binds the owner and vesting schedule into the implementation bytecode.
@@ -108,6 +111,7 @@ contract XanV2 is
     /// @param vestingDuration The duration over which the formerly locked balances vest linearly.
     /// @custom:oz-upgrades-unsafe-allow constructor state-variable-immutable
     constructor(address owner, uint48 vestingStartTimestamp, uint48 vestingDuration) {
+        require(owner != address(0), ZeroOwnerNotAllowed());
         _OWNER = owner;
         _VESTING_START = vestingStartTimestamp;
         _VESTING_DURATION = vestingDuration;

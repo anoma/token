@@ -11,12 +11,14 @@ import {XanV1} from "../src/XanV1.sol";
 import {MockXanV2} from "./mocks/XanV2.m.sol";
 
 contract XanV2UpgradeTest is Test {
-    XanV1 internal _xanV1Proxy;
-    XanV2 internal _xanV2Proxy;
-    address internal _xanV2Impl;
-    address internal _defaultSender;
     address internal immutable _OTHER = makeAddr("other");
     address internal immutable _GOVERNANCE_COUNCIL = makeAddr("governanceCouncil");
+
+    XanV1 internal _xanV1Proxy;
+    XanV2 internal _xanV2Proxy;
+
+    address internal _xanV2Impl;
+    address internal _defaultSender;
 
     function setUp() public {
         (, _defaultSender,) = vm.readCallers();
