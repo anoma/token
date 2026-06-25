@@ -6,7 +6,7 @@ import {Upgrades, UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.
 import {Test} from "forge-std/Test.sol";
 
 import {Parameters} from "../src/libs/Parameters.sol";
-import {MockXanV1, XanV1} from "./mocks/XanV1.m.sol";
+import {MockXanV1, XanV1} from "./mocks/MockXanV1.sol";
 
 contract MockXanV1CriteriaTest is Test {
     using UnsafeUpgrades for address;
@@ -25,7 +25,7 @@ contract MockXanV1CriteriaTest is Test {
         vm.prank(_tokenHolder);
         _xanProxyMock = MockXanV1(
             Upgrades.deployUUPSProxy({
-                contractName: "XanV1.m.sol:MockXanV1",
+                contractName: "MockXanV1.sol:MockXanV1",
                 initializerData: abi.encodeCall(XanV1.initializeV1, (_tokenHolder, _COUNCIL))
             })
         );

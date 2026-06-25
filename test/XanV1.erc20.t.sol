@@ -4,9 +4,9 @@ pragma solidity ^0.8.30;
 import {Upgrades, UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {MockXanV1, XanV1} from "./mocks/XanV1.m.sol";
+import {MockXanV1, XanV1} from "./mocks/MockXanV1.sol";
 
-contract MockXanV1ERC20Test is Test {
+contract XanV1ERC20Test is Test {
     using UnsafeUpgrades for address;
 
     address internal immutable _COUNCIL = makeAddr("council");
@@ -22,7 +22,7 @@ contract MockXanV1ERC20Test is Test {
         vm.prank(_alice);
         _xanProxyMock = MockXanV1(
             Upgrades.deployUUPSProxy({
-                contractName: "XanV1.m.sol:MockXanV1",
+                contractName: "MockXanV1.sol:MockXanV1",
                 initializerData: abi.encodeCall(XanV1.initializeV1, (_alice, _COUNCIL))
             })
         );
