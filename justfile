@@ -76,6 +76,22 @@ deploy deployer initial-mint-recipient council chain *args:
         --sig "run(address,address)" {{ initial-mint-recipient }} {{ council }} \
         --broadcast --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
 
+# Simulate the governance deployment (timelock + governor + security council) (dry-run)
+deploy-governance-simulate token council chain *args:
+    @echo "Cleaning contracts to ensure reproducible build..."
+    @just clean
+    forge script script/DeployGovernance.s.sol:DeployGovernance \
+        --sig "run(address,address)" {{ token }} {{ council }} \
+        --rpc-url {{ chain }} {{ args }}
+
+# Deploy the governance stack (timelock + governor + security council)
+deploy-governance deployer token council chain *args:
+    @echo "Cleaning contracts to ensure reproducible build..."
+    @just clean
+    forge script script/DeployGovernance.s.sol:DeployGovernance \
+        --sig "run(address,address)" {{ token }} {{ council }} \
+        --broadcast --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
+
 # Simulate scheduling the council upgrade to XanV2 (dry-run)
 schedule-council-upgrade-simulate proxy sender chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
