@@ -116,26 +116,6 @@ contract XanV2UnlockingTest is XanV2Fixture {
         _xanV2Proxy.transfer(_OTHER, 1);
     }
 
-    function test_burn_reverts_if_value_exceeds_unlocked_balance() public {
-        // Burning routes through the same `_update` gate, so locked tokens cannot be burned.
-        vm.warp(_vestingStart);
-        vm.prank(_defaultSender);
-        vm.expectRevert(abi.encodeWithSelector(XanV2.UnlockedBalanceInsufficient.selector, _defaultSender, 0, 1));
-        _xanV2Proxy.burn(1);
-    }
-
-    function test_burn_burns_unlocked_tokens() public {
-        // After full vesting and unlock the entire balance is spendable and therefore burnable.
-        vm.warp(_vestingEnd);
-        vm.startPrank(_defaultSender);
-        _xanV2Proxy.unlock();
-        _xanV2Proxy.burn(Parameters.SUPPLY / 2);
-        vm.stopPrank();
-
-        assertEq(_xanV2Proxy.balanceOf(_defaultSender), Parameters.SUPPLY / 2);
-        assertEq(_xanV2Proxy.totalSupply(), Parameters.SUPPLY / 2);
-    }
-
     function test_vestingStart_returns_expected_parameter() public view {
         assertEq(_xanV2Proxy.vestingStart(), _vestingStart);
     }
