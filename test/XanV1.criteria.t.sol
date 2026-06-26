@@ -80,7 +80,7 @@ contract MockXanV1CriteriaTest is Test {
     function test_checkDelayCriterion_reverts_if_the_delay_period_has_not_started() public {
         // `endTime == 0` means no upgrade is scheduled: a defense-in-depth guard that the scheduling flow, which
         // always sets a non-zero end time alongside the implementation, never reaches.
-        vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotStarted.selector, uint48(0)));
+        vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotStarted.selector, uint48(0)), address(_xanProxyMock));
         _xanProxyMock.checkDelayCriterion(0);
     }
 }
