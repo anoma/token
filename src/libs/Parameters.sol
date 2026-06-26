@@ -42,4 +42,19 @@ library Parameters {
     /// @notice The initial owner who can upgrade the XAN proxy V2.
     //! IMPORTANT: This address is currently a placeholder and must be changed before scheduling the upgrade to V2.
     address internal constant INITIAL_OWNER = 0x0000000000000000000000000000000000000000;
+
+    /* ========== Governance ========== */
+
+    /// @notice The delay between a governor proposal's creation and the start of voting (timestamp clock).
+    uint48 internal constant VOTING_DELAY = 1 days;
+
+    /// @notice The duration of a governor proposal's voting window.
+    uint32 internal constant VOTING_PERIOD = 1 weeks;
+
+    /// @notice The minimum voting power required to create a governor proposal (`0` lets any holder propose).
+    uint256 internal constant PROPOSAL_THRESHOLD = 0;
+
+    /// @notice Reaction-time margin added on top of a full voter cancel cycle when the `SecurityCouncil` module sizes
+    /// its fast-track upgrade delay, so the voter body has time to notice a council upgrade and organize a cancel.
+    uint256 internal constant COUNCIL_CANCEL_BUFFER = 7 days;
 }
