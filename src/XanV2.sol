@@ -240,8 +240,7 @@ contract XanV2 is
 
     // solhint-enable func-name-mixedcase
 
-    /// @notice Updates the balances. Only the unlocked token balances can be moved, except for the minting case,
-    /// where `from == address(0)`.
+    /// @notice Updates the balances, allowing only an account's unlocked tokens to be moved.
     /// @param from The address to take the tokens from.
     /// @param to The address to give the tokens to.
     /// @param value The amount of tokens to update that must be unlocked.
@@ -249,18 +248,13 @@ contract XanV2 is
         internal
         override(ERC20Upgradeable, ERC20VotesUpgradeable)
     {
-        // Require the unlocked balance to be at least the updated value, except for the minting case,
-        // where `from == address(0)`.
-        // In this case, tokens are created ex-nihilo and formally sent from `address(0)` to the `to` address
-        // without balance checks.
-        if (from != address(0)) {
-            uint256 unlockedBalance = unlockedBalanceOf(from);
+        // Require the unlocked balance to be at least the updated value.
+        uint256 unlockedBalance = unlockedBalanceOf(from);
 
-            require(
-                value < unlockedBalance + 1,
-                UnlockedBalanceInsufficient({sender: from, unlockedBalance: unlockedBalance, valueToLock: value})
-            );
-        }
+        require(
+            value < unlockedBalance + 1,
+            UnlockedBalanceInsufficient({sender: from, unlockedBalance: unlockedBalance, valueToLock: value})
+        );
 
         super._update({from: from, to: to, value: value});
     }
