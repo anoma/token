@@ -17,6 +17,7 @@ abstract contract XanV2Fixture is Test {
 
     XanV1 internal _xanV1Proxy;
     XanV2 internal _xanV2Proxy;
+    address internal _xanV1Impl;
     address internal _xanV2Impl;
     address internal _defaultSender;
 
@@ -42,8 +43,9 @@ abstract contract XanV2Fixture is Test {
         _vestingEnd = _vestingStart + vestingDuration;
 
         // Point the V2 mock at the locally deployed V1 implementation (the vesting principal is stored under it).
-        _xanV2Impl =
-            address(new MockXanV2(_xanV1Proxy.implementation(), _defaultSender, _vestingStart, vestingDuration));
+        // Captured before the in-place upgrade below, after which the proxy reports the V2 implementation instead.
+        _xanV1Impl = _xanV1Proxy.implementation();
+        _xanV2Impl = address(new MockXanV2(_xanV1Impl, _defaultSender, _vestingStart, vestingDuration));
 
         // Win the voter-body upgrade vote for `_xanV2Impl` and wait out the delay so the upgrade can be executed.
         vm.startPrank(_defaultSender);

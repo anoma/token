@@ -265,10 +265,11 @@ contract XanV2 is
         super._update({from: from, to: to, value: value});
     }
 
-    /// @notice Authorizes an upgrade. Restricted to the owner (e.g. a multisig or DAO).
+    /// @notice Authorizes an upgrade. Restricted to the owner (e.g. a multisig or DAO) and to an implementation other
+    /// than XAN V1.
     /// @param newImpl The new implementation to authorize the upgrade to.
     function _authorizeUpgrade(address newImpl) internal view override onlyOwner {
-        (newImpl);
+        require(newImpl != _implementationV1(), UpgradeToXanV1NotAllowed());
     }
 
     /// @notice Returns the amount of an account's V1 principal that has vested by the current timestamp.

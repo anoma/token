@@ -21,6 +21,12 @@ contract XanV2UpgradeTest is XanV2Fixture {
         _xanV2Proxy.upgradeToAndCall(newImpl, "");
     }
 
+    function test_authorizeUpgrade_reverts_if_the_new_implementation_is_the_V1_implementation() public {
+        vm.prank(_xanV2Proxy.owner());
+        vm.expectRevert(XanV2.UpgradeToXanV1NotAllowed.selector, address(_xanV2Proxy));
+        _xanV2Proxy.upgradeToAndCall(_xanV1Impl, "");
+    }
+
     function test_authorizeUpgrade_upgrades_if_the_caller_is_the_owner() public {
         address newImpl = address(
             new MockXanV2(
