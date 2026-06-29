@@ -96,14 +96,23 @@ contract XanV2 is
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint48 private immutable _VESTING_DURATION;
 
+    /// @notice Thrown if the zero address is provided as the owner in the constructor.
+    error ZeroOwnerNotAllowed();
+
+    /// @notice Thrown if the timestamp is provided as the vesting start in the constructor.
+    error ZeroVestingStartNotAllowed();
+
+    /// @notice Thrown if the zero duration is provided as the vesting duration in the constructor.
+    error ZeroVestingDurationNotAllowed();
+
+    /// @notice Thrown when a upgrade back to the XAN V1 implementation is attempted.
+    error UpgradeToXanV1NotAllowed();
+
     /// @notice Thrown when an account tries to move more than its unlocked (spendable) balance.
     error UnlockedBalanceInsufficient(address sender, uint256 unlockedBalance, uint256 valueToLock);
 
     /// @notice Thrown when `unlock` is called but no tokens have vested since the last unlock.
     error NothingToUnlock(address account);
-
-    /// @notice Thrown if the zero address is provided as owner in the constructor.
-    error ZeroOwnerNotAllowed();
 
     /// @notice Disables the initializers on the implementation contract to prevent it from being left uninitialized,
     /// and binds the owner and vesting schedule into the implementation bytecode.
@@ -113,9 +122,13 @@ contract XanV2 is
     /// @custom:oz-upgrades-unsafe-allow constructor state-variable-immutable
     constructor(address initialOwner, uint48 vestingStartTimestamp, uint48 vestingDuration) {
         require(initialOwner != address(0), ZeroOwnerNotAllowed());
+        require(vestingStartTimestamp != 0, ZeroVestingStartNotAllowed());
+        require(vestingDuration != 0, ZeroVestingDurationNotAllowed());
+
         _INITIAL_OWNER = initialOwner;
         _VESTING_START = vestingStartTimestamp;
         _VESTING_DURATION = vestingDuration;
+
         _disableInitializers();
     }
 
@@ -190,7 +203,7 @@ contract XanV2 is
     }
 
     /// @inheritdoc IXanV2
-    function claimableBalanceOf(address account) public view override returns (uint256 value) {
+    function unlockableBalanceOf(address account) public view override returns (uint256 value) {
         uint256 principal = _principalOf(account);
         uint256 vested = _vestedAmount(principal);
         uint256 alreadyUnlocked = _getXanV2Storage().unlocked[account];
@@ -262,19 +275,22 @@ contract XanV2 is
     /// @param principal The account's formerly locked V1 balance.
     /// @return vested The vested amount, linearly interpolated and capped at `principal`.
     function _vestedAmount(uint256 principal) internal view returns (uint256 vested) {
-        uint48 start = _VESTING_START;
-        uint48 nowTs = Time.timestamp();
+        uint48 startTime = _VESTING_START;
+        uint48 currentTime = clock();
 
-        if (nowTs < start + 1) {
+        if (currentTime < startTime + 1) {
             return vested = 0;
         }
 
-        uint48 elapsed = nowTs - start;
-        if (elapsed > _VESTING_DURATION - 1) {
+        uint48 elapsedTime = currentTime - startTime;
+        if (elapsedTime > _VESTING_DURATION - 1) {
             return vested = principal;
         }
 
-        vested = (principal * elapsed) / _VESTING_DURATION;
+        // An overflow is not possible. `principal` is bound by the total XanV1 supply (see `Parameters.SUPPLY`) and the
+        // elapsed time by `Parameters.VESTING_DURATION - 1`. Accordingly, the product can be assumed to not overflow.
+        // Still, we use safe math here.
+        vested = (principal * elapsedTime) / _VESTING_DURATION;
     }
 
     /// @notice Returns the formerly locked V1 balance of an account that is the principal subject to vesting.

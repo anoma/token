@@ -18,7 +18,7 @@ contract XanV2UnlockingTest is XanV2Fixture {
         vm.warp(_vestingStart);
         assertEq(_xanV2Proxy.lockedBalanceOf(_defaultSender), Parameters.SUPPLY);
         assertEq(_xanV2Proxy.unlockedBalanceOf(_defaultSender), 0);
-        assertEq(_xanV2Proxy.claimableBalanceOf(_defaultSender), 0);
+        assertEq(_xanV2Proxy.unlockableBalanceOf(_defaultSender), 0);
     }
 
     function test_unlock_reverts_when_nothing_vested() public {
@@ -28,9 +28,9 @@ contract XanV2UnlockingTest is XanV2Fixture {
         _xanV2Proxy.unlock();
     }
 
-    function test_claimableBalanceOf_returns_linear_amount_during_vesting() public {
+    function test_unlockableBalanceOf_returns_linear_amount_during_vesting() public {
         vm.warp(_vestingMid);
-        assertEq(_xanV2Proxy.claimableBalanceOf(_defaultSender), Parameters.SUPPLY / 2);
+        assertEq(_xanV2Proxy.unlockableBalanceOf(_defaultSender), Parameters.SUPPLY / 2);
 
         // Vesting does not become spendable until it is unlocked.
         assertEq(_xanV2Proxy.unlockedBalanceOf(_defaultSender), 0);
@@ -46,7 +46,7 @@ contract XanV2UnlockingTest is XanV2Fixture {
 
         assertEq(_xanV2Proxy.unlockedBalanceOf(_defaultSender), Parameters.SUPPLY / 2);
         assertEq(_xanV2Proxy.lockedBalanceOf(_defaultSender), Parameters.SUPPLY / 2);
-        assertEq(_xanV2Proxy.claimableBalanceOf(_defaultSender), 0);
+        assertEq(_xanV2Proxy.unlockableBalanceOf(_defaultSender), 0);
 
         // The unlocked tokens can now be transferred; the still-locked ones cannot.
         vm.prank(_defaultSender);
@@ -64,9 +64,9 @@ contract XanV2UnlockingTest is XanV2Fixture {
         _xanV2Proxy.transfer(_OTHER, 1);
     }
 
-    function test_claimableBalanceOf_returns_full_principal_after_duration() public {
+    function test_unlockableBalanceOf_returns_full_principal_after_duration() public {
         vm.warp(_vestingEnd);
-        assertEq(_xanV2Proxy.claimableBalanceOf(_defaultSender), Parameters.SUPPLY);
+        assertEq(_xanV2Proxy.unlockableBalanceOf(_defaultSender), Parameters.SUPPLY);
 
         vm.prank(_defaultSender);
         _xanV2Proxy.unlock();

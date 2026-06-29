@@ -61,8 +61,8 @@ contract XanV2VotingTest is XanV2Fixture {
         // The clock is before the vesting period.
         assertLt(Time.timestamp(), _vestingStart);
 
-        // Nothing has vested, so nothing is claimable and the whole balance is still locked.
-        assertEq(_xanV2Proxy.claimableBalanceOf(_defaultSender), 0);
+        // Nothing has vested, so nothing is unlockable and the whole balance is still locked.
+        assertEq(_xanV2Proxy.unlockableBalanceOf(_defaultSender), 0);
         assertEq(_xanV2Proxy.unlockedBalanceOf(_defaultSender), 0);
         assertEq(_xanV2Proxy.lockedBalanceOf(_defaultSender), Parameters.SUPPLY);
 
@@ -71,15 +71,15 @@ contract XanV2VotingTest is XanV2Fixture {
         assertEq(_xanV2Proxy.getVotes(_defaultSender), Parameters.SUPPLY);
     }
 
-    function test_getVotes_counts_vested_unclaimed_tokens_during_vesting() public {
+    function test_getVotes_counts_vested_but_not_unlocked_tokens_during_vesting() public {
         vm.warp(_vestingMid);
 
         // The clock is inside the vesting period.
         assertGe(Time.timestamp(), _vestingStart);
         assertLt(Time.timestamp(), _vestingEnd);
 
-        // Half has vested and is claimable, but nothing has been claimed: the full balance is still locked.
-        assertEq(_xanV2Proxy.claimableBalanceOf(_defaultSender), Parameters.SUPPLY / 2);
+        // Half has vested and is unlockable, but nothing has been unlocked: the full balance is still locked.
+        assertEq(_xanV2Proxy.unlockableBalanceOf(_defaultSender), Parameters.SUPPLY / 2);
         assertEq(_xanV2Proxy.unlockedBalanceOf(_defaultSender), 0);
         assertEq(_xanV2Proxy.lockedBalanceOf(_defaultSender), Parameters.SUPPLY);
 
@@ -88,32 +88,32 @@ contract XanV2VotingTest is XanV2Fixture {
         assertEq(_xanV2Proxy.getVotes(_defaultSender), Parameters.SUPPLY);
     }
 
-    function test_getVotes_counts_partially_claimed_tokens_during_vesting() public {
+    function test_getVotes_counts_partially_unlocked_tokens_during_vesting() public {
         vm.warp(_vestingMid);
 
         // The clock is inside the vesting period.
         assertGe(Time.timestamp(), _vestingStart);
         assertLt(Time.timestamp(), _vestingEnd);
 
-        // Claim the vested half: tokens move from locked to unlocked, but the balance is unchanged.
+        // Unlock the vested half: tokens move from locked to unlocked, but the balance is unchanged.
         _unlock();
         assertEq(_xanV2Proxy.unlockedBalanceOf(_defaultSender), Parameters.SUPPLY / 2);
         assertEq(_xanV2Proxy.lockedBalanceOf(_defaultSender), Parameters.SUPPLY / 2);
-        assertEq(_xanV2Proxy.claimableBalanceOf(_defaultSender), 0);
+        assertEq(_xanV2Proxy.unlockableBalanceOf(_defaultSender), 0);
 
         _selfDelegate();
 
         assertEq(_xanV2Proxy.getVotes(_defaultSender), Parameters.SUPPLY);
     }
 
-    function test_getVotes_counts_vested_unclaimed_tokens_after_vesting() public {
+    function test_getVotes_counts_vested_but_not_unlocked_tokens_after_vesting() public {
         vm.warp(_vestingEnd + 1);
 
         // The clock is after the vesting period.
         assertGt(Time.timestamp(), _vestingEnd);
 
-        // Everything has vested and is claimable, but nothing has been claimed: the full balance is still locked.
-        assertEq(_xanV2Proxy.claimableBalanceOf(_defaultSender), Parameters.SUPPLY);
+        // Everything has vested and is unlockable, but nothing has been unlocked: the full balance is still locked.
+        assertEq(_xanV2Proxy.unlockableBalanceOf(_defaultSender), Parameters.SUPPLY);
         assertEq(_xanV2Proxy.unlockedBalanceOf(_defaultSender), 0);
         assertEq(_xanV2Proxy.lockedBalanceOf(_defaultSender), Parameters.SUPPLY);
 
@@ -122,39 +122,39 @@ contract XanV2VotingTest is XanV2Fixture {
         assertEq(_xanV2Proxy.getVotes(_defaultSender), Parameters.SUPPLY);
     }
 
-    function test_getVotes_counts_fully_claimed_tokens_after_vesting() public {
+    function test_getVotes_counts_fully_unlocked_tokens_after_vesting() public {
         vm.warp(_vestingEnd + 1);
 
         // The clock is after the vesting period.
         assertGt(Time.timestamp(), _vestingEnd);
 
-        // Claim everything: the entire balance is now unlocked, nothing is locked.
+        // Unlock everything: the entire balance is now unlocked, nothing is locked.
         _unlock();
         assertEq(_xanV2Proxy.unlockedBalanceOf(_defaultSender), Parameters.SUPPLY);
         assertEq(_xanV2Proxy.lockedBalanceOf(_defaultSender), 0);
-        assertEq(_xanV2Proxy.claimableBalanceOf(_defaultSender), 0);
+        assertEq(_xanV2Proxy.unlockableBalanceOf(_defaultSender), 0);
 
         _selfDelegate();
 
         assertEq(_xanV2Proxy.getVotes(_defaultSender), Parameters.SUPPLY);
     }
 
-    function test_getVotes_is_unchanged_by_claiming_across_vesting() public {
+    function test_getVotes_is_unchanged_by_unlocking_across_vesting() public {
         _selfDelegate();
 
-        // Before the vesting period: nothing to claim yet.
+        // Before the vesting period: nothing to unlock yet.
         vm.warp(_vestingStart - 1);
         assertLt(Time.timestamp(), _vestingStart);
         assertEq(_xanV2Proxy.getVotes(_defaultSender), Parameters.SUPPLY);
 
-        // During the vesting period: claim the vested half.
+        // During the vesting period: unlock the vested half.
         vm.warp(_vestingMid);
         assertGe(Time.timestamp(), _vestingStart);
         assertLt(Time.timestamp(), _vestingEnd);
         _unlock();
         assertEq(_xanV2Proxy.getVotes(_defaultSender), Parameters.SUPPLY);
 
-        // After the vesting period: claim the remainder.
+        // After the vesting period: unlock the remainder.
         vm.warp(_vestingEnd + 1);
         assertGt(Time.timestamp(), _vestingEnd);
         _unlock();
@@ -178,7 +178,7 @@ contract XanV2VotingTest is XanV2Fixture {
         _xanV2Proxy.delegate(_defaultSender);
     }
 
-    /// @notice Claims (unlocks) all of `_defaultSender`'s currently vested tokens.
+    /// @notice Unlocks all of `_defaultSender`'s currently vested tokens.
     function _unlock() internal {
         vm.prank(_defaultSender);
         _xanV2Proxy.unlock();

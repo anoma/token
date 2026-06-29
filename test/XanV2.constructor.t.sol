@@ -30,10 +30,23 @@ contract XanV2ConstructorTest is Test {
     }
 
     function test_constructor_reverts_if_the_owner_is_the_zero_address() public {
-        // The revert happens inside the contract being created, whose address we can predict from this contract's nonce.
         address predictedImpl = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
         vm.expectRevert(XanV2.ZeroOwnerNotAllowed.selector, predictedImpl);
         new XanV2({initialOwner: address(0), vestingStartTimestamp: _VESTING_START, vestingDuration: _VESTING_DURATION});
+    }
+
+    function test_constructor_reverts_if_the_vesting_start_is_the_zero_timestamp() public {
+        address predictedImpl = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
+        vm.expectRevert(XanV2.ZeroVestingStartNotAllowed.selector, predictedImpl);
+
+        new XanV2({initialOwner: _INITIAL_OWNER, vestingStartTimestamp: 0, vestingDuration: _VESTING_DURATION});
+    }
+
+    function test_constructor_reverts_if_the_vesting_duration_is_the_zero_duration() public {
+        address predictedImpl = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
+        vm.expectRevert(XanV2.ZeroVestingDurationNotAllowed.selector, predictedImpl);
+
+        new XanV2({initialOwner: _INITIAL_OWNER, vestingStartTimestamp: _VESTING_START, vestingDuration: 0});
     }
 
     function test_constructor_binds_the_initial_owner() public {

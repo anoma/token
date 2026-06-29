@@ -20,10 +20,10 @@ interface IXanV2 {
     /// @return value The amount of tokens that became spendable.
     function unlock() external returns (uint256 value);
 
-    /// @notice Returns the amount of tokens the account can unlock right now (vested but not yet unlocked).
+    /// @notice Returns the amount of tokens that an account can unlock (vested but not yet unlocked).
     /// @param account The account to query.
-    /// @return value The currently claimable amount.
-    function claimableBalanceOf(address account) external view returns (uint256 value);
+    /// @return value The currently unlockable amount.
+    function unlockableBalanceOf(address account) external view returns (uint256 value);
 
     /// @notice Returns the unlocked (spendable) token balance of an account.
     /// @param from The account to query.

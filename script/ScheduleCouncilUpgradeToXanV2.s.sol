@@ -9,16 +9,8 @@ import {Parameters} from "../src/libs/Parameters.sol";
 import {XanV1} from "../src/XanV1.sol";
 
 contract ScheduleCouncilUpgradeToXanV2 is Script {
-    error InvalidOwnerAddress();
-    error InvalidVestingStart();
-    error InvalidVestingDuration();
-
     function run(address proxy) public returns (address implV2) {
         Options memory opts;
-
-        require(Parameters.INITIAL_OWNER != address(0), InvalidOwnerAddress());
-        require(Parameters.VESTING_START != 0, InvalidVestingStart());
-        require(Parameters.VESTING_DURATION != 0, InvalidVestingDuration());
 
         // Bind the owner and vesting schedule into the implementation bytecode at deployment (the trusted step). The
         // scheduled implementation address is fixed, so whoever later executes the (permissionless) upgrade cannot

@@ -50,8 +50,8 @@ contract XanV2Handler is Test {
     function unlock(uint256 actorSeed) external {
         address actor = _actorAt(actorSeed);
 
-        // `unlock` reverts when nothing has vested since the last claim; skip in that case.
-        if (token.claimableBalanceOf(actor) == 0) {
+        // `unlock` reverts when nothing has vested since the last unlock; skip in that case.
+        if (token.unlockableBalanceOf(actor) == 0) {
             return;
         }
 
