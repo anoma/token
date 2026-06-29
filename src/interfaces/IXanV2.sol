@@ -26,14 +26,14 @@ interface IXanV2 {
     function unlockableBalanceOf(address account) external view returns (uint256 value);
 
     /// @notice Returns the unlocked (spendable) token balance of an account.
-    /// @param from The account to query.
+    /// @param account The account to query.
     /// @return unlockedBalance The unlocked balance.
-    function unlockedBalanceOf(address from) external view returns (uint256 unlockedBalance);
+    function unlockedBalanceOf(address account) external view returns (uint256 unlockedBalance);
 
     /// @notice Returns the still-locked token balance of an account that has not vested or not been unlocked yet.
-    /// @param from The account to query.
+    /// @param account The account to query.
     /// @return lockedBalance The locked balance.
-    function lockedBalanceOf(address from) external view returns (uint256 lockedBalance);
+    function lockedBalanceOf(address account) external view returns (uint256 lockedBalance);
 
     /// @notice Returns the timestamp at which vesting started.
     /// @return start The vesting start timestamp.
