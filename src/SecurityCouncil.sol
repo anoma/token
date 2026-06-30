@@ -100,18 +100,25 @@ contract SecurityCouncil is ISecurityCouncil {
     }
 
     /// @inheritdoc ISecurityCouncil
-    function cancelCouncilUpgrade() external override onlyCouncil returns (bytes32 operationId) {
-        operationId = _pendingOperation;
-        require(operationId != bytes32(0), NoUpgradeScheduled());
-        require(_TIMELOCK.isOperationPending(operationId), UpgradeNotPending());
+    function cancel(address target, uint256 value, bytes calldata data, bytes32 salt)
+        external
+        override
+        onlyCouncil
+        returns (bytes32 operationId)
+    {
+        // The voter body's power to replace the council (`setCouncil`) must survive the council's brake; otherwise a
+        // captured council could veto its own removal indefinitely. A `setCouncil` call is therefore the one
+        // operation the council may not cancel.
+        require(!(target == address(this) && bytes4(data) == this.setCouncil.selector), CannotCancelCouncilRotation());
 
-        emit CouncilUpgradeCancelled(operationId, msg.sender);
+        operationId =
+            _TIMELOCK.hashOperation({target: target, value: value, data: data, predecessor: bytes32(0), salt: salt});
 
-        _TIMELOCK.cancel(operationId);
+        _cancel(operationId);
     }
 
     /// @inheritdoc ISecurityCouncil
-    function cancel(address[] calldata targets, uint256[] calldata values, bytes[] calldata payloads, bytes32 salt)
+    function cancelBatch(address[] calldata targets, uint256[] calldata values, bytes[] calldata payloads, bytes32 salt)
         external
         override
         onlyCouncil
@@ -130,9 +137,7 @@ contract SecurityCouncil is ISecurityCouncil {
             targets: targets, values: values, payloads: payloads, predecessor: bytes32(0), salt: salt
         });
 
-        emit ProposalCancelled(operationId);
-
-        _TIMELOCK.cancel(operationId);
+        _cancel(operationId);
     }
 
     /// @inheritdoc ISecurityCouncil
@@ -155,6 +160,14 @@ contract SecurityCouncil is ISecurityCouncil {
     /// @inheritdoc ISecurityCouncil
     function cancelWindow() public view override returns (uint256 delay) {
         delay = _GOVERNOR.votingDelay() + _GOVERNOR.votingPeriod() + _TIMELOCK.getMinDelay() + _CANCEL_BUFFER;
+    }
+
+    /// @notice Internal helper to cancel a proposal with a given operation ID.
+    /// @param operationId The ID of the operation to cancel.
+    function _cancel(bytes32 operationId) internal {
+        emit ProposalCancelled(operationId);
+
+        _TIMELOCK.cancel(operationId);
     }
 
     /// @notice Deterministic, council-tagged salt so a council upgrade never collides with a voter-body operation and

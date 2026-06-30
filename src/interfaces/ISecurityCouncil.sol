@@ -15,11 +15,6 @@ interface ISecurityCouncil {
         address indexed newImplementation, bytes32 indexed operationId, bytes data, uint256 executableAt
     );
 
-    /// @notice Emitted when the council withdraws its pending upgrade.
-    /// @param operationId The cancelled timelock operation id.
-    /// @param caller The council that withdrew it.
-    event CouncilUpgradeCancelled(bytes32 indexed operationId, address indexed caller);
-
     /// @notice Emitted when the council cancels a queued governance operation in the timelock.
     /// @param operationId The cancelled timelock operation id.
     event ProposalCancelled(bytes32 indexed operationId);
@@ -37,13 +32,6 @@ interface ISecurityCouncil {
 
     /// @notice Thrown when the council schedules an upgrade while one is already pending (one upgrade in flight).
     error UpgradeAlreadyPending(bytes32 operationId);
-
-    /// @notice Thrown when a council-upgrade cancel/withdrawal is attempted but the council never scheduled one.
-    error NoUpgradeScheduled();
-
-    /// @notice Thrown when a council-upgrade cancel/withdrawal is attempted but the scheduled upgrade is no longer
-    /// pending (already executed or cancelled).
-    error UpgradeNotPending();
 
     /// @notice Thrown when the governor address supplied to the constructor is zero.
     error ZeroGovernorNotAllowed();
@@ -70,17 +58,23 @@ interface ISecurityCouncil {
     /// @return operationId The scheduled timelock operation id.
     function scheduleUpgrade(address newImplementation, bytes calldata data) external returns (bytes32 operationId);
 
-    /// @notice Withdraws the council's pending upgrade, callable only by the council. The voter body does not need
-    /// this: it cancels a council upgrade through the governor, which holds the timelock's `CANCELLER` role.
+    /// @notice Cancels a queued single-call operation in the timelock.
+    /// @param target The address the operation calls.
+    /// @param value The native token value forwarded with the call.
+    /// @param data The calldata of the call.
+    /// @param salt The operation salt (read from the timelock's `CallSalt` event).
     /// @return operationId The cancelled timelock operation id.
-    function cancelCouncilUpgrade() external returns (bytes32 operationId);
+    function cancel(address target, uint256 value, bytes calldata data, bytes32 salt)
+        external
+        returns (bytes32 operationId);
 
-    /// @notice Cancels a queued operation in the timelock.
+    /// @notice Cancels a queued batch operation in the timelock.
+    /// @param targets The addresses the operation calls.
     /// @param values The native token values forwarded with each call.
     /// @param payloads The calldata of each call.
     /// @param salt The operation salt (read from the timelock's `CallSalt` event).
     /// @return operationId The cancelled timelock operation id.
-    function cancel(address[] calldata targets, uint256[] calldata values, bytes[] calldata payloads, bytes32 salt)
+    function cancelBatch(address[] calldata targets, uint256[] calldata values, bytes[] calldata payloads, bytes32 salt)
         external
         returns (bytes32 operationId);
 
