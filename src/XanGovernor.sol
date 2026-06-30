@@ -31,19 +31,19 @@ contract XanGovernor is
     /// @param initialVotingDelay The delay (in seconds) between proposal creation and the start of voting.
     /// @param initialVotingPeriod The duration (in seconds) of the voting window.
     /// @param initialProposalThreshold The minimum voting power required to create a proposal.
-    /// @param quorumNumerator The quorum as a percentage of the total voting supply (e.g. `4` for 4%).
+    /// @param initialQuorumNumerator The quorum as a percentage of the total voting supply (e.g. `50` for 50%).
     constructor(
         IVotes xanToken,
         TimelockController timelockController,
         uint48 initialVotingDelay,
         uint32 initialVotingPeriod,
         uint256 initialProposalThreshold,
-        uint256 quorumNumerator
+        uint256 initialQuorumNumerator
     )
         Governor("XanGovernor")
         GovernorSettings(initialVotingDelay, initialVotingPeriod, initialProposalThreshold)
         GovernorVotes(xanToken)
-        GovernorVotesQuorumFraction(quorumNumerator)
+        GovernorVotesQuorumFraction(initialQuorumNumerator)
         GovernorTimelockControl(timelockController)
     {}
 

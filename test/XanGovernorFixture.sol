@@ -22,7 +22,7 @@ abstract contract XanGovernorFixture is Test {
     /// @notice Voting period in seconds.
     uint32 internal constant _VOTING_PERIOD = 50;
     /// @notice No voting power is required to create a proposal in this example.
-    uint256 internal constant _PROPOSAL_THRESHOLD = 0;
+    uint256 internal constant _PROPOSAL_THRESHOLD = 1 ether;
     /// @notice Quorum as a percentage of the voting supply, reusing the V1 quorum ratio (50%). `GovernorVotesQuorumFraction`
     /// uses a denominator of 100, so the V1 ratio is rescaled from its denominator of `QUORUM_RATIO_DENOMINATOR`.
     uint256 internal constant _QUORUM_NUMERATOR =
@@ -87,7 +87,7 @@ abstract contract XanGovernorFixture is Test {
             initialVotingDelay: _VOTING_DELAY,
             initialVotingPeriod: _VOTING_PERIOD,
             initialProposalThreshold: _PROPOSAL_THRESHOLD,
-            quorumNumerator: _QUORUM_NUMERATOR
+            initialQuorumNumerator: _QUORUM_NUMERATOR
         });
 
         // The governor proposes and cancels; anyone may execute once the timelock delay elapses.

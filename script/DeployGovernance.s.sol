@@ -29,9 +29,6 @@ contract DeployGovernance is Script {
         require(token != address(0), InvalidTokenAddress());
         require(councilMultisig != address(0), InvalidCouncilAddress());
 
-        // `GovernorVotesQuorumFraction` uses a denominator of 100, so the V1 quorum ratio is rescaled to it.
-        uint256 quorumNumerator = Parameters.QUORUM_RATIO_NUMERATOR * 100 / Parameters.QUORUM_RATIO_DENOMINATOR;
-
         vm.startBroadcast();
 
         address deployer = msg.sender;
@@ -51,7 +48,7 @@ contract DeployGovernance is Script {
             initialVotingDelay: Parameters.VOTING_DELAY,
             initialVotingPeriod: Parameters.VOTING_PERIOD,
             initialProposalThreshold: Parameters.PROPOSAL_THRESHOLD,
-            quorumNumerator: quorumNumerator
+            initialQuorumNumerator: Parameters.QUORUM_RATIO_NUMERATOR * 100 / Parameters.QUORUM_RATIO_DENOMINATOR
         });
 
         // 3. Deploy the security council module
