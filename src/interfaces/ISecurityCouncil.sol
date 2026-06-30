@@ -6,7 +6,7 @@ pragma solidity ^0.8.30;
 /// @notice Interface of the security council module.
 /// @custom:security-contact security@anoma.foundation
 interface ISecurityCouncil {
-    /// @notice Emitted when the council schedules a token upgrade in the timelock.
+    /// @notice Emitted when a token upgrade is scheduled in the timelock.
     /// @param newImplementation The implementation the upgrade installs.
     /// @param operationId The scheduled timelock operation id.
     /// @param data The reinitialization calldata forwarded to `upgradeToAndCall`.
@@ -19,7 +19,7 @@ interface ISecurityCouncil {
     /// @param operationId The cancelled timelock operation id.
     event ProposalCancelled(bytes32 indexed operationId);
 
-    /// @notice Emitted when the council address is rotated by the voter body (through the timelock).
+    /// @notice Emitted when the council address is rotated.
     /// @param previousCouncil The previous council address.
     /// @param newCouncil The new council address.
     event CouncilChanged(address indexed previousCouncil, address indexed newCouncil);
@@ -77,8 +77,7 @@ interface ISecurityCouncil {
         external
         returns (bytes32 operationId);
 
-    /// @notice Rotates the council address. Callable only by the timelock (a passed governance proposal), so the voter
-    /// body can replace a captured or inactive council.
+    /// @notice Rotates the council address.
     /// @param newCouncil The new council address.
     function setCouncil(address newCouncil) external;
 
@@ -91,8 +90,8 @@ interface ISecurityCouncil {
     /// @return operationId The tracked operation id.
     function pendingUpgrade() external view returns (bytes32 operationId);
 
-    /// @notice Returns the cancel window, computed live as
-    /// `votingDelay + votingPeriod + timelock.getMinDelay() + buffer`, so it always exceeds a full voter cancel cycle.
+    /// @notice Returns the cancel window: the time a scheduled council upgrade waits in the timelock before it can be
+    /// executed.
     /// @return delay The cancel window in seconds.
     function cancelWindow() external view returns (uint256 delay);
 }

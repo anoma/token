@@ -71,8 +71,8 @@ contract SecurityCouncil is ISecurityCouncil {
     }
 
     /// @inheritdoc ISecurityCouncil
-    /// @dev The delay is sized (see `cancelWindow`) to leave a full voter cancel cycle. Only one council upgrade may be
-    /// pending at a time.
+    /// @dev Callable only by the council. The delay is sized (see `cancelWindow`) to leave a full voter cancel cycle.
+    /// Only one council upgrade may be pending at a time.
     function scheduleUpgrade(address newImplementation, bytes calldata data)
         external
         override
@@ -142,6 +142,8 @@ contract SecurityCouncil is ISecurityCouncil {
     }
 
     /// @inheritdoc ISecurityCouncil
+    /// @dev Callable only by the timelock (a passed governance proposal), so the voter body can replace a captured or
+    /// inactive council.
     function setCouncil(address newCouncil) external override onlyTimelock {
         require(newCouncil != address(0), ZeroCouncilNotAllowed());
         emit CouncilChanged(_council, newCouncil);
@@ -159,6 +161,8 @@ contract SecurityCouncil is ISecurityCouncil {
     }
 
     /// @inheritdoc ISecurityCouncil
+    /// @dev Computed live as `votingDelay + votingPeriod + timelock.getMinDelay() + buffer`, so the window always
+    /// exceeds a full voter cancel cycle.
     function cancelWindow() public view override returns (uint256 delay) {
         delay = _GOVERNOR.votingDelay() + _GOVERNOR.votingPeriod() + _TIMELOCK.getMinDelay() + _CANCEL_BUFFER;
     }
