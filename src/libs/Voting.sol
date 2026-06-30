@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
-/// @title Locking
+/// @title Voting
 /// @author Anoma Foundation, 2025
-/// @notice A library containing data structures and methods related to and ranking.
+/// @notice A library containing a data structure to store the voter-body ballots and the data related to the
+/// scheduled implementation and delay period end time.
 /// @custom:security-contact security@anoma.foundation
 library Voting {
     /// @notice A struct containing data associated with the voter body.
