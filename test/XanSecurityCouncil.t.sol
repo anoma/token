@@ -6,17 +6,17 @@ import {Governor} from "@openzeppelin/contracts/governance/Governor.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
-import {ISecurityCouncil} from "../src/interfaces/ISecurityCouncil.sol";
+import {IXanSecurityCouncil} from "../src/interfaces/IXanSecurityCouncil.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
-import {SecurityCouncil} from "../src/SecurityCouncil.sol";
+import {XanSecurityCouncil} from "../src/XanSecurityCouncil.sol";
 import {MockXanV2} from "./mocks/MockXanV2.sol";
-import {SecurityCouncilFixture} from "./SecurityCouncilFixture.sol";
+import {XanSecurityCouncilFixture} from "./XanSecurityCouncilFixture.sol";
 
-contract SecurityCouncilTest is SecurityCouncilFixture {
+contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
     function test_constructor_reverts_if_the_governor_is_the_zero_address() public {
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
-        vm.expectRevert(ISecurityCouncil.ZeroGovernorNotAllowed.selector, predicted);
-        new SecurityCouncil({
+        vm.expectRevert(IXanSecurityCouncil.ZeroGovernorNotAllowed.selector, predicted);
+        new XanSecurityCouncil({
             governor: IGovernor(address(0)),
             timelock: _timelock,
             token: address(_xanToken),
@@ -27,8 +27,8 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
 
     function test_constructor_reverts_if_the_timelock_is_the_zero_address() public {
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
-        vm.expectRevert(ISecurityCouncil.ZeroTimelockNotAllowed.selector, predicted);
-        new SecurityCouncil({
+        vm.expectRevert(IXanSecurityCouncil.ZeroTimelockNotAllowed.selector, predicted);
+        new XanSecurityCouncil({
             governor: IGovernor(address(_governor)),
             timelock: TimelockController(payable(address(0))),
             token: address(_xanToken),
@@ -39,8 +39,8 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
 
     function test_constructor_reverts_if_the_token_is_the_zero_address() public {
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
-        vm.expectRevert(ISecurityCouncil.ZeroTokenNotAllowed.selector, predicted);
-        new SecurityCouncil({
+        vm.expectRevert(IXanSecurityCouncil.ZeroTokenNotAllowed.selector, predicted);
+        new XanSecurityCouncil({
             governor: IGovernor(address(_governor)),
             timelock: _timelock,
             token: address(0),
@@ -51,8 +51,8 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
 
     function test_constructor_reverts_if_the_initial_council_is_the_zero_address() public {
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
-        vm.expectRevert(ISecurityCouncil.ZeroCouncilNotAllowed.selector, predicted);
-        new SecurityCouncil({
+        vm.expectRevert(IXanSecurityCouncil.ZeroCouncilNotAllowed.selector, predicted);
+        new XanSecurityCouncil({
             governor: IGovernor(address(_governor)),
             timelock: _timelock,
             token: address(_xanToken),
@@ -64,7 +64,7 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
     function test_scheduleUpgrade_reverts_if_the_caller_is_not_the_council() public {
         address newImpl = _newImplementation();
         vm.expectRevert(
-            abi.encodeWithSelector(ISecurityCouncil.UnauthorizedCouncil.selector, address(this)),
+            abi.encodeWithSelector(IXanSecurityCouncil.UnauthorizedCouncil.selector, address(this)),
             address(_securityCouncil)
         );
         _securityCouncil.scheduleUpgrade(newImpl, "");
@@ -72,7 +72,7 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
 
     function test_scheduleUpgrade_reverts_if_the_implementation_is_the_zero_address() public {
         vm.prank(_COUNCIL_MULTISIG);
-        vm.expectRevert(ISecurityCouncil.ZeroImplementationNotAllowed.selector, address(_securityCouncil));
+        vm.expectRevert(IXanSecurityCouncil.ZeroImplementationNotAllowed.selector, address(_securityCouncil));
         _securityCouncil.scheduleUpgrade(address(0), "");
     }
 
@@ -86,7 +86,8 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
         bytes32 pending = _securityCouncil.pendingUpgrade();
         vm.prank(_COUNCIL_MULTISIG);
         vm.expectRevert(
-            abi.encodeWithSelector(ISecurityCouncil.UpgradeAlreadyPending.selector, pending), address(_securityCouncil)
+            abi.encodeWithSelector(IXanSecurityCouncil.UpgradeAlreadyPending.selector, pending),
+            address(_securityCouncil)
         );
         _securityCouncil.scheduleUpgrade(second, "");
     }
@@ -190,7 +191,7 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
         (address target, bytes memory payload, bytes32 salt) = _councilUpgradeCall(newImpl, "");
         vm.prank(_OTHER);
         vm.expectRevert(
-            abi.encodeWithSelector(ISecurityCouncil.UnauthorizedCouncil.selector, _OTHER), address(_securityCouncil)
+            abi.encodeWithSelector(IXanSecurityCouncil.UnauthorizedCouncil.selector, _OTHER), address(_securityCouncil)
         );
         _securityCouncil.cancel({target: target, value: 0, data: payload, salt: salt});
     }
@@ -199,9 +200,9 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
         // The single-call `cancel` path enforces the same guard as `cancelBatch`: it refuses to cancel a `setCouncil`
         // rotation on this module, so a captured council cannot veto its own replacement. The guard trips on the call
         // shape alone, before any timelock lookup.
-        bytes memory data = abi.encodeCall(ISecurityCouncil.setCouncil, (makeAddr("replacementCouncil")));
+        bytes memory data = abi.encodeCall(IXanSecurityCouncil.setCouncil, (makeAddr("replacementCouncil")));
         vm.prank(_COUNCIL_MULTISIG);
-        vm.expectRevert(ISecurityCouncil.CannotCancelCouncilRotation.selector, address(_securityCouncil));
+        vm.expectRevert(IXanSecurityCouncil.CannotCancelCouncilRotation.selector, address(_securityCouncil));
         _securityCouncil.cancel({target: address(_securityCouncil), value: 0, data: data, salt: bytes32(0)});
     }
 
@@ -258,7 +259,7 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
         uint256[] memory values = new uint256[](0);
         bytes[] memory payloads = new bytes[](0);
         vm.expectRevert(
-            abi.encodeWithSelector(ISecurityCouncil.UnauthorizedCouncil.selector, address(this)),
+            abi.encodeWithSelector(IXanSecurityCouncil.UnauthorizedCouncil.selector, address(this)),
             address(_securityCouncil)
         );
         _securityCouncil.cancelBatch({targets: targets, values: values, payloads: payloads, salt: bytes32(0)});
@@ -274,7 +275,7 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
         uint256[] memory values = new uint256[](1);
         bytes[] memory calldatas = new bytes[](1);
         targets[0] = address(_securityCouncil);
-        calldatas[0] = abi.encodeCall(ISecurityCouncil.setCouncil, (replacementCouncil));
+        calldatas[0] = abi.encodeCall(IXanSecurityCouncil.setCouncil, (replacementCouncil));
 
         string memory description = "remove the captured council";
         bytes32 descriptionHash = _queueVoterBodyProposal(targets, values, calldatas, description);
@@ -287,7 +288,7 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
         // The entrenchment attempt: the captured council fires its brake at its own removal. The guard blocks it.
         // (Delete the guard and this `cancelBatch` succeeds, the assertion below fails, and the council survives.)
         vm.prank(_COUNCIL_MULTISIG);
-        vm.expectRevert(ISecurityCouncil.CannotCancelCouncilRotation.selector, address(_securityCouncil));
+        vm.expectRevert(IXanSecurityCouncil.CannotCancelCouncilRotation.selector, address(_securityCouncil));
         _securityCouncil.cancelBatch({
             targets: targets, values: values, payloads: calldatas, salt: _voterBodySalt(descriptionHash)
         });
@@ -302,7 +303,7 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
         vm.expectRevert(
-            abi.encodeWithSelector(ISecurityCouncil.UnauthorizedCouncil.selector, _COUNCIL_MULTISIG),
+            abi.encodeWithSelector(IXanSecurityCouncil.UnauthorizedCouncil.selector, _COUNCIL_MULTISIG),
             address(_securityCouncil)
         );
         _securityCouncil.scheduleUpgrade(newImpl, "");
@@ -318,7 +319,7 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
     function test_setCouncil_reverts_if_the_caller_is_not_the_timelock() public {
         vm.prank(_COUNCIL_MULTISIG);
         vm.expectRevert(
-            abi.encodeWithSelector(ISecurityCouncil.UnauthorizedTimelock.selector, _COUNCIL_MULTISIG),
+            abi.encodeWithSelector(IXanSecurityCouncil.UnauthorizedTimelock.selector, _COUNCIL_MULTISIG),
             address(_securityCouncil)
         );
         _securityCouncil.setCouncil(makeAddr("newCouncil"));
@@ -326,7 +327,7 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
 
     function test_setCouncil_reverts_if_the_new_council_is_the_zero_address() public {
         vm.prank(address(_timelock));
-        vm.expectRevert(ISecurityCouncil.ZeroCouncilNotAllowed.selector, address(_securityCouncil));
+        vm.expectRevert(IXanSecurityCouncil.ZeroCouncilNotAllowed.selector, address(_securityCouncil));
         _securityCouncil.setCouncil(address(0));
     }
 
@@ -398,7 +399,7 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
     {
         target = address(_xanToken);
         payload = abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (newImpl, data));
-        salt = keccak256(abi.encode("SecurityCouncil.upgrade", newImpl, data));
+        salt = keccak256(abi.encode("XanSecurityCouncil.upgrade", newImpl, data));
     }
 
     /// @notice The timelock salt the governor derives from a proposal's description hash.

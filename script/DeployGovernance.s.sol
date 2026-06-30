@@ -5,15 +5,14 @@ pragma solidity ^0.8.30;
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
-
 import {Script} from "forge-std/Script.sol";
 
 import {Parameters} from "../src/libs/Parameters.sol";
-import {SecurityCouncil} from "../src/SecurityCouncil.sol";
 import {XanGovernor} from "../src/XanGovernor.sol";
+import {XanSecurityCouncil} from "../src/XanSecurityCouncil.sol";
 
 /// @notice Deploys and wires the XAN governance stack: a `TimelockController` (the eventual token owner), the
-/// `XanGovernor` driven by the token's `ERC20Votes`, and the `SecurityCouncil` upgrade module. The timelock's roles
+/// `XanGovernor` driven by the token's `ERC20Votes`, and the `XanSecurityCouncil` upgrade module. The timelock's roles
 /// are granted to the governor and the council module, the executor role is opened, and the deployer's temporary admin
 /// is renounced so only governance can change roles afterwards.
 ///
@@ -56,7 +55,7 @@ contract DeployGovernance is Script {
         });
 
         // 3. Deploy the security council module
-        SecurityCouncil securityCouncilModule = new SecurityCouncil({
+        XanSecurityCouncil securityCouncilModule = new XanSecurityCouncil({
             governor: IGovernor(address(xanGovernor)),
             timelock: timelockController,
             token: token,

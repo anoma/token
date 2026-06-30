@@ -5,16 +5,16 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
-import {ISecurityCouncil} from "./interfaces/ISecurityCouncil.sol";
+import {IXanSecurityCouncil} from "./interfaces/IXanSecurityCouncil.sol";
 
-/// @title SecurityCouncil
+/// @title XanSecurityCouncil
 /// @author Anoma Foundation, 2026
 /// @notice The security council's on-chain interface to XAN governance. This module
 /// holds the timelock's `PROPOSER` and `CANCELLER` roles and has the power to:
 /// * Propose XAN token upgrades that the voter body can cancel.
 /// * Cancel proposals by the XAN voter body in the timelock.
 /// @custom:security-contact security@anoma.foundation
-contract SecurityCouncil is ISecurityCouncil {
+contract XanSecurityCouncil is IXanSecurityCouncil {
     /// @notice The governor whose voting parameters size the cancel window.
     IGovernor private immutable _GOVERNOR;
 
@@ -70,7 +70,7 @@ contract SecurityCouncil is ISecurityCouncil {
         _CANCEL_BUFFER = cancelBuffer;
     }
 
-    /// @inheritdoc ISecurityCouncil
+    /// @inheritdoc IXanSecurityCouncil
     /// @dev Callable only by the council. The delay is sized (see `cancelWindow`) to leave a full voter cancel cycle.
     /// Only one council upgrade may be pending at a time.
     function scheduleUpgrade(address newImplementation, bytes calldata data)
@@ -99,7 +99,7 @@ contract SecurityCouncil is ISecurityCouncil {
         _TIMELOCK.schedule({target: _TOKEN, value: 0, data: call, predecessor: bytes32(0), salt: salt, delay: delay});
     }
 
-    /// @inheritdoc ISecurityCouncil
+    /// @inheritdoc IXanSecurityCouncil
     function cancel(address target, uint256 value, bytes calldata data, bytes32 salt)
         external
         override
@@ -119,7 +119,7 @@ contract SecurityCouncil is ISecurityCouncil {
         _cancel(operationId);
     }
 
-    /// @inheritdoc ISecurityCouncil
+    /// @inheritdoc IXanSecurityCouncil
     function cancelBatch(address[] calldata targets, uint256[] calldata values, bytes[] calldata payloads, bytes32 salt)
         external
         override
@@ -141,7 +141,7 @@ contract SecurityCouncil is ISecurityCouncil {
         _cancel(operationId);
     }
 
-    /// @inheritdoc ISecurityCouncil
+    /// @inheritdoc IXanSecurityCouncil
     /// @dev Callable only by the timelock (a passed governance proposal), so the voter body can replace a captured or
     /// inactive council.
     function setCouncil(address newCouncil) external override onlyTimelock {
@@ -150,17 +150,17 @@ contract SecurityCouncil is ISecurityCouncil {
         _council = newCouncil;
     }
 
-    /// @inheritdoc ISecurityCouncil
+    /// @inheritdoc IXanSecurityCouncil
     function council() external view override returns (address councilAddress) {
         councilAddress = _council;
     }
 
-    /// @inheritdoc ISecurityCouncil
+    /// @inheritdoc IXanSecurityCouncil
     function pendingUpgrade() external view override returns (bytes32 operationId) {
         operationId = _pendingOperation;
     }
 
-    /// @inheritdoc ISecurityCouncil
+    /// @inheritdoc IXanSecurityCouncil
     /// @dev Computed live as `votingDelay + votingPeriod + timelock.getMinDelay() + buffer`, so the window always
     /// exceeds a full voter cancel cycle.
     function cancelWindow() public view override returns (uint256 delay) {
@@ -181,6 +181,6 @@ contract SecurityCouncil is ISecurityCouncil {
     /// @param data The reinitialization calldata forwarded to `upgradeToAndCall`.
     /// @return salt The operation salt.
     function _salt(address newImplementation, bytes calldata data) private pure returns (bytes32 salt) {
-        salt = keccak256(abi.encode("SecurityCouncil.upgrade", newImplementation, data));
+        salt = keccak256(abi.encode("XanSecurityCouncil.upgrade", newImplementation, data));
     }
 }
