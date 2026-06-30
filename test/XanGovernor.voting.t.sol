@@ -41,22 +41,16 @@ contract XanGovernorVotingTest is XanGovernorFixture {
     }
 
     function test_proposal_is_defeated_without_quorum() public {
-        // `_OTHER` self-delegates but holds no tokens, so its `For` vote cannot reach quorum.
-        vm.prank(_OTHER);
-        _xanToken.delegate(_OTHER);
-        vm.warp(block.timestamp + 1);
-
         (uint256 proposalId, address[] memory targets, uint256[] memory values, bytes[] memory calldatas) =
             _treasuryTransferProposal("no quorum");
 
-        vm.prank(_OTHER);
+        vm.prank(_voter);
         _governor.propose(targets, values, calldatas, "no quorum");
 
+        // Open and close the voting window without any votes being cast.
         _warpIntoVotingPeriod();
-        vm.prank(_OTHER);
-        _governor.castVote(proposalId, uint8(1)); // For, but with zero weight
-
         _warpPastVotingPeriod();
+
         assertEq(uint8(_governor.state(proposalId)), uint8(IGovernor.ProposalState.Defeated));
     }
 

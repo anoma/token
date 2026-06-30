@@ -51,8 +51,8 @@ library Parameters {
     /// @notice The duration of a governor proposal's voting window.
     uint32 internal constant VOTING_PERIOD = 1 weeks;
 
-    /// @notice The minimum voting power required to create a governor proposal (`0` lets any holder propose).
-    uint256 internal constant PROPOSAL_THRESHOLD = 0;
+    /// @notice The minimum voting power required to create a governor proposal.
+    uint256 internal constant PROPOSAL_THRESHOLD = 10 ** 18; // 1 XAN
 
     /// @notice Reaction-time margin added on top of a full voter cancel cycle when the `XanSecurityCouncil` module
     /// sizes its fast-track upgrade delay, so the voter body has time to notice and cancel.
