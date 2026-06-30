@@ -83,9 +83,7 @@ contract XanV2 is IXanV2, XanV1 {
 
     /// @notice Throws if the sender is not the forwarder.
     function _checkForwarder() internal view {
-        if (forwarder() != _msgSender()) {
-            revert UnauthorizedCaller({caller: _msgSender()});
-        }
+        require(forwarder() == _msgSender(), UnauthorizedCaller({caller: _msgSender()}));
     }
 
     /// @notice Returns the storage from the Xan V2 storage location.

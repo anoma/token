@@ -25,12 +25,8 @@ contract XanV2Forwarder {
     /// @param calldataCarrierLogicRef The logic reference of the associated calldata carrier resource.
     constructor(address xanProxy, address protocolAdapter, bytes32 calldataCarrierLogicRef) {
         // Zero checks
-        if (xanProxy == address(0) || protocolAdapter == address(0)) {
-            revert AddressZero();
-        }
-        if (calldataCarrierLogicRef == bytes32(0)) {
-            revert Bytes32Zero();
-        }
+        require(xanProxy != address(0) && protocolAdapter != address(0), AddressZero());
+        require(calldataCarrierLogicRef != bytes32(0), Bytes32Zero());
 
         _XAN_PROXY = XanV2(xanProxy);
         _PROTOCOL_ADAPTER = protocolAdapter;
@@ -44,23 +40,19 @@ contract XanV2Forwarder {
     /// @param input The `bytes` encoded mint calldata (including the `bytes4` function selector).
     /// @return output The empty output of the call.
     function forwardCall(bytes calldata input) external returns (bytes memory output) {
-        if (msg.sender != _PROTOCOL_ADAPTER) {
-            revert UnauthorizedCaller(msg.sender);
-        }
+        require(msg.sender == _PROTOCOL_ADAPTER, UnauthorizedCaller(msg.sender));
 
         bytes4 selector = bytes4(input[:4]);
 
         bytes memory args = input[4:];
 
         // Check that that the mint function is the call target.
-        if (selector != XanV2.mint.selector) {
-            revert InvalidFunctionSelector({expected: XanV2.mint.selector, actual: selector});
-        }
+        require(
+            selector == XanV2.mint.selector, InvalidFunctionSelector({expected: XanV2.mint.selector, actual: selector})
+        );
         // NOTE: The recipient address is not needed on the EVM side, because the forwarder receives the tokens.
         (address recipient, uint256 value) = abi.decode(args, (address, uint256));
-        if (recipient == address(this)) {
-            revert InvalidMintRecipient({recipient: address(this)});
-        }
+        require(recipient != address(this), InvalidMintRecipient({recipient: address(this)}));
 
         output = bytes("");
 
