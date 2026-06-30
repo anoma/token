@@ -111,7 +111,18 @@ contract SecurityCouncil is ISecurityCouncil {
     }
 
     /// @inheritdoc ISecurityCouncil
-    function cancel(bytes32 operationId) external override onlyCouncil {
+    function cancel(address[] calldata targets, uint256[] calldata values, bytes[] calldata payloads, bytes32 salt)
+        external
+        override
+        onlyCouncil
+        returns (bytes32 operationId)
+    {
+        // Voter-body operations are always batches scheduled with a zero predecessor (see
+        // `GovernorTimelockControl._queueOperations`), so the id is reconstructed accordingly.
+        operationId = _TIMELOCK.hashOperationBatch({
+            targets: targets, values: values, payloads: payloads, predecessor: bytes32(0), salt: salt
+        });
+
         emit ProposalCancelled(operationId);
 
         _TIMELOCK.cancel(operationId);

@@ -194,9 +194,11 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
         });
         assertTrue(_timelock.isOperationPending(operationId));
 
+        bytes32 salt = bytes32(bytes20(address(_governor))) ^ descriptionHash;
         vm.prank(_COUNCIL_MULTISIG);
-        _securityCouncil.cancel(operationId);
+        bytes32 cancelledId = _securityCouncil.cancel(targets, values, calldatas, salt);
 
+        assertEq(cancelledId, operationId);
         assertFalse(_timelock.isOperationPending(operationId));
     }
 
@@ -204,7 +206,8 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
         address newImpl = _newImplementation();
 
         // The upgrade is bundled with a second (benign) action, so the queued operation is a multi-action batch.
-        // A reconstruction-based cancel could not match this batch's id; the general cancel by id can.
+        // The council reconstructs the batch (its parameters are public on-chain) and cancels it; bundling, and any
+        // batch shape other than a standalone `setCouncil`, stays cancellable.
         address[] memory targets = new address[](2);
         uint256[] memory values = new uint256[](2);
         bytes[] memory calldatas = new bytes[](2);
@@ -230,18 +233,61 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
         });
         assertTrue(_timelock.isOperationPending(operationId));
 
+        bytes32 salt = bytes32(bytes20(address(_governor))) ^ descriptionHash;
         vm.prank(_COUNCIL_MULTISIG);
-        _securityCouncil.cancel(operationId);
+        _securityCouncil.cancel(targets, values, calldatas, salt);
 
         assertFalse(_timelock.isOperationPending(operationId));
     }
 
     function test_cancel_reverts_if_the_caller_is_not_the_council() public {
+        address[] memory targets = new address[](0);
+        uint256[] memory values = new uint256[](0);
+        bytes[] memory payloads = new bytes[](0);
         vm.expectRevert(
             abi.encodeWithSelector(ISecurityCouncil.UnauthorizedCouncil.selector, address(this)),
             address(_securityCouncil)
         );
-        _securityCouncil.cancel(bytes32(uint256(1)));
+        _securityCouncil.cancel(targets, values, payloads, bytes32(0));
+    }
+
+    /// @notice Characterizes the entrenchment vulnerability: with no guard on `cancel`, a captured council can use its
+    /// general brake to veto its own removal, so the voter body can never replace it. The follow-up fix makes the
+    /// `cancel` below revert; this test then asserts the council is removed instead.
+    function test_cancel_can_currently_veto_a_council_rotation() public {
+        // The voter body moves to replace the (captured) council with a fresh multisig: a standalone `setCouncil`.
+        address replacementCouncil = makeAddr("replacementCouncil");
+        address[] memory targets = new address[](1);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        targets[0] = address(_securityCouncil);
+        calldatas[0] = abi.encodeCall(ISecurityCouncil.setCouncil, (replacementCouncil));
+
+        string memory description = "remove the captured council";
+        bytes32 descriptionHash = keccak256(bytes(description));
+
+        vm.prank(_voter);
+        uint256 proposalId =
+            _governor.propose({targets: targets, values: values, calldatas: calldatas, description: description});
+        vm.warp(block.timestamp + _governor.votingDelay() + 1);
+        vm.prank(_voter);
+        _governor.castVote(proposalId, uint8(1));
+        vm.warp(block.timestamp + _governor.votingPeriod() + 1);
+        _governor.queue({targets: targets, values: values, calldatas: calldatas, descriptionHash: descriptionHash});
+
+        bytes32 operationId = _voterBodyOperationId({
+            targets: targets, values: values, calldatas: calldatas, descriptionHash: descriptionHash
+        });
+        bytes32 salt = bytes32(bytes20(address(_governor))) ^ descriptionHash;
+        assertTrue(_timelock.isOperationPending(operationId));
+
+        // The captured council vetoes its own removal through the general brake. Today this succeeds: the bug.
+        vm.prank(_COUNCIL_MULTISIG);
+        _securityCouncil.cancel(targets, values, calldatas, salt);
+
+        // The rotation is gone from the timelock and the council stays in control.
+        assertFalse(_timelock.isOperationPending(operationId));
+        assertEq(_securityCouncil.council(), _COUNCIL_MULTISIG);
     }
 
     function test_setCouncil_lets_the_voter_body_rotate_the_council() public {
