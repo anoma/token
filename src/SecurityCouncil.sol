@@ -109,7 +109,9 @@ contract SecurityCouncil is ISecurityCouncil {
         // The voter body's power to replace the council (`setCouncil`) must survive the council's brake; otherwise a
         // captured council could veto its own removal indefinitely. A `setCouncil` call is therefore the one
         // operation the council may not cancel.
-        require(!(target == address(this) && bytes4(data) == this.setCouncil.selector), CannotCancelCouncilRotation());
+        if (target == address(this) && bytes4(data) == this.setCouncil.selector) {
+            revert CannotCancelCouncilRotation();
+        }
 
         operationId =
             _TIMELOCK.hashOperation({target: target, value: value, data: data, predecessor: bytes32(0), salt: salt});
@@ -128,10 +130,9 @@ contract SecurityCouncil is ISecurityCouncil {
         // captured council could veto its own removal indefinitely. A standalone `setCouncil` call is therefore the one
         // operation the council may not cancel. Bundling it with anything else (length != 1) stays cancellable, so a
         // malicious upgrade cannot ride along under this exemption.
-        require(
-            !(targets.length == 1 && targets[0] == address(this) && bytes4(payloads[0]) == this.setCouncil.selector),
-            CannotCancelCouncilRotation()
-        );
+        if (targets.length == 1 && targets[0] == address(this) && bytes4(payloads[0]) == this.setCouncil.selector) {
+            revert CannotCancelCouncilRotation();
+        }
 
         operationId = _TIMELOCK.hashOperationBatch({
             targets: targets, values: values, payloads: payloads, predecessor: bytes32(0), salt: salt
