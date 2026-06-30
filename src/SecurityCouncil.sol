@@ -126,8 +126,6 @@ contract SecurityCouncil is ISecurityCouncil {
             CannotCancelCouncilRotation()
         );
 
-        // Voter-body operations are always batches scheduled with a zero predecessor (see
-        // `GovernorTimelockControl._queueOperations`), so the id is reconstructed accordingly.
         operationId = _TIMELOCK.hashOperationBatch({
             targets: targets, values: values, payloads: payloads, predecessor: bytes32(0), salt: salt
         });
