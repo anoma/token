@@ -117,6 +117,15 @@ contract SecurityCouncil is ISecurityCouncil {
         onlyCouncil
         returns (bytes32 operationId)
     {
+        // The voter body's power to replace the council (`setCouncil`) must survive the council's brake; otherwise a
+        // captured council could veto its own removal indefinitely. A standalone `setCouncil` call is therefore the one
+        // operation the council may not cancel. Bundling it with anything else (length != 1) stays cancellable, so a
+        // malicious upgrade cannot ride along under this exemption.
+        require(
+            !(targets.length == 1 && targets[0] == address(this) && bytes4(payloads[0]) == this.setCouncil.selector),
+            CannotCancelCouncilRotation()
+        );
+
         // Voter-body operations are always batches scheduled with a zero predecessor (see
         // `GovernorTimelockControl._queueOperations`), so the id is reconstructed accordingly.
         operationId = _TIMELOCK.hashOperationBatch({
