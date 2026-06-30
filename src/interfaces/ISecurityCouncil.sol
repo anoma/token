@@ -60,6 +60,10 @@ interface ISecurityCouncil {
     /// @notice Thrown when the implementation address supplied to `scheduleUpgrade` is zero.
     error ZeroImplementationNotAllowed();
 
+    /// @notice Thrown when the council attempts to cancel a standalone `setCouncil` rotation, which would let a
+    /// captured council veto its own replacement.
+    error CannotCancelCouncilRotation();
+
     /// @notice Schedules a token upgrade by scheduling it in the timelock.
     /// @param newImplementation The implementation to upgrade the token to.
     /// @param data The reinitialization calldata forwarded to `upgradeToAndCall` (may be empty).
@@ -74,7 +78,9 @@ interface ISecurityCouncil {
     /// @notice Cancels a queued voter-body operation in the timelock, callable only by the council. This is the
     /// council's general emergency brake: it reconstructs the operation id from the batch (all parameters are public in
     /// the timelock's `CallScheduled`/`CallSalt` events), so a voter-body upgrade cannot evade it by being bundled with
-    /// other actions. The council's propose power stays upgrades-only; this cancel power does not.
+    /// other actions. The one exception is a standalone `setCouncil` call: the council may not cancel its own
+    /// replacement, so a captured council cannot entrench itself by vetoing every rotation. The council's propose power
+    /// stays upgrades-only; this cancel power does not.
     /// @param targets The addresses the operation calls.
     /// @param values The native token values forwarded with each call.
     /// @param payloads The calldata of each call.
