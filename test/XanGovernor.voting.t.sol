@@ -24,7 +24,7 @@ contract XanGovernorVotingTest is XanGovernorFixture {
         vm.prank(_voter);
         _governor.propose(targets, values, calldatas, "tally");
 
-        vm.warp(block.timestamp + _governor.votingDelay() + 1);
+        _warpIntoVotingPeriod();
         assertEq(uint8(_governor.state(proposalId)), uint8(IGovernor.ProposalState.Active));
 
         vm.prank(_voter);
@@ -36,7 +36,7 @@ contract XanGovernorVotingTest is XanGovernorFixture {
         assertEq(against, 0);
         assertEq(abstain, 0);
 
-        vm.warp(block.timestamp + _governor.votingPeriod() + 1);
+        _warpPastVotingPeriod();
         assertEq(uint8(_governor.state(proposalId)), uint8(IGovernor.ProposalState.Succeeded));
     }
 
@@ -52,11 +52,11 @@ contract XanGovernorVotingTest is XanGovernorFixture {
         vm.prank(_OTHER);
         _governor.propose(targets, values, calldatas, "no quorum");
 
-        vm.warp(block.timestamp + _governor.votingDelay() + 1);
+        _warpIntoVotingPeriod();
         vm.prank(_OTHER);
         _governor.castVote(proposalId, uint8(1)); // For, but with zero weight
 
-        vm.warp(block.timestamp + _governor.votingPeriod() + 1);
+        _warpPastVotingPeriod();
         assertEq(uint8(_governor.state(proposalId)), uint8(IGovernor.ProposalState.Defeated));
     }
 

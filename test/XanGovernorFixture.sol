@@ -115,13 +115,11 @@ abstract contract XanGovernorFixture is Test {
         vm.prank(_voter);
         proposalId = _governor.propose(targets, values, calldatas, description);
 
-        // Voting opens after `votingDelay` seconds.
-        vm.warp(block.timestamp + _governor.votingDelay() + 1);
+        _warpIntoVotingPeriod();
         vm.prank(_voter);
         _governor.castVote(proposalId, uint8(1)); // 1 == For
 
-        // Voting closes after `votingPeriod` seconds.
-        vm.warp(block.timestamp + _governor.votingPeriod() + 1);
+        _warpPastVotingPeriod();
 
         bytes32 descriptionHash = keccak256(bytes(description));
         _governor.queue(targets, values, calldatas, descriptionHash);
@@ -129,5 +127,16 @@ abstract contract XanGovernorFixture is Test {
         // Wait out the timelock delay, then execute.
         skip(_TIMELOCK_MIN_DELAY + 1);
         _governor.execute(targets, values, calldatas, descriptionHash);
+    }
+
+    /// @notice Warps to just inside the voting period (one second past the voting delay), so the proposal is `Active`
+    /// and votes can be cast.
+    function _warpIntoVotingPeriod() internal {
+        vm.warp(block.timestamp + _governor.votingDelay() + 1);
+    }
+
+    /// @notice Warps to just past the voting period, so voting has closed and a passing proposal can be queued.
+    function _warpPastVotingPeriod() internal {
+        vm.warp(block.timestamp + _governor.votingPeriod() + 1);
     }
 }

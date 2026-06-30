@@ -214,17 +214,16 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
         });
         assertTrue(_timelock.isOperationPending(operationId));
 
-        // Voter-body proposals are scheduled by the governor as batches with a zero predecessor.
-        bytes32 salt = bytes32(bytes20(address(_governor))) ^ descriptionHash;
         vm.prank(_COUNCIL_MULTISIG);
-        bytes32 cancelledId =
-            _securityCouncil.cancelBatch({targets: targets, values: values, payloads: calldatas, salt: salt});
+        bytes32 cancelledId = _securityCouncil.cancelBatch({
+            targets: targets, values: values, payloads: calldatas, salt: _voterBodySalt(descriptionHash)
+        });
 
         assertEq(cancelledId, operationId);
         assertFalse(_timelock.isOperationPending(operationId));
     }
 
-    function test_cancel_cancels_a_voter_body_upgrade_bundled_with_other_actions() public {
+    function test_cancelBatch_cancels_a_voter_body_upgrade_bundled_with_other_actions() public {
         address newImpl = _newImplementation();
 
         // The upgrade is bundled with a second (benign) action, so the queued operation is a multi-action batch.
@@ -238,26 +237,18 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
         targets[1] = address(_xanToken);
         calldatas[1] = abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (newImpl, ""));
 
-        string memory description = "upgrade bundled with another action";
-        bytes32 descriptionHash = keccak256(bytes(description));
-
-        vm.prank(_voter);
-        uint256 proposalId =
-            _governor.propose({targets: targets, values: values, calldatas: calldatas, description: description});
-        vm.warp(block.timestamp + _governor.votingDelay() + 1);
-        vm.prank(_voter);
-        _governor.castVote(proposalId, uint8(1));
-        vm.warp(block.timestamp + _governor.votingPeriod() + 1);
-        _governor.queue({targets: targets, values: values, calldatas: calldatas, descriptionHash: descriptionHash});
+        bytes32 descriptionHash =
+            _queueVoterBodyProposal(targets, values, calldatas, "upgrade bundled with another action");
 
         bytes32 operationId = _voterBodyOperationId({
             targets: targets, values: values, calldatas: calldatas, descriptionHash: descriptionHash
         });
         assertTrue(_timelock.isOperationPending(operationId));
 
-        bytes32 salt = bytes32(bytes20(address(_governor))) ^ descriptionHash;
         vm.prank(_COUNCIL_MULTISIG);
-        _securityCouncil.cancelBatch({targets: targets, values: values, payloads: calldatas, salt: salt});
+        _securityCouncil.cancelBatch({
+            targets: targets, values: values, payloads: calldatas, salt: _voterBodySalt(descriptionHash)
+        });
 
         assertFalse(_timelock.isOperationPending(operationId));
     }
@@ -286,28 +277,20 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
         calldatas[0] = abi.encodeCall(ISecurityCouncil.setCouncil, (replacementCouncil));
 
         string memory description = "remove the captured council";
-        bytes32 descriptionHash = keccak256(bytes(description));
-
-        vm.prank(_voter);
-        uint256 proposalId =
-            _governor.propose({targets: targets, values: values, calldatas: calldatas, description: description});
-        vm.warp(block.timestamp + _governor.votingDelay() + 1);
-        vm.prank(_voter);
-        _governor.castVote(proposalId, uint8(1));
-        vm.warp(block.timestamp + _governor.votingPeriod() + 1);
-        _governor.queue({targets: targets, values: values, calldatas: calldatas, descriptionHash: descriptionHash});
+        bytes32 descriptionHash = _queueVoterBodyProposal(targets, values, calldatas, description);
 
         bytes32 operationId = _voterBodyOperationId({
             targets: targets, values: values, calldatas: calldatas, descriptionHash: descriptionHash
         });
-        bytes32 salt = bytes32(bytes20(address(_governor))) ^ descriptionHash;
         assertTrue(_timelock.isOperationPending(operationId));
 
         // The entrenchment attempt: the captured council fires its brake at its own removal. The guard blocks it.
         // (Delete the guard and this `cancelBatch` succeeds, the assertion below fails, and the council survives.)
         vm.prank(_COUNCIL_MULTISIG);
         vm.expectRevert(ISecurityCouncil.CannotCancelCouncilRotation.selector, address(_securityCouncil));
-        _securityCouncil.cancelBatch({targets: targets, values: values, payloads: calldatas, salt: salt});
+        _securityCouncil.cancelBatch({
+            targets: targets, values: values, payloads: calldatas, salt: _voterBodySalt(descriptionHash)
+        });
 
         // The removal survives the brake and executes, replacing the council.
         assertTrue(_timelock.isOperationPending(operationId));
@@ -371,6 +354,28 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
         _timelock.execute({target: target, value: 0, payload: payload, predecessor: bytes32(0), salt: salt});
     }
 
+    /// @notice Has the voter body propose, pass, and queue (but not execute) an arbitrary proposal.
+    /// @return descriptionHash The hash of the proposal description, needed to rebuild its timelock operation id.
+    function _queueVoterBodyProposal(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) internal returns (bytes32 descriptionHash) {
+        descriptionHash = keccak256(bytes(description));
+
+        vm.prank(_voter);
+        uint256 proposalId =
+            _governor.propose({targets: targets, values: values, calldatas: calldatas, description: description});
+
+        _warpIntoVotingPeriod();
+        vm.prank(_voter);
+        _governor.castVote(proposalId, uint8(1));
+
+        _warpPastVotingPeriod();
+        _governor.queue({targets: targets, values: values, calldatas: calldatas, descriptionHash: descriptionHash});
+    }
+
     /// @notice Has the voter body propose, pass, and queue (but not execute) a token upgrade.
     function _queueVoterBodyUpgrade(address newImpl)
         internal
@@ -382,19 +387,7 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
         targets[0] = address(_xanToken);
         calldatas[0] = abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (newImpl, ""));
 
-        string memory description = "voter-body upgrade";
-        descriptionHash = keccak256(bytes(description));
-
-        vm.prank(_voter);
-        uint256 proposalId =
-            _governor.propose({targets: targets, values: values, calldatas: calldatas, description: description});
-
-        vm.warp(block.timestamp + _governor.votingDelay() + 1);
-        vm.prank(_voter);
-        _governor.castVote(proposalId, uint8(1));
-
-        vm.warp(block.timestamp + _governor.votingPeriod() + 1);
-        _governor.queue({targets: targets, values: values, calldatas: calldatas, descriptionHash: descriptionHash});
+        descriptionHash = _queueVoterBodyProposal(targets, values, calldatas, "voter-body upgrade");
     }
 
     /// @notice Rebuilds the council's upgrade call and salt (deterministic, matching the module).
@@ -408,6 +401,11 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
         salt = keccak256(abi.encode("SecurityCouncil.upgrade", newImpl, data));
     }
 
+    /// @notice The timelock salt the governor derives from a proposal's description hash.
+    function _voterBodySalt(bytes32 descriptionHash) internal view returns (bytes32 salt) {
+        salt = bytes32(bytes20(address(_governor))) ^ descriptionHash;
+    }
+
     /// @notice Computes the timelock operation id the governor assigns to a queued voter-body proposal.
     function _voterBodyOperationId(
         address[] memory targets,
@@ -415,9 +413,12 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) internal view returns (bytes32 operationId) {
-        bytes32 salt = bytes32(bytes20(address(_governor))) ^ descriptionHash;
         operationId = _timelock.hashOperationBatch({
-            targets: targets, values: values, payloads: calldatas, predecessor: bytes32(0), salt: salt
+            targets: targets,
+            values: values,
+            payloads: calldatas,
+            predecessor: bytes32(0),
+            salt: _voterBodySalt(descriptionHash)
         });
     }
 }
