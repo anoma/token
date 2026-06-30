@@ -48,8 +48,7 @@ interface ISecurityCouncil {
     /// @notice Thrown when the implementation address supplied to `scheduleUpgrade` is zero.
     error ZeroImplementationNotAllowed();
 
-    /// @notice Thrown when the council attempts to cancel a standalone `setCouncil` rotation, which would let a
-    /// captured council veto its own replacement.
+    /// @notice Thrown when the council attempts to cancel a standalone `setCouncil` rotation.
     error CannotCancelCouncilRotation();
 
     /// @notice Schedules a token upgrade by scheduling it in the timelock.
