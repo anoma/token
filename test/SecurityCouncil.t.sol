@@ -276,7 +276,7 @@ contract SecurityCouncilTest is SecurityCouncilFixture {
     /// @notice The attack the `CannotCancelCouncilRotation` guard exists to stop: a captured council using its general
     /// brake to veto its own removal. Without the guard, the `cancelBatch` below succeeds, the rotation is deleted from
     /// the timelock, and the council can repeat this on every removal attempt, entrenching itself forever.
-    function test_cancelBatch_cannot_be_used_to_entrench_a_captured_council() public {
+    function test_cancelBatch_cannot_be_used_to_cancel_a_setCouncil_rotation() public {
         // The voter body moves to replace the (captured) council with a fresh multisig: a standalone `setCouncil`.
         address replacementCouncil = makeAddr("replacementCouncil");
         address[] memory targets = new address[](1);
