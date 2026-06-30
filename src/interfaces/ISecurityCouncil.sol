@@ -75,13 +75,7 @@ interface ISecurityCouncil {
     /// @return operationId The cancelled timelock operation id.
     function cancelCouncilUpgrade() external returns (bytes32 operationId);
 
-    /// @notice Cancels a queued voter-body operation in the timelock, callable only by the council. This is the
-    /// council's general emergency brake: it reconstructs the operation id from the batch (all parameters are public in
-    /// the timelock's `CallScheduled`/`CallSalt` events), so a voter-body upgrade cannot evade it by being bundled with
-    /// other actions. The one exception is a standalone `setCouncil` call: the council may not cancel its own
-    /// replacement, so a captured council cannot entrench itself by vetoing every rotation. The council's propose power
-    /// stays upgrades-only; this cancel power does not.
-    /// @param targets The addresses the operation calls.
+    /// @notice Cancels a queued operation in the timelock.
     /// @param values The native token values forwarded with each call.
     /// @param payloads The calldata of each call.
     /// @param salt The operation salt (read from the timelock's `CallSalt` event).
