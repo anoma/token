@@ -325,6 +325,37 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         assertFalse(_timelock.isOperationPending(operationId));
     }
 
+    function test_cancelBatch_can_cancel_a_setCouncil_bundled_with_an_upgrade() public {
+        // A standalone `setCouncil` is the one operation the council may not cancel. Bundling it with a second action
+        // (here a token upgrade) makes the batch length != 1, so the exemption does not apply and the whole batch
+        // stays cancellable: a malicious upgrade cannot shield itself by riding along with a rotation.
+        address newImpl = _newImplementation();
+        address replacementCouncil = makeAddr("replacementCouncil");
+
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(_securityCouncil);
+        calldatas[0] = abi.encodeCall(IXanSecurityCouncil.setCouncil, (replacementCouncil));
+        targets[1] = address(_xanToken);
+        calldatas[1] = abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (newImpl, ""));
+
+        bytes32 descriptionHash =
+            _queueVoterBodyProposal(targets, values, calldatas, "rotation bundled with an upgrade");
+        bytes32 operationId = _voterBodyOperationId({
+            targets: targets, values: values, calldatas: calldatas, descriptionHash: descriptionHash
+        });
+        assertTrue(_timelock.isOperationPending(operationId));
+
+        vm.prank(_COUNCIL_MULTISIG);
+        bytes32 cancelledId = _securityCouncil.cancelBatch({
+            targets: targets, values: values, payloads: calldatas, salt: _voterBodySalt(descriptionHash)
+        });
+
+        assertEq(cancelledId, operationId);
+        assertFalse(_timelock.isOperationPending(operationId));
+    }
+
     function test_cancelBatch_reverts_if_the_caller_is_not_the_council() public {
         address[] memory targets = new address[](0);
         uint256[] memory values = new uint256[](0);
