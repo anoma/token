@@ -10,7 +10,7 @@ import {XanGovernorFixture} from "./XanGovernorFixture.sol";
 /// @notice Covers the governor's configuration getters and the proposal cancellation path: proposal creation is gated
 /// by the threshold, quorum tracks the configured supply fraction, timelock proposals report as needing queuing, and a
 /// proposer can withdraw a still-pending proposal.
-contract XanGovernorProposalLifecycleTest is XanGovernorFixture {
+contract XanGovernorProposalTest is XanGovernorFixture {
     function test_proposalThreshold_gates_proposal_creation() public {
         assertEq(_governor.proposalThreshold(), _PROPOSAL_THRESHOLD);
 
