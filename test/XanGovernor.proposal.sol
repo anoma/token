@@ -26,7 +26,7 @@ contract XanGovernorProposalTest is XanGovernorFixture {
         _governor.propose(targets, values, calldatas, "below threshold");
     }
 
-    function test_proposalNeedsQueuing_is_true_for_the_timelock_governor() public {
+    function test_proposalNeedsQueuing_returns_true_for_proposals() public {
         (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _noopProposal();
         vm.prank(_voter);
         uint256 proposalId = _governor.propose(targets, values, calldatas, "needs queuing");
@@ -35,7 +35,7 @@ contract XanGovernorProposalTest is XanGovernorFixture {
         assertTrue(_governor.proposalNeedsQueuing(proposalId));
     }
 
-    function test_proposer_can_cancel_a_pending_proposal() public {
+    function test_cancel_cancels_pending_proposals_if_called_by_the_proposer() public {
         (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _noopProposal();
         vm.prank(_voter);
         uint256 proposalId = _governor.propose(targets, values, calldatas, "cancel me");
