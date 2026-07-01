@@ -92,6 +92,28 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         _securityCouncil.scheduleUpgrade(second, "");
     }
 
+    function test_scheduleUpgrade_can_be_rescheduled_after_a_cancel() public {
+        address newImpl = _newImplementation();
+
+        vm.prank(_COUNCIL_MULTISIG);
+        _securityCouncil.scheduleUpgrade(newImpl, "");
+        bytes32 firstId = _securityCouncil.pendingUpgrade();
+
+        // Withdraw the upgrade, clearing the in-flight slot.
+        (address target, bytes memory payload, bytes32 salt) = _councilUpgradeCall(newImpl, "");
+        vm.prank(_COUNCIL_MULTISIG);
+        _securityCouncil.cancel({target: target, value: 0, data: payload, salt: salt});
+        assertFalse(_timelock.isOperationPending(firstId));
+
+        // The cancelled operation is no longer pending, so the same upgrade re-schedules: this exercises the
+        // `!isOperationPending` branch of the in-flight guard (the first schedule took the `== bytes32(0)` branch).
+        // The deterministic salt makes the re-scheduled id identical to the first.
+        vm.prank(_COUNCIL_MULTISIG);
+        bytes32 secondId = _securityCouncil.scheduleUpgrade(newImpl, "");
+        assertEq(secondId, firstId);
+        assertTrue(_timelock.isOperationPending(secondId));
+    }
+
     function test_scheduleUpgrade_lets_the_council_fast_track_an_upgrade() public {
         address newImpl = _newImplementation();
 
