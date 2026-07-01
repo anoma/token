@@ -137,9 +137,10 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         assertEq(_xanToken.implementation(), newImpl);
     }
 
-    function test_scheduleUpgrade_forwards_the_reinitialization_data() public {
+    function test_scheduleUpgrade_forwards_arbitrary_upgrade_data() public {
         address newImpl = _newImplementation();
-        // A non-empty reinitialization payload forwarded to `upgradeToAndCall`.
+        // A non-empty payload forwarded verbatim to `upgradeToAndCall`; `clock()` is just an always-succeeding call,
+        // not a reinitializer.
         bytes memory data = abi.encodeWithSelector(_xanToken.clock.selector);
 
         // The data is part of the salt, so the same upgrade with data has a different operation id than without it.
@@ -180,7 +181,16 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         // One second before the window closes the operation is not yet executable.
         skip(_securityCouncil.cancelWindow() - 1);
         (address target, bytes memory payload, bytes32 salt) = _councilUpgradeCall(newImpl, "");
-        vm.expectRevert(address(_timelock));
+        bytes32 execId =
+            _timelock.hashOperation({target: target, value: 0, data: payload, predecessor: bytes32(0), salt: salt});
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TimelockController.TimelockUnexpectedOperationState.selector,
+                execId,
+                _timelockStateBitmap(TimelockController.OperationState.Ready)
+            ),
+            address(_timelock)
+        );
         _timelock.execute({target: target, value: 0, payload: payload, predecessor: bytes32(0), salt: salt});
     }
 
@@ -205,7 +215,16 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         assertFalse(_timelock.isOperationPending(operationId));
         skip(_securityCouncil.cancelWindow() + 1);
         (address target, bytes memory payload, bytes32 salt) = _councilUpgradeCall(newImpl, "");
-        vm.expectRevert(address(_timelock));
+        bytes32 execId =
+            _timelock.hashOperation({target: target, value: 0, data: payload, predecessor: bytes32(0), salt: salt});
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TimelockController.TimelockUnexpectedOperationState.selector,
+                execId,
+                _timelockStateBitmap(TimelockController.OperationState.Ready)
+            ),
+            address(_timelock)
+        );
         _timelock.execute({target: target, value: 0, payload: payload, predecessor: bytes32(0), salt: salt});
     }
 
@@ -239,8 +258,18 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         _securityCouncil.cancel({target: target, value: 0, data: payload, salt: salt});
 
         // A second cancel of the same (now-cancelled) operation reverts inside the timelock.
+        bytes32 operationId =
+            _timelock.hashOperation({target: target, value: 0, data: payload, predecessor: bytes32(0), salt: salt});
         vm.prank(_COUNCIL_MULTISIG);
-        vm.expectRevert(address(_timelock));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TimelockController.TimelockUnexpectedOperationState.selector,
+                operationId,
+                _timelockStateBitmap(TimelockController.OperationState.Waiting)
+                    | _timelockStateBitmap(TimelockController.OperationState.Ready)
+            ),
+            address(_timelock)
+        );
         _securityCouncil.cancel({target: target, value: 0, data: payload, salt: salt});
     }
 
@@ -401,7 +430,6 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
     function test_cancelWindow_exceeds_the_voter_cancel_cycle() public view {
         uint256 voterCancelCycle = _governor.votingDelay() + _governor.votingPeriod() + _timelock.getMinDelay();
         assertEq(_securityCouncil.cancelWindow(), voterCancelCycle + Parameters.COUNCIL_CANCEL_BUFFER);
-        assertGt(_securityCouncil.cancelWindow(), voterCancelCycle);
     }
 
     /// @notice Deploys a fresh implementation to upgrade the token to.
@@ -488,5 +516,11 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
             predecessor: bytes32(0),
             salt: _voterBodySalt(descriptionHash)
         });
+    }
+
+    /// @notice The single-state bitmap `TimelockController` uses to describe an operation's expected state in its
+    /// `TimelockUnexpectedOperationState` error (mirrors OZ's internal `_encodeStateBitmap`).
+    function _timelockStateBitmap(TimelockController.OperationState state) internal pure returns (bytes32 bitmap) {
+        bitmap = bytes32(uint256(1) << uint8(state));
     }
 }
