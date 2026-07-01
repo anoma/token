@@ -458,7 +458,9 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         descriptionHash = _queueVoterBodyProposal(targets, values, calldatas, "voter-body upgrade");
     }
 
-    /// @notice Rebuilds the council's upgrade call and salt (deterministic, matching the module).
+    /// @notice Rebuilds the council's upgrade call and salt, mirroring the private `XanSecurityCouncil._salt`.
+    /// @dev The duplication is a guard, not silent drift: if the module's salt format changes, the operation id
+    /// recomputed here stops matching the scheduled one and these tests fail loudly.
     function _councilUpgradeCall(address newImpl, bytes memory data)
         internal
         view
