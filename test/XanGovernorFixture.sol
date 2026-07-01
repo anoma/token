@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
+import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {Upgrades, UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
@@ -115,7 +116,7 @@ abstract contract XanGovernorFixture is Test {
 
         _warpIntoVotingPeriod();
         vm.prank(_voter);
-        _governor.castVote(proposalId, uint8(1)); // 1 == For
+        _governor.castVote(proposalId, uint8(GovernorCountingSimple.VoteType.For));
 
         _warpPastVotingPeriod();
 
