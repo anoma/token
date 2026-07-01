@@ -12,19 +12,23 @@ import {XanV2} from "../src/XanV2.sol";
 /// * Mainnet
 /// * Sepolia
 contract XanV2UpgradeIntegrationTest is Test {
-    struct TestCase {
-        string name;
-    }
-
     /// @notice The live XAN proxy address (identical on Ethereum mainnet and Sepolia).
     address internal constant _XAN_PROXY = 0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7;
 
     address internal immutable _INITIAL_OWNER = makeAddr("initialOwner");
 
-    function tableNetworksTest_XanV2_council_scheduling_and_upgrade_succeeds_on_all_supported_networks(TestCase memory network)
-        public
-    {
-        vm.createSelectFork(network.name);
+    function test_v1_council_scheduled_upgrade_to_V2_succeeds_on_all_supported_networks() public {
+        string[] memory networks = _supportedNetworks();
+
+        for (uint256 i = 0; i < networks.length; ++i) {
+            _scheduleCouncilUpgradeAndExecute(networks[i]);
+        }
+    }
+
+    /// @notice Schedules the XanV2 upgrade through the XanV1 governance council and executes it on a given network fork.
+    /// @param network The network to fork and run the upgrade on.
+    function _scheduleCouncilUpgradeAndExecute(string memory network) internal {
+        vm.createSelectFork(network);
 
         XanV1 proxy = XanV1(_XAN_PROXY);
 
@@ -51,9 +55,10 @@ contract XanV2UpgradeIntegrationTest is Test {
     }
 
     /// @notice The networks on which XanV1 is deployed.
-    function fixtureNetwork() public pure returns (TestCase[] memory network) {
-        network = new TestCase[](2);
-        network[0] = TestCase({name: "mainnet"});
-        network[1] = TestCase({name: "sepolia"});
+    /// @return networks The list of network names to fork.
+    function _supportedNetworks() internal pure returns (string[] memory networks) {
+        networks = new string[](2);
+        networks[0] = "mainnet";
+        networks[1] = "sepolia";
     }
 }
