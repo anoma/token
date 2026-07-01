@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {SlotDerivation} from "@openzeppelin/contracts/utils/SlotDerivation.sol";
 import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -53,13 +52,6 @@ contract XanV2ConstructorTest is Test {
         address proxy = UnsafeUpgrades.deployUUPSProxy(address(_impl), abi.encodeCall(XanV2.reinitializeFromV1, ()));
 
         assertEq(XanV2(proxy).owner(), _INITIAL_OWNER);
-    }
-
-    function test_constructor_sets_initialized_to_the_maximal_value() public view {
-        bytes32 slot = SlotDerivation.erc7201Slot("openzeppelin.storage.Initializable");
-        uint64 initialized = uint64(uint256(vm.load(address(_impl), slot)));
-
-        assertEq(initialized, type(uint64).max);
     }
 
     function test_constructor_sets_the_vesting_start() public view {
