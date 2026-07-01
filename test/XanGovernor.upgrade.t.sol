@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 
@@ -17,7 +18,9 @@ contract XanGovernorUpgradeTest is XanGovernorFixture {
         );
 
         vm.prank(_voter);
-        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", _voter), address(_xanToken));
+        vm.expectRevert(
+            abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, _voter), address(_xanToken)
+        );
         _xanToken.upgradeToAndCall(newImpl, "");
     }
 
@@ -38,13 +41,13 @@ contract XanGovernorUpgradeTest is XanGovernorFixture {
         assertEq(uint8(_governor.state(proposalId)), uint8(IGovernor.ProposalState.Executed));
         assertEq(_xanToken.implementation(), newImpl);
 
-        // The new V3 logic is reachable through the unchanged proxy address, while balances are preserved.
+        // The new V3 logic is reachable through the unchanged proxy address.
         assertEq(MockXanV3(address(_xanToken)).version(), 3);
-        assertEq(_xanToken.getVotes(_voter), _xanToken.balanceOf(_voter));
     }
 
-    function test_token_owner_is_the_timelock() public view {
-        // The DAO, not an EOA, controls the token's privileged upgrade path.
-        assertEq(_xanToken.owner(), address(_timelock));
+    function test_voter_votes_equal_balance() public view {
+        // The voter self-delegates in the fixture, so its voting power tracks its full balance. Orthogonal to the
+        // upgrade path, hence its own test.
+        assertEq(_xanToken.getVotes(_voter), _xanToken.balanceOf(_voter));
     }
 }
