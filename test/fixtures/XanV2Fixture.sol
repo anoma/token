@@ -44,6 +44,10 @@ abstract contract XanV2Fixture is Test {
 
         // Point the V2 mock at the locally deployed V1 implementation (the vesting principal is stored under it).
         // Captured before the in-place upgrade below, after which the proxy reports the V2 implementation instead.
+        //
+        // NOTE: this deploys `MockXanV2`, not the production `XanV2`. The mock overrides `_implementationV1()` to read
+        // the principal from this locally deployed V1 rather than the hard-coded mainnet address, so every suite
+        // inheriting this fixture exercises the mock's V1 pointer, not the production implementation.
         _xanV1Impl = _xanV1Proxy.implementation();
         _xanV2Impl = address(new MockXanV2(_xanV1Impl, _defaultSender, _vestingStart, vestingDuration));
 
