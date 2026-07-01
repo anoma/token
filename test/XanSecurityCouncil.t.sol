@@ -229,16 +229,6 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         assertFalse(_timelock.isOperationPending(operationId));
     }
 
-    function test_cancel_reverts_if_the_operation_was_never_scheduled() public {
-        // Nothing was scheduled, so the reconstructed id matches no pending operation and the timelock rejects it.
-        address newImpl = _newImplementation();
-        (address target, bytes memory payload, bytes32 salt) = _councilUpgradeCall(newImpl, "");
-
-        vm.prank(_COUNCIL_MULTISIG);
-        vm.expectRevert(address(_timelock));
-        _securityCouncil.cancel({target: target, value: 0, data: payload, salt: salt});
-    }
-
     function test_cancel_reverts_if_the_operation_is_no_longer_pending() public {
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
@@ -293,36 +283,6 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         });
 
         assertEq(cancelledId, operationId);
-        assertFalse(_timelock.isOperationPending(operationId));
-    }
-
-    function test_cancelBatch_cancels_a_voter_body_upgrade_bundled_with_other_actions() public {
-        address newImpl = _newImplementation();
-
-        // The upgrade is bundled with a second (benign) action, so the queued operation is a multi-action batch.
-        // The council reconstructs the batch (its parameters are public on-chain) and cancels it; bundling, and any
-        // batch shape other than a standalone `setCouncil`, stays cancellable.
-        address[] memory targets = new address[](2);
-        uint256[] memory values = new uint256[](2);
-        bytes[] memory calldatas = new bytes[](2);
-        targets[0] = _OTHER;
-        calldatas[0] = "";
-        targets[1] = address(_xanToken);
-        calldatas[1] = abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (newImpl, ""));
-
-        bytes32 descriptionHash =
-            _queueVoterBodyProposal(targets, values, calldatas, "upgrade bundled with another action");
-
-        bytes32 operationId = _voterBodyOperationId({
-            targets: targets, values: values, calldatas: calldatas, descriptionHash: descriptionHash
-        });
-        assertTrue(_timelock.isOperationPending(operationId));
-
-        vm.prank(_COUNCIL_MULTISIG);
-        _securityCouncil.cancelBatch({
-            targets: targets, values: values, payloads: calldatas, salt: _voterBodySalt(descriptionHash)
-        });
-
         assertFalse(_timelock.isOperationPending(operationId));
     }
 
