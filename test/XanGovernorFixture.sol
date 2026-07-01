@@ -21,7 +21,7 @@ abstract contract XanGovernorFixture is Test {
     uint48 internal constant _VOTING_DELAY = 1;
     /// @notice Voting period in seconds.
     uint32 internal constant _VOTING_PERIOD = 50;
-    /// @notice No voting power is required to create a proposal in this example.
+    /// @notice Voting power required to create a proposal.
     uint256 internal constant _PROPOSAL_THRESHOLD = 1 ether;
     /// @notice Quorum as a percentage of the voting supply, reusing the V1 quorum ratio (50%). `GovernorVotesQuorumFraction`
     /// uses a denominator of 100, so the V1 ratio is rescaled from its denominator of `QUORUM_RATIO_DENOMINATOR`.
@@ -40,8 +40,6 @@ abstract contract XanGovernorFixture is Test {
 
     /// @notice The account that received the initial mint and holds the entire voting supply.
     address internal _voter;
-    /// @notice An unprivileged account used for negative checks.
-    address internal _other;
 
     function setUp() public virtual {
         (, _voter,) = vm.readCallers();

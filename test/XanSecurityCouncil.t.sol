@@ -92,8 +92,40 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         _securityCouncil.scheduleUpgrade(second, "");
     }
 
+    function test_scheduleUpgrade_can_be_rescheduled_after_a_cancel() public {
+        address newImpl = _newImplementation();
+
+        vm.prank(_COUNCIL_MULTISIG);
+        _securityCouncil.scheduleUpgrade(newImpl, "");
+        bytes32 firstId = _securityCouncil.pendingUpgrade();
+
+        // Withdraw the upgrade, clearing the in-flight slot.
+        (address target, bytes memory payload, bytes32 salt) = _councilUpgradeCall(newImpl, "");
+        vm.prank(_COUNCIL_MULTISIG);
+        _securityCouncil.cancel({target: target, value: 0, data: payload, salt: salt});
+        assertFalse(_timelock.isOperationPending(firstId));
+
+        // The cancelled operation is no longer pending, so the same upgrade re-schedules: this exercises the
+        // `!isOperationPending` branch of the in-flight guard (the first schedule took the `== bytes32(0)` branch).
+        // The deterministic salt makes the re-scheduled id identical to the first.
+        vm.prank(_COUNCIL_MULTISIG);
+        bytes32 secondId = _securityCouncil.scheduleUpgrade(newImpl, "");
+        assertEq(secondId, firstId);
+        assertTrue(_timelock.isOperationPending(secondId));
+    }
+
     function test_scheduleUpgrade_lets_the_council_fast_track_an_upgrade() public {
         address newImpl = _newImplementation();
+
+        (address target, bytes memory payload, bytes32 salt) = _councilUpgradeCall(newImpl, "");
+        bytes32 expectedId =
+            _timelock.hashOperation({target: target, value: 0, data: payload, predecessor: bytes32(0), salt: salt});
+        uint256 executableAt = block.timestamp + _securityCouncil.cancelWindow();
+
+        vm.expectEmit(address(_securityCouncil));
+        emit IXanSecurityCouncil.UpgradeScheduled({
+            newImplementation: newImpl, operationId: expectedId, data: "", executableAt: executableAt
+        });
 
         vm.prank(_COUNCIL_MULTISIG);
         _securityCouncil.scheduleUpgrade(newImpl, "");
@@ -102,6 +134,41 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         skip(_securityCouncil.cancelWindow() + 1);
         _executeCouncilUpgrade(newImpl, "");
 
+        assertEq(_xanToken.implementation(), newImpl);
+    }
+
+    function test_scheduleUpgrade_forwards_the_reinitialization_data() public {
+        address newImpl = _newImplementation();
+        // A non-empty reinitialization payload forwarded to `upgradeToAndCall`.
+        bytes memory data = abi.encodeWithSelector(_xanToken.clock.selector);
+
+        // The data is part of the salt, so the same upgrade with data has a different operation id than without it.
+        (address emptyTarget, bytes memory emptyPayload, bytes32 emptySalt) = _councilUpgradeCall(newImpl, "");
+        bytes32 emptyId = _timelock.hashOperation({
+            target: emptyTarget, value: 0, data: emptyPayload, predecessor: bytes32(0), salt: emptySalt
+        });
+        (address target, bytes memory payload, bytes32 salt) = _councilUpgradeCall(newImpl, data);
+        bytes32 expectedId =
+            _timelock.hashOperation({target: target, value: 0, data: payload, predecessor: bytes32(0), salt: salt});
+        assertTrue(expectedId != emptyId);
+
+        // The event carries the forwarded calldata verbatim.
+        vm.expectEmit(address(_securityCouncil));
+        emit IXanSecurityCouncil.UpgradeScheduled({
+            newImplementation: newImpl,
+            operationId: expectedId,
+            data: data,
+            executableAt: block.timestamp + _securityCouncil.cancelWindow()
+        });
+
+        vm.prank(_COUNCIL_MULTISIG);
+        bytes32 operationId = _securityCouncil.scheduleUpgrade(newImpl, data);
+        assertEq(operationId, expectedId);
+
+        // Execution forwards `data` to `upgradeToAndCall`, so the upgrade applies and the payload runs without
+        // reverting.
+        skip(_securityCouncil.cancelWindow() + 1);
+        _timelock.execute({target: target, value: 0, payload: payload, predecessor: bytes32(0), salt: salt});
         assertEq(_xanToken.implementation(), newImpl);
     }
 
@@ -151,21 +218,15 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         // The council's own upgrade is a single-call operation, so it withdraws it through `cancel` (not
         // `cancelBatch`).
         (address target, bytes memory payload, bytes32 salt) = _councilUpgradeCall(newImpl, "");
+
+        vm.expectEmit(address(_securityCouncil));
+        emit IXanSecurityCouncil.ProposalCancelled(operationId);
+
         vm.prank(_COUNCIL_MULTISIG);
         bytes32 cancelledId = _securityCouncil.cancel({target: target, value: 0, data: payload, salt: salt});
 
         assertEq(cancelledId, operationId);
         assertFalse(_timelock.isOperationPending(operationId));
-    }
-
-    function test_cancel_reverts_if_the_operation_was_never_scheduled() public {
-        // Nothing was scheduled, so the reconstructed id matches no pending operation and the timelock rejects it.
-        address newImpl = _newImplementation();
-        (address target, bytes memory payload, bytes32 salt) = _councilUpgradeCall(newImpl, "");
-
-        vm.prank(_COUNCIL_MULTISIG);
-        vm.expectRevert(address(_timelock));
-        _securityCouncil.cancel({target: target, value: 0, data: payload, salt: salt});
     }
 
     function test_cancel_reverts_if_the_operation_is_no_longer_pending() public {
@@ -197,9 +258,10 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
     }
 
     function test_cancel_cannot_be_used_to_cancel_a_setCouncil_rotation() public {
-        // The single-call `cancel` path enforces the same guard as `cancelBatch`: it refuses to cancel a `setCouncil`
-        // rotation on this module, so a captured council cannot veto its own replacement. The guard trips on the call
-        // shape alone, before any timelock lookup.
+        // Defense-in-depth mirror of the `cancelBatch` guard: the single-call `cancel` also refuses a `setCouncil`
+        // rotation on this module. A real voter-body rotation is a governor *batch* (cancellable only via
+        // `cancelBatch`), so the single path could never match its id anyway; this guard is belt-and-suspenders. It
+        // trips on the call shape alone, before any timelock lookup.
         bytes memory data = abi.encodeCall(IXanSecurityCouncil.setCouncil, (makeAddr("replacementCouncil")));
         vm.prank(_COUNCIL_MULTISIG);
         vm.expectRevert(IXanSecurityCouncil.CannotCancelCouncilRotation.selector, address(_securityCouncil));
@@ -224,33 +286,34 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         assertFalse(_timelock.isOperationPending(operationId));
     }
 
-    function test_cancelBatch_cancels_a_voter_body_upgrade_bundled_with_other_actions() public {
+    function test_cancelBatch_can_cancel_a_setCouncil_bundled_with_an_upgrade() public {
+        // A standalone `setCouncil` is the one operation the council may not cancel. Bundling it with a second action
+        // (here a token upgrade) makes the batch length != 1, so the exemption does not apply and the whole batch
+        // stays cancellable: a malicious upgrade cannot shield itself by riding along with a rotation.
         address newImpl = _newImplementation();
+        address replacementCouncil = makeAddr("replacementCouncil");
 
-        // The upgrade is bundled with a second (benign) action, so the queued operation is a multi-action batch.
-        // The council reconstructs the batch (its parameters are public on-chain) and cancels it; bundling, and any
-        // batch shape other than a standalone `setCouncil`, stays cancellable.
         address[] memory targets = new address[](2);
         uint256[] memory values = new uint256[](2);
         bytes[] memory calldatas = new bytes[](2);
-        targets[0] = _OTHER;
-        calldatas[0] = "";
+        targets[0] = address(_securityCouncil);
+        calldatas[0] = abi.encodeCall(IXanSecurityCouncil.setCouncil, (replacementCouncil));
         targets[1] = address(_xanToken);
         calldatas[1] = abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (newImpl, ""));
 
         bytes32 descriptionHash =
-            _queueVoterBodyProposal(targets, values, calldatas, "upgrade bundled with another action");
-
+            _queueVoterBodyProposal(targets, values, calldatas, "rotation bundled with an upgrade");
         bytes32 operationId = _voterBodyOperationId({
             targets: targets, values: values, calldatas: calldatas, descriptionHash: descriptionHash
         });
         assertTrue(_timelock.isOperationPending(operationId));
 
         vm.prank(_COUNCIL_MULTISIG);
-        _securityCouncil.cancelBatch({
+        bytes32 cancelledId = _securityCouncil.cancelBatch({
             targets: targets, values: values, payloads: calldatas, salt: _voterBodySalt(descriptionHash)
         });
 
+        assertEq(cancelledId, operationId);
         assertFalse(_timelock.isOperationPending(operationId));
     }
 
@@ -311,6 +374,10 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
 
     function test_setCouncil_lets_the_voter_body_rotate_the_council() public {
         address newCouncil = makeAddr("newCouncil");
+
+        vm.expectEmit(address(_securityCouncil));
+        emit IXanSecurityCouncil.CouncilChanged({previousCouncil: _COUNCIL_MULTISIG, newCouncil: newCouncil});
+
         vm.prank(address(_timelock));
         _securityCouncil.setCouncil(newCouncil);
         assertEq(_securityCouncil.council(), newCouncil);
