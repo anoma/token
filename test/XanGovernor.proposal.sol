@@ -47,6 +47,20 @@ contract XanGovernorProposalTest is XanGovernorFixture {
         assertEq(uint8(_governor.state(proposalId)), uint8(IGovernor.ProposalState.Canceled));
     }
 
+    function test_cancel_reverts_for_pending_proposals_if_the_caller_is_not_the_proposer() public {
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _noopProposal();
+        vm.prank(_voter);
+        uint256 proposalId = _governor.propose(targets, values, calldatas, "cancel me");
+        assertEq(uint8(_governor.state(proposalId)), uint8(IGovernor.ProposalState.Pending));
+
+        // Cancellation is only allowed by the proposer while the proposal is still pending (before voting opens).
+        vm.prank(_OTHER);
+        vm.expectRevert(
+            abi.encodeWithSelector(IGovernor.GovernorUnableToCancel.selector, proposalId, _OTHER), address(_governor)
+        );
+        _governor.cancel(targets, values, calldatas, keccak256(bytes("cancel me")));
+    }
+
     function test_quorum_is_half_of_the_voting_supply() public view {
         // The fixture reuses the V1 ratio (50%); the whole supply is the voting supply, so quorum is half of it.
         assertEq(_QUORUM_NUMERATOR, 50);
