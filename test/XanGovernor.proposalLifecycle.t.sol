@@ -31,7 +31,7 @@ contract XanGovernorProposalLifecycleTest is XanGovernorFixture {
         vm.prank(_voter);
         uint256 proposalId = _governor.propose(targets, values, calldatas, "needs queuing");
 
-        // Every accepted proposal must pass through the timelock before it can be executed.
+        // This timelock governor requires every proposal to queue before it can be executed.
         assertTrue(_governor.proposalNeedsQueuing(proposalId));
     }
 
