@@ -268,9 +268,10 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
     }
 
     function test_cancel_cannot_be_used_to_cancel_a_setCouncil_rotation() public {
-        // The single-call `cancel` path enforces the same guard as `cancelBatch`: it refuses to cancel a `setCouncil`
-        // rotation on this module, so a captured council cannot veto its own replacement. The guard trips on the call
-        // shape alone, before any timelock lookup.
+        // Defense-in-depth mirror of the `cancelBatch` guard: the single-call `cancel` also refuses a `setCouncil`
+        // rotation on this module. A real voter-body rotation is a governor *batch* (cancellable only via
+        // `cancelBatch`), so the single path could never match its id anyway; this guard is belt-and-suspenders. It
+        // trips on the call shape alone, before any timelock lookup.
         bytes memory data = abi.encodeCall(IXanSecurityCouncil.setCouncil, (makeAddr("replacementCouncil")));
         vm.prank(_COUNCIL_MULTISIG);
         vm.expectRevert(IXanSecurityCouncil.CannotCancelCouncilRotation.selector, address(_securityCouncil));
