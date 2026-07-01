@@ -95,6 +95,16 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
     function test_scheduleUpgrade_lets_the_council_fast_track_an_upgrade() public {
         address newImpl = _newImplementation();
 
+        (address target, bytes memory payload, bytes32 salt) = _councilUpgradeCall(newImpl, "");
+        bytes32 expectedId =
+            _timelock.hashOperation({target: target, value: 0, data: payload, predecessor: bytes32(0), salt: salt});
+        uint256 executableAt = block.timestamp + _securityCouncil.cancelWindow();
+
+        vm.expectEmit(address(_securityCouncil));
+        emit IXanSecurityCouncil.UpgradeScheduled({
+            newImplementation: newImpl, operationId: expectedId, data: "", executableAt: executableAt
+        });
+
         vm.prank(_COUNCIL_MULTISIG);
         _securityCouncil.scheduleUpgrade(newImpl, "");
 
@@ -151,6 +161,10 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         // The council's own upgrade is a single-call operation, so it withdraws it through `cancel` (not
         // `cancelBatch`).
         (address target, bytes memory payload, bytes32 salt) = _councilUpgradeCall(newImpl, "");
+
+        vm.expectEmit(address(_securityCouncil));
+        emit IXanSecurityCouncil.ProposalCancelled(operationId);
+
         vm.prank(_COUNCIL_MULTISIG);
         bytes32 cancelledId = _securityCouncil.cancel({target: target, value: 0, data: payload, salt: salt});
 
@@ -311,6 +325,10 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
 
     function test_setCouncil_lets_the_voter_body_rotate_the_council() public {
         address newCouncil = makeAddr("newCouncil");
+
+        vm.expectEmit(address(_securityCouncil));
+        emit IXanSecurityCouncil.CouncilChanged({previousCouncil: _COUNCIL_MULTISIG, newCouncil: newCouncil});
+
         vm.prank(address(_timelock));
         _securityCouncil.setCouncil(newCouncil);
         assertEq(_securityCouncil.council(), newCouncil);
