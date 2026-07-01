@@ -8,9 +8,9 @@ import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {Upgrades, UnsafeUpgrades, Options} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {XanV2} from "../src/drafts/XanV2.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
 import {XanV1} from "../src/XanV1.sol";
+import {XanV2} from "../src/XanV2.sol";
 
 contract XanV1UpgradeTest is Test {
     using UnsafeUpgrades for address;
@@ -37,6 +37,9 @@ contract XanV1UpgradeTest is Test {
         );
 
         Options memory opts;
+        // `XanV2` binds the owner and vesting schedule as constructor immutables, so the prepared implementations
+        // need encoded constructor arguments.
+        opts.constructorData = abi.encode(_defaultSender, Parameters.VESTING_START, Parameters.VESTING_DURATION);
         _voterProposedImpl = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});
         _voterProposedImpl2 = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});
         _councilProposedImpl = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});
@@ -292,26 +295,7 @@ contract XanV1UpgradeTest is Test {
         emit IERC1967.Upgraded(_councilProposedImpl);
 
         address(_xanProxy)
-            .upgradeProxy({
-            newImpl: _councilProposedImpl, data: abi.encodeCall(XanV2.reinitializeFromV1, (address(uint160(1))))
-        });
-    }
-
-    function test_upgradeToAndCall_resets_the_governance_council_address() public {
-        vm.prank(_COUNCIL);
-        _xanProxy.scheduleCouncilUpgrade(_councilProposedImpl);
-
-        skip(Parameters.DELAY_DURATION);
-
-        vm.expectEmit(address(_xanProxy));
-        emit IERC1967.Upgraded(_councilProposedImpl);
-
-        address(_xanProxy)
-            .upgradeProxy({
-            newImpl: _councilProposedImpl, data: abi.encodeCall(XanV2.reinitializeFromV1, (address(uint160(1))))
-        });
-
-        assertEq(_xanProxy.governanceCouncil(), address(0));
+            .upgradeProxy({newImpl: _councilProposedImpl, data: abi.encodeCall(XanV2.reinitializeFromV1, ())});
     }
 
     function test_upgradeToAndCall_allows_upgrade_to_the_current_implementation() public {
