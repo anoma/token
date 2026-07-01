@@ -137,6 +137,41 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         assertEq(_xanToken.implementation(), newImpl);
     }
 
+    function test_scheduleUpgrade_forwards_the_reinitialization_data() public {
+        address newImpl = _newImplementation();
+        // A non-empty reinitialization payload forwarded to `upgradeToAndCall`.
+        bytes memory data = abi.encodeWithSelector(_xanToken.clock.selector);
+
+        // The data is part of the salt, so the same upgrade with data has a different operation id than without it.
+        (address emptyTarget, bytes memory emptyPayload, bytes32 emptySalt) = _councilUpgradeCall(newImpl, "");
+        bytes32 emptyId = _timelock.hashOperation({
+            target: emptyTarget, value: 0, data: emptyPayload, predecessor: bytes32(0), salt: emptySalt
+        });
+        (address target, bytes memory payload, bytes32 salt) = _councilUpgradeCall(newImpl, data);
+        bytes32 expectedId =
+            _timelock.hashOperation({target: target, value: 0, data: payload, predecessor: bytes32(0), salt: salt});
+        assertTrue(expectedId != emptyId);
+
+        // The event carries the forwarded calldata verbatim.
+        vm.expectEmit(address(_securityCouncil));
+        emit IXanSecurityCouncil.UpgradeScheduled({
+            newImplementation: newImpl,
+            operationId: expectedId,
+            data: data,
+            executableAt: block.timestamp + _securityCouncil.cancelWindow()
+        });
+
+        vm.prank(_COUNCIL_MULTISIG);
+        bytes32 operationId = _securityCouncil.scheduleUpgrade(newImpl, data);
+        assertEq(operationId, expectedId);
+
+        // Execution forwards `data` to `upgradeToAndCall`, so the upgrade applies and the payload runs without
+        // reverting.
+        skip(_securityCouncil.cancelWindow() + 1);
+        _timelock.execute({target: target, value: 0, payload: payload, predecessor: bytes32(0), salt: salt});
+        assertEq(_xanToken.implementation(), newImpl);
+    }
+
     function test_scheduleUpgrade_cannot_be_executed_before_the_delay() public {
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
