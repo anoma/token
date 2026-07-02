@@ -52,7 +52,7 @@ contract DeployGovernance is Script {
         });
 
         // 3. Deploy the security council module
-        XanSecurityCouncil securityCouncilModule = new XanSecurityCouncil({
+        XanSecurityCouncil xanSecurityCouncil = new XanSecurityCouncil({
             governor: IGovernor(address(xanGovernor)),
             timelock: timelockController,
             token: token,
@@ -68,8 +68,8 @@ contract DeployGovernance is Script {
         bytes32 cancellerRole = timelockController.CANCELLER_ROLE();
         timelockController.grantRole(proposerRole, address(xanGovernor));
         timelockController.grantRole(cancellerRole, address(xanGovernor));
-        timelockController.grantRole(proposerRole, address(securityCouncilModule));
-        timelockController.grantRole(cancellerRole, address(securityCouncilModule));
+        timelockController.grantRole(proposerRole, address(xanSecurityCouncil));
+        timelockController.grantRole(cancellerRole, address(xanSecurityCouncil));
         timelockController.grantRole(timelockController.EXECUTOR_ROLE(), address(0));
 
         // 5. Drop the deployer's admin; only the timelock (i.e. passed governance proposals) can change roles now.
@@ -79,6 +79,6 @@ contract DeployGovernance is Script {
 
         governor = address(xanGovernor);
         timelock = address(timelockController);
-        securityCouncil = address(securityCouncilModule);
+        securityCouncil = address(xanSecurityCouncil);
     }
 }

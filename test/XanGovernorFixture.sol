@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
+import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {Upgrades, UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
@@ -65,11 +66,11 @@ abstract contract XanGovernorFixture is Test {
             new MockXanV2(_v1Implementation, address(_timelock), Parameters.VESTING_START, Parameters.VESTING_DURATION)
         );
 
-        vm.startPrank(_voter);
-        xanV1Proxy.lock(xanV1Proxy.unlockedBalanceOf(_voter));
-        xanV1Proxy.castVote(xanV2Impl);
+        // Seed the electorate and win the voter-body upgrade vote, then schedule the upgrade and wait out the delay.
+        // `_prepareUpgradeVote` is overridable to install a different electorate (e.g. several locked voters).
+        _prepareUpgradeVote(xanV1Proxy, xanV2Impl);
+        vm.prank(_voter);
         xanV1Proxy.scheduleVoterBodyUpgrade();
-        vm.stopPrank();
         skip(Parameters.DELAY_DURATION);
 
         // Upgrade the proxy to V2; ownership (the timelock) is already baked into the implementation, so only the
@@ -102,6 +103,15 @@ abstract contract XanGovernorFixture is Test {
         vm.warp(block.timestamp + 1);
     }
 
+    /// @notice Locks the deployer's whole balance and votes it for the V2 upgrade. Override to seed a different
+    /// electorate (e.g. several locked voters) before the upgrade is scheduled.
+    function _prepareUpgradeVote(XanV1 xanV1Proxy, address xanV2Impl) internal virtual {
+        vm.startPrank(_voter);
+        xanV1Proxy.lock(xanV1Proxy.unlockedBalanceOf(_voter));
+        xanV1Proxy.castVote(xanV2Impl);
+        vm.stopPrank();
+    }
+
     /// @notice Runs a proposal through its full lifecycle: propose, vote `For`, queue, and execute.
     /// @dev Mirrors the canonical OpenZeppelin governor flow and is shared by the voting and upgrade demos.
     function _passProposal(
@@ -115,7 +125,7 @@ abstract contract XanGovernorFixture is Test {
 
         _warpIntoVotingPeriod();
         vm.prank(_voter);
-        _governor.castVote(proposalId, uint8(1)); // 1 == For
+        _governor.castVote(proposalId, uint8(GovernorCountingSimple.VoteType.For));
 
         _warpPastVotingPeriod();
 
