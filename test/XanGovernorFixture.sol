@@ -66,11 +66,11 @@ abstract contract XanGovernorFixture is Test {
             new MockXanV2(_v1Implementation, address(_timelock), Parameters.VESTING_START, Parameters.VESTING_DURATION)
         );
 
-        vm.startPrank(_voter);
-        xanV1Proxy.lock(xanV1Proxy.unlockedBalanceOf(_voter));
-        xanV1Proxy.castVote(xanV2Impl);
+        // Seed the electorate and win the voter-body upgrade vote, then schedule the upgrade and wait out the delay.
+        // `_prepareUpgradeVote` is overridable to install a different electorate (e.g. several locked voters).
+        _prepareUpgradeVote(xanV1Proxy, xanV2Impl);
+        vm.prank(_voter);
         xanV1Proxy.scheduleVoterBodyUpgrade();
-        vm.stopPrank();
         skip(Parameters.DELAY_DURATION);
 
         // Upgrade the proxy to V2; ownership (the timelock) is already baked into the implementation, so only the
@@ -101,6 +101,15 @@ abstract contract XanGovernorFixture is Test {
 
         // Move past the delegation checkpoint so the voting snapshot taken at proposal time can read it.
         vm.warp(block.timestamp + 1);
+    }
+
+    /// @notice Locks the deployer's whole balance and votes it for the V2 upgrade. Override to seed a different
+    /// electorate (e.g. several locked voters) before the upgrade is scheduled.
+    function _prepareUpgradeVote(XanV1 xanV1Proxy, address xanV2Impl) internal virtual {
+        vm.startPrank(_voter);
+        xanV1Proxy.lock(xanV1Proxy.unlockedBalanceOf(_voter));
+        xanV1Proxy.castVote(xanV2Impl);
+        vm.stopPrank();
     }
 
     /// @notice Runs a proposal through its full lifecycle: propose, vote `For`, queue, and execute.
