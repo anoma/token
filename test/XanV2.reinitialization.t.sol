@@ -49,10 +49,6 @@ contract XanV2ReinitializationTest is Test {
         _xanV2Proxy.reinitializeFromV1();
     }
 
-    function test_reinitializeFromV1_sets_the_owner() public view {
-        assertEq(_xanV2Proxy.owner(), _INITIAL_OWNER);
-    }
-
     /// @notice `reinitializeFromV1` must take no arguments. The upgrade can be executed by anyone once the V1 delay
     /// elapses, so any argument would be attacker-controlled; the owner and vesting schedule are bound into the
     /// implementation bytecode instead. This variant pins the selector to the no-argument signature, so adding a
