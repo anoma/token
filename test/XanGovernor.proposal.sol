@@ -28,7 +28,7 @@ contract XanGovernorProposalTest is XanGovernorFixture {
 
     function test_proposalNeedsQueuing_returns_true_for_proposals() public {
         (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _noopProposal();
-        vm.prank(_voter);
+        vm.prank(_voterA);
         uint256 proposalId = _governor.propose(targets, values, calldatas, "needs queuing");
 
         // This timelock governor requires every proposal to queue before it can be executed.
@@ -37,19 +37,19 @@ contract XanGovernorProposalTest is XanGovernorFixture {
 
     function test_cancel_cancels_pending_proposals_if_called_by_the_proposer() public {
         (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _noopProposal();
-        vm.prank(_voter);
+        vm.prank(_voterA);
         uint256 proposalId = _governor.propose(targets, values, calldatas, "cancel me");
         assertEq(uint8(_governor.state(proposalId)), uint8(IGovernor.ProposalState.Pending));
 
         // Cancellation is only allowed by the proposer while the proposal is still pending (before voting opens).
-        vm.prank(_voter);
+        vm.prank(_voterA);
         _governor.cancel(targets, values, calldatas, keccak256(bytes("cancel me")));
         assertEq(uint8(_governor.state(proposalId)), uint8(IGovernor.ProposalState.Canceled));
     }
 
     function test_cancel_reverts_for_pending_proposals_if_the_caller_is_not_the_proposer() public {
         (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _noopProposal();
-        vm.prank(_voter);
+        vm.prank(_voterA);
         uint256 proposalId = _governor.propose(targets, values, calldatas, "cancel me");
         assertEq(uint8(_governor.state(proposalId)), uint8(IGovernor.ProposalState.Pending));
 

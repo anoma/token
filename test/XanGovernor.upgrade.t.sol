@@ -16,8 +16,8 @@ contract XanGovernorUpgradeTest is XanGovernorFixture {
             new MockXanV3(_v1Implementation, address(_timelock), Parameters.VESTING_START, Parameters.VESTING_DURATION)
         );
 
-        vm.prank(_voter);
-        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", _voter), address(_xanToken));
+        vm.prank(_voterA);
+        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", _voterA), address(_xanToken));
         _xanToken.upgradeToAndCall(newImpl, "");
     }
 
@@ -40,7 +40,7 @@ contract XanGovernorUpgradeTest is XanGovernorFixture {
 
         // The new V3 logic is reachable through the unchanged proxy address, while balances are preserved.
         assertEq(MockXanV3(address(_xanToken)).version(), 3);
-        assertEq(_xanToken.getVotes(_voter), _xanToken.balanceOf(_voter));
+        assertEq(_xanToken.getVotes(_voterA), _xanToken.balanceOf(_voterA));
     }
 
     function test_token_owner_is_the_timelock() public view {

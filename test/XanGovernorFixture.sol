@@ -14,9 +14,10 @@ import {XanV2} from "../src/XanV2.sol";
 import {MockXanV2} from "./mocks/MockXanV2.sol";
 
 /// @notice Shared fixture wiring a `XanGovernor` DAO to the `XanV2` token through a `TimelockController`.
-/// @dev The end state mirrors a real deployment: the token's whole supply is held and self-delegated by
-/// `_voter`, the token is owned by the timelock, and the governor is the timelock's sole proposer/canceller while
-/// anyone may execute. This makes the governor the only path to privileged token actions such as upgrades.
+/// @dev The end state mirrors a real deployment: the supply is split across three self-delegating voters — A
+/// (`_voterA`, 50%), B (`_voterB`, 25%), and C (`_voterC`, 25%) — the token is owned by the timelock, and the governor
+/// is the timelock's sole proposer/canceller while anyone may execute. This makes the governor the only path to
+/// privileged token actions such as upgrades.
 abstract contract XanGovernorFixture is Test {
     /// @notice Voting delay in seconds (the token clock is timestamp-based).
     uint48 internal constant _VOTING_DELAY = 1;
@@ -31,6 +32,11 @@ abstract contract XanGovernorFixture is Test {
     /// @notice The minimum delay enforced by the timelock between queueing and execution, reusing the V1 upgrade delay.
     uint256 internal constant _TIMELOCK_MIN_DELAY = Parameters.DELAY_DURATION;
 
+    /// @notice Voter A's weight: half the supply, exactly the governor quorum.
+    uint256 internal constant _HALF = Parameters.SUPPLY / 2;
+    /// @notice Voter B's and voter C's weight: a quarter of the supply each.
+    uint256 internal constant _QUARTER = Parameters.SUPPLY / 4;
+
     address internal immutable _COUNCIL = makeAddr("council");
     address internal immutable _OTHER = makeAddr("other");
 
@@ -39,17 +45,22 @@ abstract contract XanGovernorFixture is Test {
     TimelockController internal _timelock;
     address internal _v1Implementation;
 
-    /// @notice The account that received the initial mint and holds the entire voting supply.
-    address internal _voter;
+    /// @notice Voter A: received the initial mint and, after the supply is split in `setUp`, holds 50%.
+    address internal _voterA;
+    /// @notice Voter B, holding 25% of the supply.
+    address internal _voterB;
+    /// @notice Voter C, holding 25% of the supply.
+    address internal _voterC;
 
     function setUp() public virtual {
-        (, _voter,) = vm.readCallers();
+        (, _voterA,) = vm.readCallers();
 
-        // Deploy the V1 proxy (mints the whole supply to `_voter`) and win a voter-body upgrade vote for a V2
+        // Deploy the V1 proxy (mints the whole supply to `_voterA`) and win a voter-body upgrade vote for a V2
         // implementation, reusing the same locking/voting flow the production upgrade follows.
         XanV1 xanV1Proxy = XanV1(
             Upgrades.deployUUPSProxy({
-                contractName: "XanV1.sol:XanV1", initializerData: abi.encodeCall(XanV1.initializeV1, (_voter, _COUNCIL))
+                contractName: "XanV1.sol:XanV1",
+                initializerData: abi.encodeCall(XanV1.initializeV1, (_voterA, _COUNCIL))
             })
         );
         _v1Implementation = xanV1Proxy.implementation();
@@ -66,11 +77,23 @@ abstract contract XanGovernorFixture is Test {
             new MockXanV2(_v1Implementation, address(_timelock), Parameters.VESTING_START, Parameters.VESTING_DURATION)
         );
 
-        vm.startPrank(_voter);
-        xanV1Proxy.lock(xanV1Proxy.unlockedBalanceOf(_voter));
+        // Seed a three-voter electorate as locked V1 principals: A (`_voterA`) keeps 50%, B and C get 25% each.
+        // `transferAndLock` (mint-recipient-only) hands B and C locked principals, so all three vote with vesting
+        // tokens. All three back the V2 implementation, clearing V1's upgrade quorum; then A schedules the upgrade.
+        _voterB = makeAddr("voterB");
+        _voterC = makeAddr("voterC");
+        vm.startPrank(_voterA);
+        xanV1Proxy.transferAndLock(_voterB, _QUARTER);
+        xanV1Proxy.transferAndLock(_voterC, _QUARTER);
+        xanV1Proxy.lock(xanV1Proxy.unlockedBalanceOf(_voterA));
         xanV1Proxy.castVote(xanV2Impl);
-        xanV1Proxy.scheduleVoterBodyUpgrade();
         vm.stopPrank();
+        vm.prank(_voterB);
+        xanV1Proxy.castVote(xanV2Impl);
+        vm.prank(_voterC);
+        xanV1Proxy.castVote(xanV2Impl);
+        vm.prank(_voterA);
+        xanV1Proxy.scheduleVoterBodyUpgrade();
         skip(Parameters.DELAY_DURATION);
 
         // Upgrade the proxy to V2; ownership (the timelock) is already baked into the implementation, so only the
@@ -95,11 +118,15 @@ abstract contract XanGovernorFixture is Test {
         _timelock.grantRole(_timelock.EXECUTOR_ROLE(), address(0));
         _timelock.renounceRole(_timelock.DEFAULT_ADMIN_ROLE(), address(this));
 
-        // Activate voting power: the token tracks votes only once an account delegates (here, to itself).
-        vm.prank(_voter);
-        _xanToken.delegate(_voter);
+        // Activate voting power: the token tracks votes only once an account delegates (here, each to itself).
+        vm.prank(_voterA);
+        _xanToken.delegate(_voterA);
+        vm.prank(_voterB);
+        _xanToken.delegate(_voterB);
+        vm.prank(_voterC);
+        _xanToken.delegate(_voterC);
 
-        // Move past the delegation checkpoint so the voting snapshot taken at proposal time can read it.
+        // Move past the delegation checkpoints so the voting snapshot taken at proposal time can read them.
         vm.warp(block.timestamp + 1);
     }
 
@@ -111,11 +138,11 @@ abstract contract XanGovernorFixture is Test {
         bytes[] memory calldatas,
         string memory description
     ) internal returns (uint256 proposalId) {
-        vm.prank(_voter);
+        vm.prank(_voterA);
         proposalId = _governor.propose(targets, values, calldatas, description);
 
         _warpIntoVotingPeriod();
-        vm.prank(_voter);
+        vm.prank(_voterA);
         _governor.castVote(proposalId, uint8(GovernorCountingSimple.VoteType.For));
 
         _warpPastVotingPeriod();

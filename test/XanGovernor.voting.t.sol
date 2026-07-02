@@ -6,41 +6,12 @@ import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {Parameters} from "../src/libs/Parameters.sol";
-import {XanV1} from "../src/XanV1.sol";
 import {XanV2} from "../src/XanV2.sol";
 import {XanGovernorFixture} from "./XanGovernorFixture.sol";
 
 /// @notice Demonstrates DAO voting with the `ERC20Votes`-compatible XAN token.
 contract XanGovernorVotingTest is XanGovernorFixture {
     using SafeERC20 for XanV2;
-    /// @notice Voter A's weight: half the supply, exactly the quorum.
-    uint256 internal constant _HALF = Parameters.SUPPLY / 2;
-    /// @notice Voter B's and voter C's weight: a quarter of the supply each.
-    uint256 internal constant _QUARTER = Parameters.SUPPLY / 4;
-
-    /// @notice Voter A, holding 50%. Reuses the fixture's `_voter`, which is minted the whole supply.
-    address internal _voterA;
-    /// @notice Voter B, holding 25%.
-    address internal _voterB;
-    /// @notice Voter C, holding 25%.
-    address internal _voterC;
-
-    function setUp() public override {
-        super.setUp();
-        _voterA = _voter;
-
-        // B and C activate their voting power (A already self-delegated in the base fixture). No unlocking or
-        // time-warp is needed: voting power tracks the full balance, so voters can vote with their still-locked
-        // vesting principals (ADR-0002).
-        vm.prank(_voterB);
-        _xanToken.delegate(_voterB);
-        vm.prank(_voterC);
-        _xanToken.delegate(_voterC);
-
-        // Move past the delegation checkpoints so proposal snapshots read the final weights.
-        vm.warp(block.timestamp + 1);
-    }
 
     function test_votes_are_tallied_by_delegated_weight() public {
         uint256 proposalId = _proposeAndOpenVoting("tally");
@@ -168,28 +139,6 @@ contract XanGovernorVotingTest is XanGovernorFixture {
         assertEq(_xanToken.getVotes(_voterC), _QUARTER);
         // The governor reads voting power straight from the token's delegation checkpoints.
         assertEq(_governor.getVotes(_voterA, block.timestamp - 1), _HALF);
-    }
-
-    /// @notice Seeds a three-voter electorate as locked V1 principals — A keeps 50%, B and C get 25% each — and has
-    /// all three back the V2 upgrade so it clears V1's quorum (which needs more than half the supply). The voters
-    /// therefore hold vesting (locked) tokens, exactly as real post-distribution holders would.
-    /// @dev `transferAndLock` is callable only by the initial mint recipient (`_voter`) and locks on transfer, so B and
-    /// C receive locked principals with no unlock or time-warp.
-    function _prepareUpgradeVote(XanV1 xanV1Proxy, address xanV2Impl) internal override {
-        _voterB = makeAddr("voterB");
-        _voterC = makeAddr("voterC");
-
-        vm.startPrank(_voter);
-        xanV1Proxy.transferAndLock(_voterB, _QUARTER);
-        xanV1Proxy.transferAndLock(_voterC, _QUARTER);
-        xanV1Proxy.lock(xanV1Proxy.unlockedBalanceOf(_voter));
-        xanV1Proxy.castVote(xanV2Impl);
-        vm.stopPrank();
-
-        vm.prank(_voterB);
-        xanV1Proxy.castVote(xanV2Impl);
-        vm.prank(_voterC);
-        xanV1Proxy.castVote(xanV2Impl);
     }
 
     /// @notice Has A (which clears the proposal threshold) submit a harmless proposal, then opens the voting window.

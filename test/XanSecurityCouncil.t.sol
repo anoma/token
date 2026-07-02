@@ -432,12 +432,12 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
     ) internal returns (bytes32 descriptionHash) {
         descriptionHash = keccak256(bytes(description));
 
-        vm.prank(_voter);
+        vm.prank(_voterA);
         uint256 proposalId =
             _governor.propose({targets: targets, values: values, calldatas: calldatas, description: description});
 
         _warpIntoVotingPeriod();
-        vm.prank(_voter);
+        vm.prank(_voterA);
         _governor.castVote(proposalId, uint8(1));
 
         _warpPastVotingPeriod();
