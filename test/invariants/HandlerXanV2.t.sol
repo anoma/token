@@ -36,6 +36,14 @@ contract XanV2Handler is Test {
         token.delegate(actor);
     }
 
+    function delegate(uint256 fromSeed, uint256 toSeed) external {
+        address from = _actorAt(fromSeed);
+        address to = _actorAt(toSeed);
+
+        vm.prank(from);
+        token.delegate(to);
+    }
+
     function transfer(uint256 fromSeed, uint256 toSeed, uint256 amount) external {
         address from = _actorAt(fromSeed);
         address to = _actorAt(toSeed);

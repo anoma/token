@@ -62,20 +62,45 @@ contract XanV2Invariants is StdInvariant, Test {
         targetContract(address(handler));
     }
 
-    // A user can vote with their entire balance.
-    // Invariant: for every actor that has delegated to itself, voting power equals the full balance — locked,
-    // unlocked, vested, or unvested alike. Guards the composition of the unlocked-only `_update` transfer gate with
-    // `ERC20Votes`, which checkpoints the whole balance.
-    function invariant_self_delegated_votes_equal_full_balance() public view {
+    // A user can vote with their entire balance, and votes are conserved across arbitrary delegation.
+    // Invariant: for every actor, voting power equals the sum of the full balances — locked, unlocked, vested, or
+    // unvested alike — of all actors that have delegated to it. Guards the composition of the unlocked-only `_update`
+    // transfer gate with `ERC20Votes`, which checkpoints the whole balance, and holds under self-, cross-, and
+    // no-delegation. Self-delegation collapses this to `getVotes(actor) == balanceOf(actor)`.
+    function invariant_votes_equal_delegated_balance() public view {
+        address[] memory actors = handler.getActors();
+
+        for (uint256 i = 0; i < actors.length; ++i) {
+            address delegatee = actors[i];
+
+            uint256 delegatedBalance;
+            for (uint256 j = 0; j < actors.length; ++j) {
+                if (token.delegates(actors[j]) == delegatee) {
+                    delegatedBalance += token.balanceOf(actors[j]);
+                }
+            }
+
+            assertEq(token.getVotes(delegatee), delegatedBalance, "votes != delegated balance");
+        }
+    }
+
+    // Invariant: the total supply is fixed. `transfer` moves tokens between accounts and `unlock` only reclassifies
+    // locked principal as spendable; neither mints nor burns, so the supply never leaves its V1-minted value.
+    function invariant_total_supply_constant() public view {
+        assertEq(token.totalSupply(), Parameters.SUPPLY, "total supply changed");
+    }
+
+    // Invariant: per actor, the unlockable (vested-but-not-yet-unlocked) balance never exceeds the still-locked
+    // balance, and the locked balance never exceeds the token balance. The latter is what keeps `unlockedBalanceOf`
+    // (`balanceOf - lockedBalanceOf`) from underflowing.
+    function invariant_locked_balance_accounting() public view {
         address[] memory actors = handler.getActors();
 
         for (uint256 i = 0; i < actors.length; ++i) {
             address actor = actors[i];
 
-            // Voting power only accrues to an account that has delegated; the property concerns self-delegation.
-            if (token.delegates(actor) == actor) {
-                assertEq(token.getVotes(actor), token.balanceOf(actor), "self-delegated votes != balance");
-            }
+            assertLe(token.unlockableBalanceOf(actor), token.lockedBalanceOf(actor), "unlockable > locked");
+            assertLe(token.lockedBalanceOf(actor), token.balanceOf(actor), "locked > balance");
         }
     }
 }
