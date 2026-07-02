@@ -56,6 +56,6 @@ library Parameters {
     uint256 internal constant PROPOSAL_THRESHOLD = 10 ** 18; // 1 XAN
 
     /// @notice Reaction-time margin added on top of a full voter cancel cycle when the `XanSecurityCouncil` module
-    /// sizes its fast-track upgrade delay, so the voter body has time to notice and cancel.
+    /// sizes its backup upgrade delay, so the voter body has time to notice and cancel.
     uint256 internal constant COUNCIL_CANCEL_BUFFER = 7 days;
 }

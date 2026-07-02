@@ -114,7 +114,7 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         assertTrue(_timelock.isOperationPending(secondId));
     }
 
-    function test_scheduleUpgrade_lets_the_council_fast_track_an_upgrade() public {
+    function test_scheduleUpgrade_lets_the_council_schedule_a_backup_upgrade() public {
         address newImpl = _newImplementation();
 
         (address target, bytes memory payload, bytes32 salt) = _councilUpgradeCall(newImpl, "");
@@ -194,7 +194,7 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         _timelock.execute({target: target, value: 0, payload: payload, predecessor: bytes32(0), salt: salt});
     }
 
-    function test_voter_body_can_cancel_a_council_fast_track_through_the_governor() public {
+    function test_voter_body_can_cancel_a_council_upgrade_through_the_governor() public {
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
         _securityCouncil.scheduleUpgrade(newImpl, "");
@@ -228,7 +228,7 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         _timelock.execute({target: target, value: 0, payload: payload, predecessor: bytes32(0), salt: salt});
     }
 
-    function test_cancel_lets_the_council_withdraw_its_own_fast_track() public {
+    function test_cancel_lets_the_council_withdraw_its_own_upgrade() public {
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
         _securityCouncil.scheduleUpgrade(newImpl, "");
