@@ -92,36 +92,36 @@ deploy-governance deployer token council chain *args:
         --sig "run(address,address)" {{ token }} {{ council }} \
         --broadcast --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
 
-# Simulate scheduling the council upgrade to XanV2 (dry-run)
-schedule-council-upgrade-simulate proxy sender chain *args:
+# Simulate scheduling the XanV1→V2 upgrade through the V1 council (dry-run)
+schedule-upgrade-simulate proxy sender chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
-    forge script script/ScheduleCouncilUpgradeToXanV2.s.sol:ScheduleCouncilUpgradeToXanV2 \
+    forge script script/ScheduleXanV1Upgrade.s.sol:ScheduleXanV1Upgrade \
         --sig "run(address)" {{ proxy }} \
         --rpc-url {{ chain }} --sender {{ sender }} {{ args }}
 
-# Schedule the council upgrade to XanV2
-schedule-council-upgrade deployer proxy sender chain *args:
+# Schedule the XanV1→V2 upgrade through the V1 council
+schedule-upgrade deployer proxy sender chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
-    forge script script/ScheduleCouncilUpgradeToXanV2.s.sol:ScheduleCouncilUpgradeToXanV2 \
+    forge script script/ScheduleXanV1Upgrade.s.sol:ScheduleXanV1Upgrade \
         --sig "run(address)" {{ proxy }} \
         --broadcast --rpc-url {{ chain }} --account {{ deployer }} --sender {{ sender }} {{ args }}
 
-# Simulate the upgrade to XanV2 (dry-run)
-upgrade-simulate proxy owner chain *args:
+# Simulate executing the scheduled XanV1→V2 upgrade (permissionless) (dry-run)
+upgrade-simulate proxy chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
-    forge script script/UpgradeToXanV2.s.sol:UpgradeToXanV2 \
-        --sig "run(address,address)" {{ proxy }} {{ owner }} \
-        --rpc-url {{ chain }} --sender {{ owner }} {{ args }}
+    forge script script/UpgradeXanV1.s.sol:UpgradeXanV1 \
+        --sig "run(address)" {{ proxy }} \
+        --rpc-url {{ chain }} {{ args }}
 
-# Upgrade the proxy to XanV2
-upgrade deployer proxy owner chain *args:
+# Execute the scheduled XanV1→V2 upgrade (permissionless)
+upgrade deployer proxy chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
-    forge script script/UpgradeToXanV2.s.sol:UpgradeToXanV2 \
-        --sig "run(address,address)" {{ proxy }} {{ owner }} \
+    forge script script/UpgradeXanV1.s.sol:UpgradeXanV1 \
+        --sig "run(address)" {{ proxy }} \
         --broadcast --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
 
 # --- Verification ---

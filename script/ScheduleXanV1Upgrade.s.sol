@@ -8,7 +8,7 @@ import {Script} from "forge-std/Script.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
 import {XanV1} from "../src/XanV1.sol";
 
-contract ScheduleCouncilUpgradeToXanV2 is Script {
+contract ScheduleXanV1Upgrade is Script {
     function run(address proxy) public returns (address implV2) {
         Options memory opts;
 
