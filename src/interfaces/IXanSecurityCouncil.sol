@@ -19,17 +19,6 @@ interface IXanSecurityCouncil {
     /// @param operationId The cancelled timelock operation id.
     event ProposalCancelled(bytes32 indexed operationId);
 
-    /// @notice Emitted when the council address is rotated.
-    /// @param previousCouncil The previous council address.
-    /// @param newCouncil The new council address.
-    event CouncilChanged(address indexed previousCouncil, address indexed newCouncil);
-
-    /// @notice Thrown when a council-only function is called by another account.
-    error UnauthorizedCouncil(address caller);
-
-    /// @notice Thrown when a timelock-only function is called by another account.
-    error UnauthorizedTimelock(address caller);
-
     /// @notice Thrown when the council schedules an upgrade while one is already pending (one upgrade in flight).
     error UpgradeAlreadyPending(bytes32 operationId);
 
@@ -42,13 +31,10 @@ interface IXanSecurityCouncil {
     /// @notice Thrown when the token address supplied to the constructor is zero.
     error ZeroTokenNotAllowed();
 
-    /// @notice Thrown when a council address (constructor `initialCouncil` or `setCouncil`) is zero.
-    error ZeroCouncilNotAllowed();
-
     /// @notice Thrown when the implementation address supplied to `scheduleUpgrade` is zero.
     error ZeroImplementationNotAllowed();
 
-    /// @notice Thrown when the council attempts to cancel a standalone `setCouncil` rotation.
+    /// @notice Thrown when the council attempts to cancel a standalone `transferOwnership` (council rotation).
     error CannotCancelCouncilRotation();
 
     /// @notice Schedules a token upgrade by scheduling it in the timelock.
@@ -76,14 +62,6 @@ interface IXanSecurityCouncil {
     function cancelBatch(address[] calldata targets, uint256[] calldata values, bytes[] calldata payloads, bytes32 salt)
         external
         returns (bytes32 operationId);
-
-    /// @notice Rotates the council address.
-    /// @param newCouncil The new council address.
-    function setCouncil(address newCouncil) external;
-
-    /// @notice Returns the current council address.
-    /// @return councilAddress The council address.
-    function council() external view returns (address councilAddress);
 
     /// @notice Returns the most recently scheduled council upgrade operation id (may already be executed or
     /// cancelled).

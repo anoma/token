@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Governor} from "@openzeppelin/contracts/governance/Governor.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
@@ -51,7 +52,7 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
 
     function test_constructor_reverts_if_the_initial_council_is_the_zero_address() public {
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
-        vm.expectRevert(IXanSecurityCouncil.ZeroCouncilNotAllowed.selector, predicted);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)), predicted);
         new XanSecurityCouncil({
             governor: IGovernor(address(_governor)),
             timelock: _timelock,
@@ -64,7 +65,7 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
     function test_scheduleUpgrade_reverts_if_the_caller_is_not_the_council() public {
         address newImpl = _newImplementation();
         vm.expectRevert(
-            abi.encodeWithSelector(IXanSecurityCouncil.UnauthorizedCouncil.selector, address(this)),
+            abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)),
             address(_securityCouncil)
         );
         _securityCouncil.scheduleUpgrade(newImpl, "");
@@ -281,17 +282,17 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         (address target, bytes memory payload, bytes32 salt) = _councilUpgradeCall(newImpl, "");
         vm.prank(_OTHER);
         vm.expectRevert(
-            abi.encodeWithSelector(IXanSecurityCouncil.UnauthorizedCouncil.selector, _OTHER), address(_securityCouncil)
+            abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _OTHER), address(_securityCouncil)
         );
         _securityCouncil.cancel({target: target, value: 0, data: payload, salt: salt});
     }
 
-    function test_cancel_cannot_be_used_to_cancel_a_setCouncil_rotation() public {
-        // Defense-in-depth mirror of the `cancelBatch` guard: the single-call `cancel` also refuses a `setCouncil`
-        // rotation on this module. A real voter-body rotation is a governor *batch* (cancellable only via
-        // `cancelBatch`), so the single path could never match its id anyway; this guard is belt-and-suspenders. It
-        // trips on the call shape alone, before any timelock lookup.
-        bytes memory data = abi.encodeCall(IXanSecurityCouncil.setCouncil, (makeAddr("replacementCouncil")));
+    function test_cancel_cannot_be_used_to_cancel_a_transferOwnership_rotation() public {
+        // Defense-in-depth mirror of the `cancelBatch` guard: the single-call `cancel` also refuses a
+        // `transferOwnership` rotation on this module. A real voter-body rotation is a governor *batch* (cancellable
+        // only via `cancelBatch`), so the single path could never match its id anyway; this guard is
+        // belt-and-suspenders. It trips on the call shape alone, before any timelock lookup.
+        bytes memory data = abi.encodeCall(Ownable.transferOwnership, (makeAddr("replacementCouncil")));
         vm.prank(_COUNCIL_MULTISIG);
         vm.expectRevert(IXanSecurityCouncil.CannotCancelCouncilRotation.selector, address(_securityCouncil));
         _securityCouncil.cancel({target: address(_securityCouncil), value: 0, data: data, salt: bytes32(0)});
@@ -315,8 +316,8 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         assertFalse(_timelock.isOperationPending(operationId));
     }
 
-    function test_cancelBatch_can_cancel_a_setCouncil_bundled_with_an_upgrade() public {
-        // A standalone `setCouncil` is the one operation the council may not cancel. Bundling it with a second action
+    function test_cancelBatch_can_cancel_a_transferOwnership_bundled_with_an_upgrade() public {
+        // A standalone `transferOwnership` is the one operation the council may not cancel. Bundling it with a second action
         // (here a token upgrade) makes the batch length != 1, so the exemption does not apply and the whole batch
         // stays cancellable: a malicious upgrade cannot shield itself by riding along with a rotation.
         address newImpl = _newImplementation();
@@ -326,7 +327,7 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         uint256[] memory values = new uint256[](2);
         bytes[] memory calldatas = new bytes[](2);
         targets[0] = address(_securityCouncil);
-        calldatas[0] = abi.encodeCall(IXanSecurityCouncil.setCouncil, (replacementCouncil));
+        calldatas[0] = abi.encodeCall(Ownable.transferOwnership, (replacementCouncil));
         targets[1] = address(_xanToken);
         calldatas[1] = abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (newImpl, ""));
 
@@ -351,7 +352,7 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         uint256[] memory values = new uint256[](0);
         bytes[] memory payloads = new bytes[](0);
         vm.expectRevert(
-            abi.encodeWithSelector(IXanSecurityCouncil.UnauthorizedCouncil.selector, address(this)),
+            abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)),
             address(_securityCouncil)
         );
         _securityCouncil.cancelBatch({targets: targets, values: values, payloads: payloads, salt: bytes32(0)});
@@ -360,14 +361,14 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
     /// @notice The attack the `CannotCancelCouncilRotation` guard exists to stop: a captured council using its general
     /// brake to veto its own removal. Without the guard, the `cancelBatch` below succeeds, the rotation is deleted from
     /// the timelock, and the council can repeat this on every removal attempt, entrenching itself forever.
-    function test_cancelBatch_cannot_be_used_to_cancel_a_setCouncil_rotation() public {
-        // The voter body moves to replace the (captured) council with a fresh multisig: a standalone `setCouncil`.
+    function test_cancelBatch_cannot_be_used_to_cancel_a_transferOwnership_rotation() public {
+        // The voter body moves to replace the (captured) council with a fresh multisig: a standalone `transferOwnership`.
         address replacementCouncil = makeAddr("replacementCouncil");
         address[] memory targets = new address[](1);
         uint256[] memory values = new uint256[](1);
         bytes[] memory calldatas = new bytes[](1);
         targets[0] = address(_securityCouncil);
-        calldatas[0] = abi.encodeCall(IXanSecurityCouncil.setCouncil, (replacementCouncil));
+        calldatas[0] = abi.encodeCall(Ownable.transferOwnership, (replacementCouncil));
 
         string memory description = "remove the captured council";
         bytes32 descriptionHash = _queueVoterBodyProposal(targets, values, calldatas, description);
@@ -389,42 +390,51 @@ contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
         assertTrue(_timelock.isOperationPending(operationId));
         skip(_timelock.getMinDelay() + 1);
         _governor.execute({targets: targets, values: values, calldatas: calldatas, descriptionHash: descriptionHash});
-        assertEq(_securityCouncil.council(), replacementCouncil);
+        assertEq(_securityCouncil.owner(), replacementCouncil);
 
         // The ousted council is now powerless: its privileged entry points reject it.
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
         vm.expectRevert(
-            abi.encodeWithSelector(IXanSecurityCouncil.UnauthorizedCouncil.selector, _COUNCIL_MULTISIG),
+            abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _COUNCIL_MULTISIG),
             address(_securityCouncil)
         );
         _securityCouncil.scheduleUpgrade(newImpl, "");
     }
 
-    function test_setCouncil_lets_the_voter_body_rotate_the_council() public {
+    function test_transferOwnership_lets_the_voter_body_rotate_the_council() public {
         address newCouncil = makeAddr("newCouncil");
 
         vm.expectEmit(address(_securityCouncil));
-        emit IXanSecurityCouncil.CouncilChanged({previousCouncil: _COUNCIL_MULTISIG, newCouncil: newCouncil});
+        emit Ownable.OwnershipTransferred({previousOwner: _COUNCIL_MULTISIG, newOwner: newCouncil});
 
         vm.prank(address(_timelock));
-        _securityCouncil.setCouncil(newCouncil);
-        assertEq(_securityCouncil.council(), newCouncil);
+        _securityCouncil.transferOwnership(newCouncil);
+        assertEq(_securityCouncil.owner(), newCouncil);
     }
 
-    function test_setCouncil_reverts_if_the_caller_is_not_the_timelock() public {
+    function test_transferOwnership_lets_the_council_hand_off() public {
+        address newCouncil = makeAddr("newCouncil");
+
         vm.prank(_COUNCIL_MULTISIG);
-        vm.expectRevert(
-            abi.encodeWithSelector(IXanSecurityCouncil.UnauthorizedTimelock.selector, _COUNCIL_MULTISIG),
-            address(_securityCouncil)
-        );
-        _securityCouncil.setCouncil(makeAddr("newCouncil"));
+        _securityCouncil.transferOwnership(newCouncil);
+        assertEq(_securityCouncil.owner(), newCouncil);
     }
 
-    function test_setCouncil_reverts_if_the_new_council_is_the_zero_address() public {
+    function test_transferOwnership_reverts_if_the_caller_is_neither_owner_nor_timelock() public {
+        vm.prank(_OTHER);
+        vm.expectRevert(
+            abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _OTHER), address(_securityCouncil)
+        );
+        _securityCouncil.transferOwnership(makeAddr("newCouncil"));
+    }
+
+    function test_transferOwnership_reverts_if_the_new_owner_is_the_zero_address() public {
         vm.prank(address(_timelock));
-        vm.expectRevert(IXanSecurityCouncil.ZeroCouncilNotAllowed.selector, address(_securityCouncil));
-        _securityCouncil.setCouncil(address(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)), address(_securityCouncil)
+        );
+        _securityCouncil.transferOwnership(address(0));
     }
 
     function test_cancelWindow_exceeds_the_voter_cancel_cycle() public view {

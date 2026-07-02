@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
@@ -9,12 +10,12 @@ import {IXanSecurityCouncil} from "./interfaces/IXanSecurityCouncil.sol";
 
 /// @title XanSecurityCouncil
 /// @author Anoma Foundation, 2026
-/// @notice The security council's on-chain interface to XAN governance. This module
-/// holds the timelock's `PROPOSER` and `CANCELLER` roles and has the power to:
+/// @notice The security council's on-chain interface to XAN governance. The council multisig is the module's
+/// `Ownable` owner; the module holds the timelock's `PROPOSER` and `CANCELLER` roles and has the power to:
 /// * Propose XAN token upgrades that the voter body can cancel.
 /// * Cancel proposals by the XAN voter body in the timelock.
 /// @custom:security-contact security@anoma.foundation
-contract XanSecurityCouncil is IXanSecurityCouncil {
+contract XanSecurityCouncil is IXanSecurityCouncil, Ownable {
     /// @notice The governor whose voting parameters size the cancel window.
     IGovernor private immutable _GOVERNOR;
 
@@ -27,29 +28,14 @@ contract XanSecurityCouncil is IXanSecurityCouncil {
     /// @notice Reaction-time margin added on top of the voter cancel cycle when sizing the cancel window.
     uint256 private immutable _CANCEL_BUFFER;
 
-    /// @notice The security council multisig.
-    address private _council;
-
     /// @notice The most recently scheduled council upgrade operation id.
     bytes32 private _pendingOperation;
-
-    /// @notice Restricts a function to the council multisig.
-    modifier onlyCouncil() {
-        require(msg.sender == _council, UnauthorizedCouncil(msg.sender));
-        _;
-    }
-
-    /// @notice Restricts a function to the timelock (i.e. a passed governance proposal executed by the voter body).
-    modifier onlyTimelock() {
-        require(msg.sender == address(_TIMELOCK), UnauthorizedTimelock(msg.sender));
-        _;
-    }
 
     /// @notice Deploys the module. It must be granted the timelock's `PROPOSER` and `CANCELLER` roles after deployment.
     /// @param governor The governor whose `votingDelay`/`votingPeriod` size the cancel window.
     /// @param timelock The timelock that owns the token.
     /// @param token The XAN token proxy.
-    /// @param initialCouncil The initial council multisig.
+    /// @param initialCouncil The initial council multisig (the initial owner).
     /// @param cancelBuffer The reaction-time margin added to the cancel cycle when sizing the cancel window.
     constructor(
         IGovernor governor,
@@ -57,26 +43,24 @@ contract XanSecurityCouncil is IXanSecurityCouncil {
         address token,
         address initialCouncil,
         uint256 cancelBuffer
-    ) {
+    ) Ownable(initialCouncil) {
         require(address(governor) != address(0), ZeroGovernorNotAllowed());
         require(address(timelock) != address(0), ZeroTimelockNotAllowed());
         require(token != address(0), ZeroTokenNotAllowed());
-        require(initialCouncil != address(0), ZeroCouncilNotAllowed());
 
         _GOVERNOR = governor;
         _TIMELOCK = timelock;
         _TOKEN = token;
-        _council = initialCouncil;
         _CANCEL_BUFFER = cancelBuffer;
     }
 
     /// @inheritdoc IXanSecurityCouncil
-    /// @dev Callable only by the council. The delay is sized (see `cancelWindow`) to leave a full voter cancel cycle.
-    /// Only one council upgrade may be pending at a time.
+    /// @dev Callable only by the council (the owner). The delay is sized (see `cancelWindow`) to leave a full voter
+    /// cancel cycle. Only one council upgrade may be pending at a time.
     function scheduleUpgrade(address newImplementation, bytes calldata data)
         external
         override
-        onlyCouncil
+        onlyOwner
         returns (bytes32 operationId)
     {
         require(newImplementation != address(0), ZeroImplementationNotAllowed());
@@ -103,13 +87,13 @@ contract XanSecurityCouncil is IXanSecurityCouncil {
     function cancel(address target, uint256 value, bytes calldata data, bytes32 salt)
         external
         override
-        onlyCouncil
+        onlyOwner
         returns (bytes32 operationId)
     {
-        // The voter body's power to replace the council (`setCouncil`) must survive the council's brake; otherwise a
-        // captured council could veto its own removal indefinitely. A `setCouncil` call is therefore the one
-        // operation the council may not cancel.
-        if (target == address(this) && bytes4(data[:4]) == this.setCouncil.selector) {
+        // The voter body's power to replace the council (`transferOwnership`) must survive the council's brake;
+        // otherwise a captured council could veto its own removal indefinitely. A `transferOwnership` call is therefore
+        // the one operation the council may not cancel.
+        if (target == address(this) && bytes4(data[:4]) == this.transferOwnership.selector) {
             revert CannotCancelCouncilRotation();
         }
 
@@ -123,14 +107,17 @@ contract XanSecurityCouncil is IXanSecurityCouncil {
     function cancelBatch(address[] calldata targets, uint256[] calldata values, bytes[] calldata payloads, bytes32 salt)
         external
         override
-        onlyCouncil
+        onlyOwner
         returns (bytes32 operationId)
     {
-        // The voter body's power to replace the council (`setCouncil`) must survive the council's brake; otherwise a
-        // captured council could veto its own removal indefinitely. A standalone `setCouncil` call is therefore the one
-        // operation the council may not cancel. Bundling it with anything else (length != 1) stays cancellable, so a
-        // malicious upgrade cannot ride along under this exemption.
-        if (targets.length == 1 && targets[0] == address(this) && bytes4(payloads[0][:4]) == this.setCouncil.selector) {
+        // The voter body's power to replace the council (`transferOwnership`) must survive the council's brake;
+        // otherwise a captured council could veto its own removal indefinitely. A standalone `transferOwnership` call
+        // is therefore the one operation the council may not cancel. Bundling it with anything else (length != 1) stays
+        // cancellable, so a malicious upgrade cannot ride along under this exemption.
+        if (
+            targets.length == 1 && targets[0] == address(this)
+                && bytes4(payloads[0][:4]) == this.transferOwnership.selector
+        ) {
             revert CannotCancelCouncilRotation();
         }
 
@@ -142,22 +129,17 @@ contract XanSecurityCouncil is IXanSecurityCouncil {
     }
 
     /// @inheritdoc IXanSecurityCouncil
-    /// @dev Callable only by the timelock (a passed governance proposal), so the voter body can replace a captured or
-    /// inactive council.
-    function setCouncil(address newCouncil) external override onlyTimelock {
-        require(newCouncil != address(0), ZeroCouncilNotAllowed());
-        emit CouncilChanged(_council, newCouncil);
-        _council = newCouncil;
-    }
-
-    /// @inheritdoc IXanSecurityCouncil
-    function council() external view override returns (address councilAddress) {
-        councilAddress = _council;
-    }
-
-    /// @inheritdoc IXanSecurityCouncil
     function pendingUpgrade() external view override returns (bytes32 operationId) {
         operationId = _pendingOperation;
+    }
+
+    /// @notice Rotates the council (the module's owner). Callable by the current council (the owner) OR the timelock.
+    /// @param newOwner The new council address.
+    /// @dev Overrides `Ownable.transferOwnership`, widening its `onlyOwner` gate to also admit the timelock.
+    function transferOwnership(address newOwner) public override {
+        require(msg.sender == owner() || msg.sender == address(_TIMELOCK), OwnableUnauthorizedAccount(msg.sender));
+        require(newOwner != address(0), OwnableInvalidOwner(address(0)));
+        _transferOwnership(newOwner);
     }
 
     /// @inheritdoc IXanSecurityCouncil
