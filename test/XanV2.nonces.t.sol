@@ -13,9 +13,7 @@ contract XanV2NoncesTest is XanV2Fixture {
     address internal immutable _SPENDER = makeAddr("spender");
     address internal immutable _DELEGATEE = makeAddr("delegatee");
 
-    /// @notice A `permit` and a subsequent `delegateBySig` for the same account advance and consume the same nonce
-    /// counter: the delegation must use the nonce left behind by the permit.
-    function test_nonces_are_shared_between_permit_then_delegateBySig() public {
+    function test_nonces_of_permit_do_not_conflict_with_nonces_of_delegateBySig() public {
         uint256 deadline = block.timestamp + 1 hours;
 
         assertEq(_xanV2Proxy.nonces(_ALICE), 0);
@@ -36,8 +34,7 @@ contract XanV2NoncesTest is XanV2Fixture {
         assertEq(_xanV2Proxy.nonces(_ALICE), 2);
     }
 
-    /// @notice The reverse direction: a `delegateBySig` consumes nonce 0, so a subsequent `permit` must use nonce 1.
-    function test_nonces_are_shared_between_delegateBySig_then_permit() public {
+    function test_nonces_of_delegateBySig_do_not_conflict_with_nonces_of_permit() public {
         uint256 deadline = block.timestamp + 1 hours;
 
         // `delegateBySig` consumes nonce 0.
