@@ -54,8 +54,6 @@ contract XanV2UnlockingTest is XanV2Fixture {
         vm.prank(_defaultSender);
         _xanV2Proxy.unlock();
 
-        // The unlocked tokens can now be transferred; the still-locked remainder cannot move (its revert is covered by
-        // `test_transfer_reverts_if_value_exceeds_unlocked_balance`).
         vm.prank(_defaultSender);
         _xanV2Proxy.safeTransfer(_OTHER, Parameters.SUPPLY / 2);
         assertEq(_xanV2Proxy.balanceOf(_OTHER), Parameters.SUPPLY / 2);
