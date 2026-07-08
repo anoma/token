@@ -39,4 +39,8 @@ contract XanV2UpgradeTest is XanV2Fixture {
 
         assertEq(_xanV2Proxy.implementation(), newImpl);
     }
+
+    function test_implementation_returns_the_current_implementation() public view {
+        assertEq(_xanV2Proxy.implementation(), _xanV2Impl);
+    }
 }
