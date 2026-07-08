@@ -37,7 +37,7 @@ contract XanV2UnlockingTest is XanV2Fixture {
         assertEq(_xanV2Proxy.lockedBalanceOf(_defaultSender), Parameters.SUPPLY);
     }
 
-    function test_unlock_returns_and_splits_the_vested_balance() public {
+    function test_unlock_returns_the_vested_balance() public {
         vm.warp(_vestingMid);
 
         vm.prank(_defaultSender);
