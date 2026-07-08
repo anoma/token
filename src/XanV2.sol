@@ -114,6 +114,14 @@ contract XanV2 is
     /// @notice Thrown when `unlock` is called but no tokens have vested since the last unlock.
     error NothingToUnlock(address account);
 
+    /// @notice Thrown when `reinitializeFromV1` would seed the voting total-supply checkpoint but it is already
+    /// non-empty, which would double-count the supply.
+    error VotingSupplyAlreadySeeded(uint256 currentVotingSupply);
+
+    /// @notice Thrown when `reinitializeFromV1` would seed the voting supply but the seed recipient (`address(this)`)
+    /// has already delegated, which would mint that delegate `totalSupply()` votes.
+    error SeedRecipientAlreadyDelegated(address delegatee);
+
     /// @notice Disables the initializers on the implementation contract to prevent it from being left uninitialized,
     /// and binds the owner and vesting schedule into the implementation bytecode.
     /// @param initialOwner The owner of the proxy after the upgrade (e.g. a multisig or DAO).
@@ -144,6 +152,10 @@ contract XanV2 is
         // `getPastTotalSupply` would read 0. Seed it once with the existing supply:
         // `from == address(0)` adds to the total-supply checkpoint, and because nothing has been delegated yet the `to`
         // argument moves no delegate votes.
+        require(_getTotalSupply() == 0, VotingSupplyAlreadySeeded({currentVotingSupply: _getTotalSupply()}));
+        require(
+            delegates(address(this)) == address(0), SeedRecipientAlreadyDelegated({delegatee: delegates(address(this))})
+        );
         _transferVotingUnits({from: address(0), to: address(this), amount: totalSupply()});
 
         emit VestingScheduled({start: _VESTING_START, duration: _VESTING_DURATION});

@@ -15,6 +15,13 @@ contract MockXanV2 is XanV2 {
         _V1_IMPLEMENTATION = v1Implementation;
     }
 
+    /// @notice Exposes `_transferVotingUnits` so a test can pre-seed the voting total-supply checkpoint from the zero
+    /// address — exactly as `reinitializeFromV1` does — before the reinitializer runs.
+    /// @param amount The amount to add to the voting total-supply checkpoint.
+    function addVotingTotalSupply(uint256 amount) external {
+        _transferVotingUnits({from: address(0), to: address(this), amount: amount});
+    }
+
     function _implementationV1() internal view override returns (address v1Implementation) {
         v1Implementation = _V1_IMPLEMENTATION;
     }
