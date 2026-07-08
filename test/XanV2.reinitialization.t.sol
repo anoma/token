@@ -2,8 +2,10 @@
 pragma solidity ^0.8.30;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {Upgrades, UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
 
 import {IXanV2} from "../src/interfaces/IXanV2.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
@@ -49,6 +51,53 @@ contract XanV2ReinitializationTest is Test {
         _xanV2Proxy.reinitializeFromV1();
     }
 
+    function test_reinitializeFromV1_reverts_when_the_voting_supply_is_already_seeded() public {
+        MockXanV2 mockProxy = _upgradeToMockWithoutReinitializing();
+
+        // Simulate a corrupted / already-seeded checkpoint by adding the supply to it before the reinitializer runs.
+        uint256 alreadySeeded = mockProxy.totalSupply();
+        mockProxy.addVotingTotalSupply(alreadySeeded);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV2.VotingSupplyAlreadySeeded.selector, alreadySeeded), address(mockProxy)
+        );
+        mockProxy.reinitializeFromV1();
+    }
+
+    function test_reinitializeFromV1_reverts_when_the_seed_recipient_already_delegated() public {
+        MockXanV2 mockProxy = _upgradeToMockWithoutReinitializing();
+
+        // Make the seed recipient (the token contract itself) delegate before the reinitializer runs: prank the proxy.
+        vm.prank(address(mockProxy));
+        mockProxy.delegate(address(mockProxy));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(XanV2.SeedRecipientAlreadyDelegated.selector, address(mockProxy)), address(mockProxy)
+        );
+        mockProxy.reinitializeFromV1();
+    }
+
+    function test_reinitializeFromV1_does_not_change_vote_delegate_votes() public {
+        (XanV1 v1Proxy, address v2Impl) = _deployV1AndPrepareUpgrade();
+
+        // Seeding the voting total-supply checkpoint credits `address(this)`, which has not delegated, so
+        // `_moveDelegateVotes` is a no-op and no `DelegateVotesChanged` may be emitted. Its presence would mean the
+        // seed minted voting power to a delegate.
+        vm.recordLogs();
+        UnsafeUpgrades.upgradeProxy({
+            proxy: address(v1Proxy), newImpl: v2Impl, data: abi.encodeCall(XanV2.reinitializeFromV1, ())
+        });
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        for (uint256 i = 0; i < logs.length; ++i) {
+            assertNotEq(
+                logs[i].topics[0],
+                IVotes.DelegateVotesChanged.selector,
+                "DelegateVotesChanged emitted during reinitialization"
+            );
+        }
+    }
+
     function test_reinitializeFromV1_sets_the_owner() public view {
         assertEq(_xanV2Proxy.owner(), _INITIAL_OWNER);
     }
@@ -89,5 +138,14 @@ contract XanV2ReinitializationTest is Test {
         vm.stopPrank();
 
         skip(Parameters.DELAY_DURATION);
+    }
+
+    /// @notice Deploys a V1 proxy and upgrades it to a `MockXanV2` implementation *without* calling
+    /// `reinitializeFromV1`, leaving the proxy in its pre-seed state so a test can corrupt it before invoking the
+    /// reinitializer explicitly.
+    function _upgradeToMockWithoutReinitializing() internal returns (MockXanV2 mockProxy) {
+        (XanV1 v1Proxy, address v2Impl) = _deployV1AndPrepareUpgrade();
+        UnsafeUpgrades.upgradeProxy({proxy: address(v1Proxy), newImpl: v2Impl, data: ""});
+        mockProxy = MockXanV2(address(v1Proxy));
     }
 }
