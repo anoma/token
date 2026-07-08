@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
+import {VotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/utils/VotesUpgradeable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
@@ -22,28 +23,45 @@ contract XanV2VotingTest is XanV2Fixture {
         assertEq(_xanV2Proxy.getPastVotes(_defaultSender, 100), Parameters.SUPPLY);
     }
 
+    function test_getPastTotalSupply_reverts_during_the_upgrade() public {
+        assertEq(Time.timestamp(), _upgradeTimestamp);
+        vm.expectRevert(
+            abi.encodeWithSelector(VotesUpgradeable.ERC5805FutureLookup.selector, _upgradeTimestamp, _upgradeTimestamp),
+            address(_xanV2Proxy)
+        );
+        _xanV2Proxy.getPastTotalSupply(_upgradeTimestamp);
+    }
+
     function test_getPastTotalSupply_returns_the_seeded_supply_after_upgrade() public {
-        // The V1 supply predates `ERC20Votes`; the upgrade seeds the voting total-supply checkpoint so quorum is
-        // not zero. It becomes queryable once it is in the past (here, after the upgrade timestamp).
-        vm.warp(_vestingStart);
-        assertEq(_xanV2Proxy.getPastTotalSupply(_vestingStart - 1), Parameters.SUPPLY);
+        // The checkpoint is seeded at the upgrade; step one second past it so the upgrade instant is a valid past
+        // timepoint, then read it back.
+        vm.warp(_upgradeTimestamp + 1);
+        assertEq(_xanV2Proxy.getPastTotalSupply(_upgradeTimestamp), Parameters.SUPPLY);
     }
 
     function test_transfer_moves_voting_power_between_delegates() public {
+        vm.warp(_vestingEnd);
+
+        // Self-delegate as `_defaultSender`.
         vm.prank(_defaultSender);
         _xanV2Proxy.delegate(_defaultSender);
+        assertEq(_xanV2Proxy.getVotes(_defaultSender), Parameters.SUPPLY);
+
+        // Self-delegate as `_OTHER`.
         vm.prank(_OTHER);
         _xanV2Proxy.delegate(_OTHER);
+        assertEq(_xanV2Proxy.getVotes(_OTHER), 0);
 
-        // Half-way through vesting, unlock the vested half and transfer it to `_OTHER`.
-        vm.warp(_vestingMid);
+        // Transfer 1/3  to `_OTHER`.
+        uint256 oneThird = Parameters.SUPPLY / 3;
+
         vm.startPrank(_defaultSender);
         _xanV2Proxy.unlock();
-        _xanV2Proxy.safeTransfer(_OTHER, Parameters.SUPPLY / 2);
+        _xanV2Proxy.safeTransfer(_OTHER, oneThird);
         vm.stopPrank();
 
-        assertEq(_xanV2Proxy.getVotes(_defaultSender), Parameters.SUPPLY / 2);
-        assertEq(_xanV2Proxy.getVotes(_OTHER), Parameters.SUPPLY / 2);
+        assertEq(_xanV2Proxy.getVotes(_defaultSender), Parameters.SUPPLY - oneThird);
+        assertEq(_xanV2Proxy.getVotes(_OTHER), oneThird);
     }
 
     function test_delegate_grants_voting_power_equal_to_balance() public {
@@ -165,6 +183,11 @@ contract XanV2VotingTest is XanV2Fixture {
         assertEq(_xanV2Proxy.getVotes(_defaultSender), 0);
     }
 
+    function test_getPastTotalSupply_is_zero_before_the_upgrade() public view {
+        assertEq(Time.timestamp(), _upgradeTimestamp);
+        assertEq(_xanV2Proxy.getPastTotalSupply(_upgradeTimestamp - 1), 0);
+    }
+
     function test_clock_tracks_the_block_timestamp() public view {
         assertEq(_xanV2Proxy.clock(), uint48(block.timestamp));
     }
@@ -182,11 +205,5 @@ contract XanV2VotingTest is XanV2Fixture {
     function _unlock() internal {
         vm.prank(_defaultSender);
         _xanV2Proxy.unlock();
-    }
-
-    /// @notice Begin vesting after the V2 upgrade completes; the voter-body delay is waited out during `setUp`.
-    function _vestingSchedule() internal view override returns (uint48 start, uint48 duration) {
-        start = Time.timestamp() + Parameters.DELAY_DURATION + 1 hours;
-        duration = 24 hours;
     }
 }
