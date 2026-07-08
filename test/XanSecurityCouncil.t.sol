@@ -9,8 +9,8 @@ import {TimelockController} from "@openzeppelin/contracts/governance/TimelockCon
 import {IXanSecurityCouncil} from "../src/interfaces/IXanSecurityCouncil.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
 import {XanSecurityCouncil} from "../src/XanSecurityCouncil.sol";
+import {XanSecurityCouncilFixture} from "./fixtures/XanSecurityCouncilFixture.sol";
 import {MockXanV2} from "./mocks/MockXanV2.sol";
-import {XanSecurityCouncilFixture} from "./XanSecurityCouncilFixture.sol";
 
 contract XanSecurityCouncilTest is XanSecurityCouncilFixture {
     function test_constructor_reverts_if_the_governor_is_the_zero_address() public {

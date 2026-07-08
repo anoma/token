@@ -7,11 +7,11 @@ import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {Upgrades, UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {Parameters} from "../src/libs/Parameters.sol";
-import {XanGovernor} from "../src/XanGovernor.sol";
-import {XanV1} from "../src/XanV1.sol";
-import {XanV2} from "../src/XanV2.sol";
-import {MockXanV2} from "./mocks/MockXanV2.sol";
+import {Parameters} from "../../src/libs/Parameters.sol";
+import {XanGovernor} from "../../src/XanGovernor.sol";
+import {XanV1} from "../../src/XanV1.sol";
+import {XanV2} from "../../src/XanV2.sol";
+import {MockXanV2} from "../mocks/MockXanV2.sol";
 
 /// @notice Shared fixture wiring a `XanGovernor` DAO to the `XanV2` token through a `TimelockController`.
 /// @dev The end state mirrors a real deployment: the supply is split across three self-delegating voters — A

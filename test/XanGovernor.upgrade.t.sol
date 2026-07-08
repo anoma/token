@@ -5,8 +5,8 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 
 import {Parameters} from "../src/libs/Parameters.sol";
+import {XanGovernorFixture} from "./fixtures/XanGovernorFixture.sol";
 import {MockXanV3} from "./mocks/MockXanV3.sol";
-import {XanGovernorFixture} from "./XanGovernorFixture.sol";
 
 /// @notice Demonstrates that the governor DAO can upgrade the `XanV2` token itself. Because the token's owner is the
 /// timelock, only a passing proposal executed by the timelock can authorize a UUPS upgrade (`upgradeToAndCall`).
