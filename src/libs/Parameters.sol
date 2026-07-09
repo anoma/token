@@ -33,7 +33,7 @@ library Parameters {
 
     /// @notice The timestamp at which the linear vesting of the formerly locked balances starts in `XanV2`.
     /// @dev Thu Oct 01 2026 12:00:00 UTC.
-    uint48 internal constant VESTING_START = 1_790_856_000;
+    uint48 internal constant VESTING_START = 1_793_448_000;
 
     /// @notice The duration over which formerly locked balances vest linearly in `XanV2`.
     /// @dev Three years. Vesting is continuous (every block).
