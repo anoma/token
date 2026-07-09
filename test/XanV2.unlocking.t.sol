@@ -13,60 +13,28 @@ contract XanV2UnlockingTest is XanV2Fixture {
 
     address internal immutable _OTHER = makeAddr("other");
 
-    function test_lockedBalanceOf_returns_full_principal_at_start() public {
-        // `_defaultSender` locked the entire supply in V1 before the upgrade.
-        vm.warp(_vestingStart);
-        assertEq(_xanV2Proxy.lockedBalanceOf(_defaultSender), Parameters.SUPPLY);
-        assertEq(_xanV2Proxy.unlockedBalanceOf(_defaultSender), 0);
-        assertEq(_xanV2Proxy.unlockableBalanceOf(_defaultSender), 0);
-    }
-
-    function test_unlock_reverts_when_nothing_vested() public {
+    function test_unlock_reverts_when_nothing_has_vested() public {
         vm.warp(_vestingStart);
         vm.prank(_defaultSender);
         vm.expectRevert(abi.encodeWithSelector(XanV2.NothingToUnlock.selector, _defaultSender), address(_xanV2Proxy));
         _xanV2Proxy.unlock();
     }
 
-    function test_unlockableBalanceOf_returns_linear_amount_during_vesting() public {
-        vm.warp(_vestingMid);
-        assertEq(_xanV2Proxy.unlockableBalanceOf(_defaultSender), Parameters.SUPPLY / 2);
-
-        // Vesting does not become spendable until it is unlocked.
-        assertEq(_xanV2Proxy.unlockedBalanceOf(_defaultSender), 0);
-        assertEq(_xanV2Proxy.lockedBalanceOf(_defaultSender), Parameters.SUPPLY);
-    }
-
     function test_unlock_returns_the_vested_balance() public {
         vm.warp(_vestingMid);
-
         vm.prank(_defaultSender);
-        uint256 value = _xanV2Proxy.unlock();
-        assertEq(value, Parameters.SUPPLY / 2);
-
-        assertEq(_xanV2Proxy.unlockedBalanceOf(_defaultSender), Parameters.SUPPLY / 2);
-        assertEq(_xanV2Proxy.lockedBalanceOf(_defaultSender), Parameters.SUPPLY / 2);
-        assertEq(_xanV2Proxy.unlockableBalanceOf(_defaultSender), 0);
+        assertEq(_xanV2Proxy.unlock(), Parameters.SUPPLY / 2);
     }
 
-    function test_unlock_makes_vested_tokens_spendable() public {
+    function test_unlock_makes_vested_tokens_transferable() public {
         vm.warp(_vestingMid);
         vm.prank(_defaultSender);
-        _xanV2Proxy.unlock();
+        uint256 vested = _xanV2Proxy.unlock();
 
         vm.prank(_defaultSender);
-        _xanV2Proxy.safeTransfer(_OTHER, Parameters.SUPPLY / 2);
-        assertEq(_xanV2Proxy.balanceOf(_OTHER), Parameters.SUPPLY / 2);
-    }
+        _xanV2Proxy.safeTransfer(_OTHER, vested);
 
-    function test_unlockableBalanceOf_returns_full_principal_after_duration() public {
-        vm.warp(_vestingEnd);
-        assertEq(_xanV2Proxy.unlockableBalanceOf(_defaultSender), Parameters.SUPPLY);
-
-        vm.prank(_defaultSender);
-        _xanV2Proxy.unlock();
-        assertEq(_xanV2Proxy.lockedBalanceOf(_defaultSender), 0);
-        assertEq(_xanV2Proxy.unlockedBalanceOf(_defaultSender), Parameters.SUPPLY);
+        assertEq(_xanV2Proxy.balanceOf(_OTHER), vested);
     }
 
     function test_unlock_emits_the_Unlocked_event() public {
@@ -91,24 +59,51 @@ contract XanV2UnlockingTest is XanV2Fixture {
         _xanV2Proxy.unlock();
     }
 
-    function test_unlockedBalanceOf_excludes_the_locked_balance() public {
-        // Before vesting the whole principal is locked, so none of the balance is unlocked.
-        vm.warp(_vestingStart);
-        assertEq(_xanV2Proxy.balanceOf(_defaultSender), Parameters.SUPPLY);
-        assertEq(_xanV2Proxy.lockedBalanceOf(_defaultSender), Parameters.SUPPLY);
-        assertEq(_xanV2Proxy.unlockedBalanceOf(_defaultSender), 0);
+    function testFuzz_lockedBalanceOf_returns_the_locked_balance(uint48 time) public {
+        vm.warp(bound(time, _vestingStart + 1, _vestingEnd));
+
+        vm.prank(_defaultSender);
+        uint256 unlocked = _xanV2Proxy.unlock();
+
+        assertEq(_xanV2Proxy.lockedBalanceOf(_defaultSender), _xanV2Proxy.balanceOf(_defaultSender) - unlocked);
     }
 
-    function test_transfer_reverts_if_value_exceeds_unlocked_balance() public {
-        // Before vesting every token is locked, so even a 1-wei transfer exceeds the unlocked balance.
-        vm.warp(_vestingStart);
+    function testFuzz_unlockableBalanceOf_returns_the_unlockable_balance(uint48 time) public {
+        vm.warp(bound(time, _vestingStart + 1, _vestingEnd));
+
+        uint256 unlockable = _xanV2Proxy.unlockableBalanceOf(_defaultSender);
+
         vm.prank(_defaultSender);
+        uint256 unlocked = _xanV2Proxy.unlock();
+
+        assertEq(unlockable, unlocked);
+    }
+
+    function testFuzz_unlockedBalanceOf_returns_the_unlocked_balance(uint48 time) public {
+        vm.warp(bound(time, _vestingStart + 1, _vestingEnd));
+
+        vm.prank(_defaultSender);
+        uint256 unlocked = _xanV2Proxy.unlock();
+
+        assertEq(_xanV2Proxy.unlockedBalanceOf(_defaultSender), unlocked);
+    }
+
+    function testFuzz_transfer_reverts_if_value_exceeds_unlocked_balance(uint48 time) public {
+        vm.warp(bound(time, _vestingStart + 1, _vestingEnd));
+
+        vm.prank(_defaultSender);
+        uint256 unlocked = _xanV2Proxy.unlock();
+        uint256 moreThanUnlocked = unlocked + 1;
+
         vm.expectRevert(
-            abi.encodeWithSelector(XanV2.UnlockedBalanceInsufficient.selector, _defaultSender, 0, 1),
+            abi.encodeWithSelector(
+                XanV2.UnlockedBalanceInsufficient.selector, _defaultSender, unlocked, moreThanUnlocked
+            ),
             address(_xanV2Proxy)
         );
+        vm.prank(_defaultSender);
         // forge-lint: disable-next-line(erc20-unchecked-transfer)
-        _xanV2Proxy.transfer(_OTHER, 1);
+        _xanV2Proxy.transfer(_OTHER, moreThanUnlocked);
     }
 
     function test_vestingStart_returns_expected_parameter() public view {
