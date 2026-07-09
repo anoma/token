@@ -16,8 +16,9 @@ contract ScheduleCouncilUpgradeToXanV2 is Script {
         // scheduled implementation address is fixed, so whoever later executes the (permissionless) upgrade cannot
         // change these via calldata. Always use the `Parameters` constants so the vesting schedule cannot be picked
         // wrong.
-        opts.constructorData =
-            abi.encode(Parameters.INITIAL_OWNER, Parameters.VESTING_START, Parameters.VESTING_DURATION);
+        opts.constructorData = abi.encode(
+            Parameters.XAN_GOVERNOR_TIMELOCK_CONTROLLER, Parameters.VESTING_START, Parameters.VESTING_DURATION
+        );
 
         vm.startBroadcast();
 
