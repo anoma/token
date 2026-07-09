@@ -109,7 +109,7 @@ contract XanV2 is
     error UpgradeToXanV1NotAllowed();
 
     /// @notice Thrown when an account tries to move more than its unlocked (spendable) balance.
-    error UnlockedBalanceInsufficient(address sender, uint256 unlockedBalance, uint256 valueToLock);
+    error UnlockedBalanceInsufficient(address sender, uint256 unlockedBalance, uint256 valueToUnlock);
 
     /// @notice Thrown when `unlock` is called but no tokens have vested since the last unlock.
     error NothingToUnlock(address account);
@@ -265,7 +265,7 @@ contract XanV2 is
 
         require(
             value < unlockedBalance + 1,
-            UnlockedBalanceInsufficient({sender: from, unlockedBalance: unlockedBalance, valueToLock: value})
+            UnlockedBalanceInsufficient({sender: from, unlockedBalance: unlockedBalance, valueToUnlock: value})
         );
 
         super._update({from: from, to: to, value: value});
