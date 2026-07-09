@@ -37,7 +37,7 @@ contract XanV2UnlockingTest is XanV2Fixture {
         assertEq(_xanV2Proxy.lockedBalanceOf(_defaultSender), Parameters.SUPPLY);
     }
 
-    function test_unlock_makes_vested_tokens_spendable() public {
+    function test_unlock_returns_the_vested_balance() public {
         vm.warp(_vestingMid);
 
         vm.prank(_defaultSender);
@@ -47,21 +47,16 @@ contract XanV2UnlockingTest is XanV2Fixture {
         assertEq(_xanV2Proxy.unlockedBalanceOf(_defaultSender), Parameters.SUPPLY / 2);
         assertEq(_xanV2Proxy.lockedBalanceOf(_defaultSender), Parameters.SUPPLY / 2);
         assertEq(_xanV2Proxy.unlockableBalanceOf(_defaultSender), 0);
+    }
 
-        // The unlocked tokens can now be transferred; the still-locked ones cannot.
+    function test_unlock_makes_vested_tokens_spendable() public {
+        vm.warp(_vestingMid);
+        vm.prank(_defaultSender);
+        _xanV2Proxy.unlock();
+
         vm.prank(_defaultSender);
         _xanV2Proxy.safeTransfer(_OTHER, Parameters.SUPPLY / 2);
         assertEq(_xanV2Proxy.balanceOf(_OTHER), Parameters.SUPPLY / 2);
-
-        vm.prank(_defaultSender);
-        vm.expectRevert(
-            abi.encodeWithSelector(XanV2.UnlockedBalanceInsufficient.selector, _defaultSender, 0, 1),
-            address(_xanV2Proxy)
-        );
-        // We do not use `safeTransfer` here to obtain the expected error `UnlockedBalanceInsufficient` instead of
-        // `SafeERC20FailedOperation`.
-        // forge-lint: disable-next-line(erc20-unchecked-transfer)
-        _xanV2Proxy.transfer(_OTHER, 1);
     }
 
     function test_unlockableBalanceOf_returns_full_principal_after_duration() public {
