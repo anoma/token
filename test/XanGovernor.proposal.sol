@@ -5,7 +5,7 @@ import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {Parameters} from "../src/libs/Parameters.sol";
-import {XanGovernorFixture} from "./XanGovernorFixture.sol";
+import {XanGovernorFixture} from "./fixtures/XanGovernorFixture.sol";
 
 /// @notice Covers the governor's configuration getters and the proposal cancellation path: proposal creation is gated
 /// by the threshold, quorum tracks the configured supply fraction, timelock proposals report as needing queuing, and a

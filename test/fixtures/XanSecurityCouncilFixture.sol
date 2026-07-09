@@ -3,8 +3,8 @@ pragma solidity ^0.8.30;
 
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 
-import {Parameters} from "../src/libs/Parameters.sol";
-import {XanSecurityCouncil} from "../src/XanSecurityCouncil.sol";
+import {Parameters} from "../../src/libs/Parameters.sol";
+import {XanSecurityCouncil} from "../../src/XanSecurityCouncil.sol";
 import {XanGovernorFixture} from "./XanGovernorFixture.sol";
 
 /// @notice Extends the governor fixture with a wired `XanSecurityCouncil` module: the module is granted the timelock's

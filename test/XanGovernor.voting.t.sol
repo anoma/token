@@ -7,7 +7,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {XanV2} from "../src/XanV2.sol";
-import {XanGovernorFixture} from "./XanGovernorFixture.sol";
+import {XanGovernorFixture} from "./fixtures/XanGovernorFixture.sol";
 
 /// @notice Demonstrates DAO voting with the `ERC20Votes`-compatible XAN token.
 contract XanGovernorVotingTest is XanGovernorFixture {
