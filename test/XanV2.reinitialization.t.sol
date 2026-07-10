@@ -16,7 +16,7 @@ import {MockXanV2} from "./mocks/MockXanV2.sol";
 
 contract XanV2ReinitializationTest is Test {
     address internal immutable _COUNCIL = makeAddr("council");
-    address internal immutable _INITIAL_OWNER = makeAddr("owner");
+    address internal immutable _OWNER = makeAddr("owner");
     address internal immutable _ATTACKER = makeAddr("attacker");
 
     address internal _defaultSender;
@@ -118,7 +118,7 @@ contract XanV2ReinitializationTest is Test {
         // Anyone may complete the reinitialization, but it can only install the baked-in owner.
         vm.prank(_ATTACKER);
         proxy.reinitializeFromV1();
-        assertEq(proxy.owner(), _INITIAL_OWNER);
+        assertEq(proxy.owner(), _OWNER);
     }
 
     function test_delegation_before_reinitialization_does_not_corrupt_the_supply_seed() public {
@@ -138,7 +138,7 @@ contract XanV2ReinitializationTest is Test {
     }
 
     function test_reinitializeFromV1_sets_the_owner() public view {
-        assertEq(_xanV2Proxy.owner(), _INITIAL_OWNER);
+        assertEq(_xanV2Proxy.owner(), _OWNER);
     }
 
     /// @notice `reinitializeFromV1` must take no arguments. The upgrade can be executed by anyone once the V1 delay
@@ -165,9 +165,7 @@ contract XanV2ReinitializationTest is Test {
 
         // Point the V2 mock at the locally deployed V1 implementation (the vesting principal is stored under it).
         v2Impl = address(
-            new MockXanV2(
-                v1Proxy.implementation(), _INITIAL_OWNER, Parameters.VESTING_START, Parameters.VESTING_DURATION
-            )
+            new MockXanV2(v1Proxy.implementation(), _OWNER, Parameters.VESTING_START, Parameters.VESTING_DURATION)
         );
 
         vm.startPrank(_defaultSender);
