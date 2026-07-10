@@ -26,17 +26,20 @@ contract ScheduleXanV1Upgrade is Script {
         // Deploy and wire governance first: its timelock becomes the token's owner, so it must exist before the V2
         // implementation (which bakes the owner into its bytecode) is prepared. The governance-deploy script contract
         // holds and then renounces the temporary timelock admin, so it is the deployer.
-        DeployGovernance governanceDeployer = new DeployGovernance();
-        (governor, timelock, upgradeCouncil) = governanceDeployer.deploy({
-            token: proxy, councilMultisig: councilMultisig, deployer: address(governanceDeployer)
-        });
+        {
+            DeployGovernance deployScript = new DeployGovernance();
+            (governor, timelock, upgradeCouncil) =
+                deployScript.deploy({token: proxy, councilMultisig: councilMultisig, deployer: address(deployScript)});
+        }
 
         // Bind the freshly deployed timelock (as owner) and the vesting schedule into the V2 implementation bytecode
         // (the trusted step). The scheduled implementation address is fixed, so whoever later executes the
         // (permissionless) upgrade cannot change these via calldata.
-        Options memory opts;
-        opts.constructorData = abi.encode(timelock, Parameters.VESTING_START, Parameters.VESTING_DURATION);
-        implV2 = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});
+        {
+            Options memory opts;
+            opts.constructorData = abi.encode(timelock, Parameters.VESTING_START, Parameters.VESTING_DURATION);
+            implV2 = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});
+        }
 
         // Schedule the V1 to V2 upgrade through the V1 council.
         XanV1(proxy).scheduleCouncilUpgrade({impl: implV2});
