@@ -26,12 +26,28 @@ contract DeployGovernance is Script {
         public
         returns (address governor, address timelock, address upgradeCouncil)
     {
-        require(token != address(0), InvalidTokenAddress());
-        require(councilMultisig != address(0), InvalidCouncilAddress());
-
         vm.startBroadcast();
 
-        address deployer = msg.sender;
+        (governor, timelock, upgradeCouncil) =
+            deploy({token: token, councilMultisig: councilMultisig, deployer: msg.sender});
+
+        vm.stopBroadcast();
+    }
+
+    /// @notice Deploys and wires the governance stack.
+    /// @param token The XAN token proxy.
+    /// @param councilMultisig The initial council multisig.
+    /// @param deployer The account sending the deployment transactions (it holds, and then renounces, the temporary
+    /// timelock admin).
+    /// @return governor The deployed `XanGovernor`.
+    /// @return timelock The deployed `TimelockController` (the eventual token owner).
+    /// @return upgradeCouncil The deployed `XanUpgradeCouncil` module.
+    function deploy(address token, address councilMultisig, address deployer)
+        public
+        returns (address governor, address timelock, address upgradeCouncil)
+    {
+        require(token != address(0), InvalidTokenAddress());
+        require(councilMultisig != address(0), InvalidCouncilAddress());
 
         // 1. The timelock owns the token and executes accepted proposals.
         // The deployer is a temporary admin so the roles below can be wired; the timelock also self-administers, so
@@ -75,8 +91,6 @@ contract DeployGovernance is Script {
 
         // 5. Drop the deployer's admin; only the timelock (i.e. passed governance proposals) can change roles now.
         timelockController.renounceRole(timelockController.DEFAULT_ADMIN_ROLE(), deployer);
-
-        vm.stopBroadcast();
 
         governor = address(xanGovernor);
         timelock = address(timelockController);
