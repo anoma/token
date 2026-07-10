@@ -92,20 +92,20 @@ deploy-governance deployer token council chain *args:
         --sig "run(address,address)" {{ token }} {{ council }} \
         --broadcast --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
 
-# Simulate scheduling the XanV1→V2 upgrade through the V1 council (dry-run)
-schedule-upgrade-simulate proxy sender chain *args:
+# Simulate deploying governance + scheduling the XanV1→V2 upgrade through the V1 council (dry-run)
+schedule-upgrade-simulate proxy council sender chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
     forge script script/ScheduleXanV1Upgrade.s.sol:ScheduleXanV1Upgrade \
-        --sig "run(address)" {{ proxy }} \
+        --sig "run(address,address)" {{ proxy }} {{ council }} \
         --rpc-url {{ chain }} --sender {{ sender }} {{ args }}
 
-# Schedule the XanV1→V2 upgrade through the V1 council
-schedule-upgrade deployer proxy sender chain *args:
+# Deploy governance + schedule the XanV1→V2 upgrade through the V1 council
+schedule-upgrade deployer proxy council sender chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
     forge script script/ScheduleXanV1Upgrade.s.sol:ScheduleXanV1Upgrade \
-        --sig "run(address)" {{ proxy }} \
+        --sig "run(address,address)" {{ proxy }} {{ council }} \
         --broadcast --rpc-url {{ chain }} --account {{ deployer }} --sender {{ sender }} {{ args }}
 
 # Simulate executing the scheduled XanV1→V2 upgrade (permissionless) (dry-run)
