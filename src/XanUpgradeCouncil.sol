@@ -10,8 +10,9 @@ import {IXanUpgradeCouncil} from "./interfaces/IXanUpgradeCouncil.sol";
 
 /// @title XanUpgradeCouncil
 /// @author Anoma Foundation, 2026
-/// @notice The security council's on-chain interface to XAN governance. The council multisig is the module's
-/// `Ownable` owner; the module holds the timelock's `PROPOSER` and `CANCELLER` roles and has the power to:
+/// @notice The upgrade council's on-chain interface to XAN governance. The timelock is the module's `Ownable` owner
+/// and rotates the council multisig via `setCouncil`; the module holds the timelock's `PROPOSER` and `CANCELLER`
+/// roles and lets the council:
 /// * Schedule XAN token upgrades that the voter body can cancel.
 /// * Withdraw its own pending upgrade.
 /// It holds no power over voter-body operations.
@@ -29,14 +30,23 @@ contract XanUpgradeCouncil is IXanUpgradeCouncil, Ownable {
     /// @notice Reaction-time margin added on top of the voter cancel cycle when sizing the cancel window.
     uint256 private immutable _CANCEL_BUFFER;
 
+    /// @notice The council multisig.
+    address private _council;
+
     /// @notice The most recently scheduled council upgrade operation id.
     bytes32 private _pendingOperation;
 
+    /// @notice Restricts a function to the council multisig.
+    modifier onlyCouncil() {
+        require(msg.sender == _council, UnauthorizedCouncil(msg.sender));
+        _;
+    }
+
     /// @notice Deploys the module. It must be granted the timelock's `PROPOSER` and `CANCELLER` roles after deployment.
     /// @param governor The governor whose `votingDelay`/`votingPeriod` size the cancel window.
-    /// @param timelock The timelock that owns the token.
+    /// @param timelock The timelock that owns the token (and, as the module's `Ownable` owner, rotates the council).
     /// @param token The XAN token proxy.
-    /// @param initialCouncil The initial council multisig (the initial owner).
+    /// @param initialCouncil The initial council multisig.
     /// @param cancelBuffer The reaction-time margin added to the cancel cycle when sizing the cancel window.
     constructor(
         IGovernor governor,
@@ -44,24 +54,25 @@ contract XanUpgradeCouncil is IXanUpgradeCouncil, Ownable {
         address token,
         address initialCouncil,
         uint256 cancelBuffer
-    ) Ownable(initialCouncil) {
+    ) Ownable(address(timelock)) {
         require(address(governor) != address(0), ZeroGovernorNotAllowed());
-        require(address(timelock) != address(0), ZeroTimelockNotAllowed());
         require(token != address(0), ZeroTokenNotAllowed());
+        require(initialCouncil != address(0), ZeroCouncilNotAllowed());
 
         _GOVERNOR = governor;
         _TIMELOCK = timelock;
         _TOKEN = token;
         _CANCEL_BUFFER = cancelBuffer;
+        _council = initialCouncil;
     }
 
     /// @inheritdoc IXanUpgradeCouncil
-    /// @dev Callable only by the council (the owner). The delay is sized (see `cancelWindow`) to leave a full voter
-    /// cancel cycle. Only one council upgrade may be pending at a time.
+    /// @dev Callable only by the council. The delay is sized (see `cancelWindow`) to leave a full voter cancel cycle.
+    /// Only one council upgrade may be pending at a time.
     function scheduleUpgrade(address newImplementation, bytes calldata data)
         external
         override
-        onlyOwner
+        onlyCouncil
         returns (bytes32 operationId)
     {
         require(newImplementation != address(0), ZeroImplementationNotAllowed());
@@ -85,9 +96,9 @@ contract XanUpgradeCouncil is IXanUpgradeCouncil, Ownable {
     }
 
     /// @inheritdoc IXanUpgradeCouncil
-    /// @dev Callable only by the council (the owner). The module only ever aims the timelock's `CANCELLER` role at
-    /// the operation it scheduled itself, so the council has no cancel power over voter-body operations.
-    function cancelUpgrade() external override onlyOwner returns (bytes32 operationId) {
+    /// @dev Callable only by the council. The module only ever aims the timelock's `CANCELLER` role at the operation
+    /// it scheduled itself, so the council has no cancel power over voter-body operations.
+    function cancelUpgrade() external override onlyCouncil returns (bytes32 operationId) {
         operationId = _pendingOperation;
         require(operationId != bytes32(0) && _TIMELOCK.isOperationPending(operationId), NoUpgradePending());
 
@@ -97,17 +108,24 @@ contract XanUpgradeCouncil is IXanUpgradeCouncil, Ownable {
     }
 
     /// @inheritdoc IXanUpgradeCouncil
-    function pendingUpgrade() external view override returns (bytes32 operationId) {
-        operationId = _pendingOperation;
+    /// @dev Callable only by the timelock (the owner), i.e. through a passed voter-body proposal. The council cannot
+    /// rotate itself on-chain; a multisig rotates its signers internally without changing its address.
+    function setCouncil(address newCouncil) external override onlyOwner {
+        require(newCouncil != address(0), ZeroCouncilNotAllowed());
+
+        emit CouncilChanged({previousCouncil: _council, newCouncil: newCouncil});
+
+        _council = newCouncil;
     }
 
-    /// @notice Rotates the council (the module's owner). Callable by the current council (the owner) OR the timelock.
-    /// @param newOwner The new council address.
-    /// @dev Overrides `Ownable.transferOwnership`, widening its `onlyOwner` gate to also admit the timelock.
-    function transferOwnership(address newOwner) public override {
-        require(msg.sender == owner() || msg.sender == address(_TIMELOCK), OwnableUnauthorizedAccount(msg.sender));
-        require(newOwner != address(0), OwnableInvalidOwner(address(0)));
-        _transferOwnership(newOwner);
+    /// @inheritdoc IXanUpgradeCouncil
+    function council() external view override returns (address councilAddress) {
+        councilAddress = _council;
+    }
+
+    /// @inheritdoc IXanUpgradeCouncil
+    function pendingUpgrade() external view override returns (bytes32 operationId) {
+        operationId = _pendingOperation;
     }
 
     /// @inheritdoc IXanUpgradeCouncil

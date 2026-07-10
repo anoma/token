@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 /// @title IXanUpgradeCouncil
 /// @author Anoma Foundation, 2026
-/// @notice Interface of the security council module.
+/// @notice Interface of the upgrade council module.
 /// @custom:security-contact security@anoma.foundation
 interface IXanUpgradeCouncil {
     /// @notice Emitted when a token upgrade is scheduled in the timelock.
@@ -19,17 +19,25 @@ interface IXanUpgradeCouncil {
     /// @param operationId The cancelled timelock operation id.
     event UpgradeCancelled(bytes32 indexed operationId);
 
+    /// @notice Emitted when the council multisig is rotated.
+    /// @param previousCouncil The previous council address.
+    /// @param newCouncil The new council address.
+    event CouncilChanged(address indexed previousCouncil, address indexed newCouncil);
+
+    /// @notice Thrown when a council-only function is called by another account.
+    error UnauthorizedCouncil(address caller);
+
     /// @notice Thrown when the council schedules an upgrade while one is already pending (one upgrade in flight).
     error UpgradeAlreadyPending(bytes32 operationId);
 
     /// @notice Thrown when the governor address supplied to the constructor is zero.
     error ZeroGovernorNotAllowed();
 
-    /// @notice Thrown when the timelock address supplied to the constructor is zero.
-    error ZeroTimelockNotAllowed();
-
     /// @notice Thrown when the token address supplied to the constructor is zero.
     error ZeroTokenNotAllowed();
+
+    /// @notice Thrown when a council address (constructor `initialCouncil` or `setCouncil`) is zero.
+    error ZeroCouncilNotAllowed();
 
     /// @notice Thrown when the implementation address supplied to `scheduleUpgrade` is zero.
     error ZeroImplementationNotAllowed();
@@ -46,6 +54,14 @@ interface IXanUpgradeCouncil {
     /// @notice Withdraws the council's own pending upgrade from the timelock. The module can cancel nothing else.
     /// @return operationId The cancelled timelock operation id.
     function cancelUpgrade() external returns (bytes32 operationId);
+
+    /// @notice Rotates the council multisig.
+    /// @param newCouncil The new council address.
+    function setCouncil(address newCouncil) external;
+
+    /// @notice Returns the current council multisig.
+    /// @return councilAddress The council address.
+    function council() external view returns (address councilAddress);
 
     /// @notice Returns the most recently scheduled council upgrade operation id (may already be executed or
     /// cancelled).

@@ -11,7 +11,7 @@ import {XanGovernorFixture} from "./XanGovernorFixture.sol";
 /// `PROPOSER` and `CANCELLER` roles, so the council can schedule token upgrades (and withdraw its own pending one) and
 /// the voter body can cancel the council. Mirrors a real deployment where the token is owned by the timelock.
 abstract contract XanUpgradeCouncilFixture is XanGovernorFixture {
-    /// @notice The security council multisig.
+    /// @notice The upgrade council multisig.
     address internal immutable _COUNCIL_MULTISIG = makeAddr("upgradeCouncilMultisig");
 
     XanUpgradeCouncil internal _upgradeCouncil;

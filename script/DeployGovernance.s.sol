@@ -12,7 +12,7 @@ import {XanGovernor} from "../src/XanGovernor.sol";
 import {XanUpgradeCouncil} from "../src/XanUpgradeCouncil.sol";
 
 /// @notice Deploys and wires the XAN governance stack: a `TimelockController` (the eventual token owner), the
-/// `XanGovernor` driven by the token's `ERC20Votes`, and the `XanUpgradeCouncil` upgrade module. The timelock's roles
+/// `XanGovernor` driven by the token's `ERC20Votes`, and the `XanUpgradeCouncil` module. The timelock's roles
 /// are granted to the governor and the council module, the executor role is opened, and the deployer's temporary admin
 /// is renounced so only governance can change roles afterwards.
 ///
@@ -51,7 +51,7 @@ contract DeployGovernance is Script {
             initialQuorumNumerator: Parameters.QUORUM_RATIO_NUMERATOR * 100 / Parameters.QUORUM_RATIO_DENOMINATOR
         });
 
-        // 3. Deploy the security council module
+        // 3. Deploy the upgrade council module; the timelock is its `Ownable` owner and rotates the council.
         XanUpgradeCouncil xanUpgradeCouncil = new XanUpgradeCouncil({
             governor: IGovernor(address(xanGovernor)),
             timelock: timelockController,
