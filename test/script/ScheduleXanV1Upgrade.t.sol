@@ -66,6 +66,37 @@ contract ScheduleXanV1UpgradeTest is Test {
         _timelock.grantRole(proposerRole, _ATTACKER);
     }
 
+    /// @notice `run` deploys the governance stack and schedules the V1->V2 upgrade through the V1 council.
+    function test_run_deploys_governance_and_schedules_the_upgrade() public {
+        // `run` schedules through the broadcast sender, so the V1 council must be that sender (`DEFAULT_SENDER`).
+        address proxy = Upgrades.deployUUPSProxy(
+            "XanV1.sol:XanV1", abi.encodeCall(XanV1.initializeV1, (makeAddr("mintRecipient"), DEFAULT_SENDER))
+        );
+
+        (address implV2, address governor, address timelock, address upgradeCouncil) =
+            _script.run({proxy: proxy, councilMultisig: _COUNCIL_MULTISIG});
+
+        // The governance stack is deployed and wired to the token and timelock.
+        assertEq(address(XanGovernor(payable(governor)).token()), proxy, "governor not driven by the proxy");
+        assertEq(XanGovernor(payable(governor)).timelock(), timelock, "governor not wired to the timelock");
+        assertEq(XanUpgradeCouncil(upgradeCouncil).owner(), timelock, "module not owned by the timelock");
+
+        // The V2 implementation is scheduled through the V1 council for after the council delay.
+        (address scheduledImpl, uint48 endTime) = XanV1(proxy).scheduledCouncilUpgrade();
+        assertEq(scheduledImpl, implV2, "run did not schedule implV2");
+        assertEq(endTime, Time.timestamp() + Parameters.DELAY_DURATION, "unexpected upgrade delay");
+    }
+
+    /// @notice `run` reverts when the broadcast sender is not the V1 council, so it cannot schedule the upgrade.
+    function test_run_reverts_if_the_caller_is_not_the_v1_council() public {
+        address proxy = Upgrades.deployUUPSProxy(
+            "XanV1.sol:XanV1", abi.encodeCall(XanV1.initializeV1, (makeAddr("mintRecipient"), makeAddr("otherCouncil")))
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(XanV1.UnauthorizedCaller.selector, DEFAULT_SENDER), address(proxy));
+        _script.run({proxy: proxy, councilMultisig: _COUNCIL_MULTISIG});
+    }
+
     /// @notice Exactly the governor and the council module may schedule and cancel timelock operations.
     function test_deployGovernance_grants_scheduling_and_cancelling_to_the_governor_and_the_module() public view {
         bytes32 proposerRole = _timelock.PROPOSER_ROLE();
