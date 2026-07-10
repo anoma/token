@@ -18,7 +18,6 @@ import {XanV1} from "../../src/XanV1.sol";
 /// no residual deployer privilege survives — so every role assignment is asserted here explicitly.
 contract ScheduleXanV1UpgradeTest is Test {
     address internal immutable _COUNCIL_MULTISIG = makeAddr("councilMultisig");
-    address internal immutable _ATTACKER = makeAddr("attacker");
 
     ScheduleXanV1Upgrade internal _script;
     address internal _deployer;
@@ -52,18 +51,18 @@ contract ScheduleXanV1UpgradeTest is Test {
         _script.deployGovernance({token: _token, councilMultisig: address(0), deployer: address(_script)});
     }
 
-    /// @notice The timelock self-administers: role changes require a passed governance operation, so an outsider
-    /// cannot grant itself scheduling or cancelling power.
-    function test_roles_cannot_be_changed_by_outsiders() public {
+    function testFuzz_grantRole_reverts_if_the_caller_is_not_the_timelock(address caller) public {
+        vm.assume(caller != address(_timelock));
+
         bytes32 proposerRole = _timelock.PROPOSER_ROLE();
         bytes32 adminRole = _timelock.DEFAULT_ADMIN_ROLE();
 
-        vm.prank(_ATTACKER);
+        vm.prank(caller);
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, _ATTACKER, adminRole),
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, adminRole),
             address(_timelock)
         );
-        _timelock.grantRole(proposerRole, _ATTACKER);
+        _timelock.grantRole(proposerRole, caller);
     }
 
     /// @notice `run` deploys the governance stack and schedules the V1->V2 upgrade through the V1 council.
