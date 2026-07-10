@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {Upgrades, UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
@@ -16,6 +17,7 @@ import {MockXanV2} from "./mocks/MockXanV2.sol";
 contract XanV2ReinitializationTest is Test {
     address internal immutable _COUNCIL = makeAddr("council");
     address internal immutable _INITIAL_OWNER = makeAddr("owner");
+    address internal immutable _ATTACKER = makeAddr("attacker");
 
     address internal _defaultSender;
 
@@ -96,6 +98,43 @@ contract XanV2ReinitializationTest is Test {
                 "DelegateVotesChanged emitted during reinitialization"
             );
         }
+    }
+
+    function test_upgrade_without_reinitialization_grants_no_privileges() public {
+        (XanV1 v1Proxy, address v2Impl) = _deployV1AndPrepareUpgrade();
+
+        // Upgrade with empty calldata: V2 code is live but `reinitializeFromV1` has not run.
+        UnsafeUpgrades.upgradeProxy({proxy: address(v1Proxy), newImpl: v2Impl, data: ""});
+        XanV2 proxy = XanV2(address(v1Proxy));
+
+        // With no owner set, the owner-gated upgrade path rejects everyone.
+        assertEq(proxy.owner(), address(0));
+        vm.prank(_ATTACKER);
+        vm.expectRevert(
+            abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, _ATTACKER), address(proxy)
+        );
+        proxy.upgradeToAndCall(makeAddr("evilImplementation"), "");
+
+        // Anyone may complete the reinitialization, but it can only install the baked-in owner.
+        vm.prank(_ATTACKER);
+        proxy.reinitializeFromV1();
+        assertEq(proxy.owner(), _INITIAL_OWNER);
+    }
+
+    function test_delegation_before_reinitialization_does_not_corrupt_the_supply_seed() public {
+        (XanV1 v1Proxy, address v2Impl) = _deployV1AndPrepareUpgrade();
+        UnsafeUpgrades.upgradeProxy({proxy: address(v1Proxy), newImpl: v2Impl, data: ""});
+        XanV2 proxy = XanV2(address(v1Proxy));
+
+        // Before reinitialization, the holder of the whole supply delegates to itself.
+        vm.prank(_defaultSender);
+        proxy.delegate(_defaultSender);
+
+        proxy.reinitializeFromV1();
+
+        vm.warp(block.timestamp + 1);
+        assertEq(proxy.getPastTotalSupply(block.timestamp - 1), Parameters.SUPPLY);
+        assertEq(proxy.getVotes(_defaultSender), Parameters.SUPPLY);
     }
 
     function test_reinitializeFromV1_sets_the_owner() public view {
