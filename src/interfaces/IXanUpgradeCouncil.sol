@@ -45,6 +45,10 @@ interface IXanUpgradeCouncil {
     /// @notice Thrown when `cancelUpgrade` is called but no council upgrade is pending in the timelock.
     error NoUpgradePending();
 
+    /// @notice Thrown when `renounceOwnership` is called; renouncing is disabled so the voter body always retains the
+    /// timelock's ownership lever to rotate the council.
+    error RenouncingOwnershipDisabled();
+
     /// @notice Schedules a token upgrade by scheduling it in the timelock.
     /// @param newImplementation The implementation to upgrade the token to.
     /// @param data The reinitialization calldata forwarded to `upgradeToAndCall` (may be empty).

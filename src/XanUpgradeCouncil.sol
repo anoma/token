@@ -135,6 +135,14 @@ contract XanUpgradeCouncil is IXanUpgradeCouncil, Ownable {
         delay = _GOVERNOR.votingDelay() + _GOVERNOR.votingPeriod() + _TIMELOCK.getMinDelay() + _CANCEL_BUFFER;
     }
 
+    /// @notice Renouncing ownership is disabled.
+    /// @dev The timelock's ownership is the voter body's only lever to rotate a captured or inactive council;
+    /// renouncing would set the owner to `address(0)`, permanently disabling `setCouncil` and freezing the current
+    /// council. Reverts unconditionally.
+    function renounceOwnership() public pure override {
+        revert RenouncingOwnershipDisabled();
+    }
+
     /// @notice Deterministic, council-tagged salt so a council upgrade never collides with a voter-body operation and
     /// can be re-scheduled after a cancel.
     /// @param newImplementation The implementation to upgrade the token to.

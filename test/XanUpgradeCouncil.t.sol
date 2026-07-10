@@ -445,6 +445,14 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
         _upgradeCouncil.setCouncil(address(0));
     }
 
+    /// @notice Renouncing ownership is disabled: it would zero the owner and permanently freeze `setCouncil`,
+    /// destroying the voter body's power to rotate a captured or inactive council.
+    function test_renounceOwnership_is_disabled() public {
+        vm.prank(address(_timelock));
+        vm.expectRevert(IXanUpgradeCouncil.RenouncingOwnershipDisabled.selector, address(_upgradeCouncil));
+        _upgradeCouncil.renounceOwnership();
+    }
+
     function test_constructor_sets_the_timelock_as_owner_and_the_multisig_as_council() public view {
         assertEq(_upgradeCouncil.owner(), address(_timelock));
         assertEq(_upgradeCouncil.council(), _COUNCIL_MULTISIG);
