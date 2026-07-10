@@ -7,11 +7,11 @@ import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {DeployGovernance} from "../script/DeployGovernance.s.sol";
-import {Parameters} from "../src/libs/Parameters.sol";
-import {XanGovernor} from "../src/XanGovernor.sol";
-import {XanUpgradeCouncil} from "../src/XanUpgradeCouncil.sol";
-import {XanV1} from "../src/XanV1.sol";
+import {DeployGovernance} from "../../script/DeployGovernance.s.sol";
+import {Parameters} from "../../src/libs/Parameters.sol";
+import {XanGovernor} from "../../src/XanGovernor.sol";
+import {XanUpgradeCouncil} from "../../src/XanUpgradeCouncil.sol";
+import {XanV1} from "../../src/XanV1.sol";
 
 /// @notice Pins the production governance wiring produced by `DeployGovernance`. The deploy script establishes the
 /// entire security posture of the layer — who may schedule and cancel, that execution is permissionless, and that no
