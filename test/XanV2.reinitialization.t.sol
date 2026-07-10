@@ -129,12 +129,12 @@ contract XanV2ReinitializationTest is Test {
         // Before reinitialization, the holder of the whole supply delegates to itself.
         vm.prank(_defaultSender);
         proxy.delegate(_defaultSender);
+        assertEq(proxy.getVotes(_defaultSender), Parameters.SUPPLY);
 
         proxy.reinitializeFromV1();
 
         vm.warp(block.timestamp + 1);
         assertEq(proxy.getPastTotalSupply(block.timestamp - 1), Parameters.SUPPLY);
-        assertEq(proxy.getVotes(_defaultSender), Parameters.SUPPLY);
     }
 
     function test_reinitializeFromV1_sets_the_owner() public view {
