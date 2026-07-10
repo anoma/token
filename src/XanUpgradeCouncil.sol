@@ -2,19 +2,22 @@
 pragma solidity ^0.8.30;
 
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
-import {IXanSecurityCouncil} from "./interfaces/IXanSecurityCouncil.sol";
+import {IXanUpgradeCouncil} from "./interfaces/IXanUpgradeCouncil.sol";
 
-/// @title XanSecurityCouncil
+/// @title XanUpgradeCouncil
 /// @author Anoma Foundation, 2026
-/// @notice The security council's on-chain interface to XAN governance. This module
-/// holds the timelock's `PROPOSER` and `CANCELLER` roles and has the power to:
-/// * Propose XAN token upgrades that the voter body can cancel.
-/// * Cancel proposals by the XAN voter body in the timelock.
+/// @notice The upgrade council's on-chain interface to XAN governance. The timelock is the module's `Ownable` owner
+/// and rotates the council multisig via `setCouncil`; the module holds the timelock's `PROPOSER` and `CANCELLER`
+/// roles and lets the council:
+/// * Schedule XAN token upgrades that the voter body can cancel.
+/// * Withdraw its own pending upgrade.
+/// It holds no power over voter-body operations.
 /// @custom:security-contact security@anoma.foundation
-contract XanSecurityCouncil is IXanSecurityCouncil {
+contract XanUpgradeCouncil is IXanUpgradeCouncil, Ownable {
     /// @notice The governor whose voting parameters size the cancel window.
     IGovernor private immutable _GOVERNOR;
 
@@ -27,7 +30,7 @@ contract XanSecurityCouncil is IXanSecurityCouncil {
     /// @notice Reaction-time margin added on top of the voter cancel cycle when sizing the cancel window.
     uint256 private immutable _CANCEL_BUFFER;
 
-    /// @notice The security council multisig.
+    /// @notice The council multisig.
     address private _council;
 
     /// @notice The most recently scheduled council upgrade operation id.
@@ -39,15 +42,9 @@ contract XanSecurityCouncil is IXanSecurityCouncil {
         _;
     }
 
-    /// @notice Restricts a function to the timelock (i.e. a passed governance proposal executed by the voter body).
-    modifier onlyTimelock() {
-        require(msg.sender == address(_TIMELOCK), UnauthorizedTimelock(msg.sender));
-        _;
-    }
-
     /// @notice Deploys the module. It must be granted the timelock's `PROPOSER` and `CANCELLER` roles after deployment.
     /// @param governor The governor whose `votingDelay`/`votingPeriod` size the cancel window.
-    /// @param timelock The timelock that owns the token.
+    /// @param timelock The timelock that owns the token (and, as the module's `Ownable` owner, rotates the council).
     /// @param token The XAN token proxy.
     /// @param initialCouncil The initial council multisig.
     /// @param cancelBuffer The reaction-time margin added to the cancel cycle when sizing the cancel window.
@@ -57,20 +54,19 @@ contract XanSecurityCouncil is IXanSecurityCouncil {
         address token,
         address initialCouncil,
         uint256 cancelBuffer
-    ) {
+    ) Ownable(address(timelock)) {
         require(address(governor) != address(0), ZeroGovernorNotAllowed());
-        require(address(timelock) != address(0), ZeroTimelockNotAllowed());
         require(token != address(0), ZeroTokenNotAllowed());
         require(initialCouncil != address(0), ZeroCouncilNotAllowed());
 
         _GOVERNOR = governor;
         _TIMELOCK = timelock;
         _TOKEN = token;
-        _council = initialCouncil;
         _CANCEL_BUFFER = cancelBuffer;
+        _council = initialCouncil;
     }
 
-    /// @inheritdoc IXanSecurityCouncil
+    /// @inheritdoc IXanUpgradeCouncil
     /// @dev Callable only by the council. The delay is sized (see `cancelWindow`) to leave a full voter cancel cycle.
     /// Only one council upgrade may be pending at a time.
     function scheduleUpgrade(address newImplementation, bytes calldata data)
@@ -99,80 +95,44 @@ contract XanSecurityCouncil is IXanSecurityCouncil {
         _TIMELOCK.schedule({target: _TOKEN, value: 0, data: call, predecessor: bytes32(0), salt: salt, delay: delay});
     }
 
-    /// @inheritdoc IXanSecurityCouncil
-    function cancel(address target, uint256 value, bytes calldata data, bytes32 salt)
-        external
-        override
-        onlyCouncil
-        returns (bytes32 operationId)
-    {
-        // The voter body's power to replace the council (`setCouncil`) must survive the council's brake; otherwise a
-        // captured council could veto its own removal indefinitely. A `setCouncil` call is therefore the one
-        // operation the council may not cancel.
-        if (target == address(this) && bytes4(data[:4]) == this.setCouncil.selector) {
-            revert CannotCancelCouncilRotation();
-        }
+    /// @inheritdoc IXanUpgradeCouncil
+    /// @dev Callable only by the council. The module only ever aims the timelock's `CANCELLER` role at the operation
+    /// it scheduled itself, so the council has no cancel power over voter-body operations.
+    function cancelUpgrade() external override onlyCouncil returns (bytes32 operationId) {
+        operationId = _pendingOperation;
+        require(operationId != bytes32(0) && _TIMELOCK.isOperationPending(operationId), NoUpgradePending());
 
-        operationId =
-            _TIMELOCK.hashOperation({target: target, value: value, data: data, predecessor: bytes32(0), salt: salt});
+        emit UpgradeCancelled(operationId);
 
-        _cancel(operationId);
+        _TIMELOCK.cancel(operationId);
     }
 
-    /// @inheritdoc IXanSecurityCouncil
-    function cancelBatch(address[] calldata targets, uint256[] calldata values, bytes[] calldata payloads, bytes32 salt)
-        external
-        override
-        onlyCouncil
-        returns (bytes32 operationId)
-    {
-        // The voter body's power to replace the council (`setCouncil`) must survive the council's brake; otherwise a
-        // captured council could veto its own removal indefinitely. A standalone `setCouncil` call is therefore the one
-        // operation the council may not cancel. Bundling it with anything else (length != 1) stays cancellable, so a
-        // malicious upgrade cannot ride along under this exemption.
-        if (targets.length == 1 && targets[0] == address(this) && bytes4(payloads[0][:4]) == this.setCouncil.selector) {
-            revert CannotCancelCouncilRotation();
-        }
-
-        operationId = _TIMELOCK.hashOperationBatch({
-            targets: targets, values: values, payloads: payloads, predecessor: bytes32(0), salt: salt
-        });
-
-        _cancel(operationId);
-    }
-
-    /// @inheritdoc IXanSecurityCouncil
-    /// @dev Callable only by the timelock (a passed governance proposal), so the voter body can replace a captured or
-    /// inactive council.
-    function setCouncil(address newCouncil) external override onlyTimelock {
+    /// @inheritdoc IXanUpgradeCouncil
+    /// @dev Callable only by the timelock (the owner), i.e. through a passed voter-body proposal. The council cannot
+    /// rotate itself on-chain; a multisig rotates its signers internally without changing its address.
+    function setCouncil(address newCouncil) external override onlyOwner {
         require(newCouncil != address(0), ZeroCouncilNotAllowed());
-        emit CouncilChanged(_council, newCouncil);
+
+        emit CouncilChanged({previousCouncil: _council, newCouncil: newCouncil});
+
         _council = newCouncil;
     }
 
-    /// @inheritdoc IXanSecurityCouncil
+    /// @inheritdoc IXanUpgradeCouncil
     function council() external view override returns (address councilAddress) {
         councilAddress = _council;
     }
 
-    /// @inheritdoc IXanSecurityCouncil
+    /// @inheritdoc IXanUpgradeCouncil
     function pendingUpgrade() external view override returns (bytes32 operationId) {
         operationId = _pendingOperation;
     }
 
-    /// @inheritdoc IXanSecurityCouncil
+    /// @inheritdoc IXanUpgradeCouncil
     /// @dev Computed live as `votingDelay + votingPeriod + timelock.getMinDelay() + buffer`, so the window always
     /// exceeds a full voter cancel cycle.
     function cancelWindow() public view override returns (uint256 delay) {
         delay = _GOVERNOR.votingDelay() + _GOVERNOR.votingPeriod() + _TIMELOCK.getMinDelay() + _CANCEL_BUFFER;
-    }
-
-    /// @notice Internal helper to cancel a proposal with a given operation ID.
-    /// @param operationId The ID of the operation to cancel.
-    function _cancel(bytes32 operationId) internal {
-        emit ProposalCancelled(operationId);
-
-        _TIMELOCK.cancel(operationId);
     }
 
     /// @notice Deterministic, council-tagged salt so a council upgrade never collides with a voter-body operation and
@@ -181,6 +141,6 @@ contract XanSecurityCouncil is IXanSecurityCouncil {
     /// @param data The reinitialization calldata forwarded to `upgradeToAndCall`.
     /// @return salt The operation salt.
     function _salt(address newImplementation, bytes calldata data) private pure returns (bytes32 salt) {
-        salt = keccak256(abi.encode("XanSecurityCouncil.upgrade", newImplementation, data));
+        salt = keccak256(abi.encode("XanUpgradeCouncil.upgrade", newImplementation, data));
     }
 }

@@ -4,22 +4,22 @@ pragma solidity ^0.8.30;
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 
 import {Parameters} from "../../src/libs/Parameters.sol";
-import {XanSecurityCouncil} from "../../src/XanSecurityCouncil.sol";
+import {XanUpgradeCouncil} from "../../src/XanUpgradeCouncil.sol";
 import {XanGovernorFixture} from "./XanGovernorFixture.sol";
 
-/// @notice Extends the governor fixture with a wired `XanSecurityCouncil` module: the module is granted the timelock's
-/// `PROPOSER` and `CANCELLER` roles, so the council can schedule and cancel token upgrades and the voter body can cancel
-/// the council. Mirrors a real deployment where the token is owned by the timelock.
-abstract contract XanSecurityCouncilFixture is XanGovernorFixture {
-    /// @notice The security council multisig.
-    address internal immutable _COUNCIL_MULTISIG = makeAddr("securityCouncilMultisig");
+/// @notice Extends the governor fixture with a wired `XanUpgradeCouncil` module: the module is granted the timelock's
+/// `PROPOSER` and `CANCELLER` roles, so the council can schedule token upgrades (and withdraw its own pending one) and
+/// the voter body can cancel the council. Mirrors a real deployment where the token is owned by the timelock.
+abstract contract XanUpgradeCouncilFixture is XanGovernorFixture {
+    /// @notice The upgrade council multisig.
+    address internal immutable _COUNCIL_MULTISIG = makeAddr("upgradeCouncilMultisig");
 
-    XanSecurityCouncil internal _securityCouncil;
+    XanUpgradeCouncil internal _upgradeCouncil;
 
     function setUp() public virtual override {
         super.setUp();
 
-        _securityCouncil = new XanSecurityCouncil({
+        _upgradeCouncil = new XanUpgradeCouncil({
             governor: IGovernor(address(_governor)),
             timelock: _timelock,
             token: address(_xanToken),
@@ -30,8 +30,8 @@ abstract contract XanSecurityCouncilFixture is XanGovernorFixture {
         // The base fixture renounced the deployer's timelock admin, so roles are now changed only through the timelock
         // itself; impersonating it here stands in for the governance proposal that would grant these roles in prod.
         vm.startPrank(address(_timelock));
-        _timelock.grantRole(_timelock.PROPOSER_ROLE(), address(_securityCouncil));
-        _timelock.grantRole(_timelock.CANCELLER_ROLE(), address(_securityCouncil));
+        _timelock.grantRole(_timelock.PROPOSER_ROLE(), address(_upgradeCouncil));
+        _timelock.grantRole(_timelock.CANCELLER_ROLE(), address(_upgradeCouncil));
         vm.stopPrank();
     }
 }

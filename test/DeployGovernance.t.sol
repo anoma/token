@@ -1,0 +1,133 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma solidity ^0.8.30;
+
+import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {Test} from "forge-std/Test.sol";
+
+import {DeployGovernance} from "../script/DeployGovernance.s.sol";
+import {Parameters} from "../src/libs/Parameters.sol";
+import {XanGovernor} from "../src/XanGovernor.sol";
+import {XanUpgradeCouncil} from "../src/XanUpgradeCouncil.sol";
+
+/// @notice Pins the production governance wiring produced by `DeployGovernance`. The deploy script establishes the
+/// entire security posture of the layer — who may schedule and cancel, that execution is permissionless, and that no
+/// residual deployer privilege survives — so every role assignment is asserted here explicitly.
+contract DeployGovernanceTest is Test {
+    address internal immutable _TOKEN = makeAddr("token");
+    address internal immutable _COUNCIL_MULTISIG = makeAddr("councilMultisig");
+    address internal immutable _ATTACKER = makeAddr("attacker");
+
+    XanGovernor internal _governor;
+    TimelockController internal _timelock;
+    XanUpgradeCouncil internal _upgradeCouncil;
+    address internal _deployer;
+
+    function setUp() public {
+        // The governor's constructor probes `token.clock()` (EIP-6372 detection) inside a try/catch, so the token
+        // stub must carry code and revert (PUSH1 0 PUSH1 0 REVERT) to hit the catch fallback; the wiring under test
+        // is otherwise independent of the token's behavior.
+        vm.etch(_TOKEN, hex"60006000fd");
+
+        // Exercise `deploy` directly (the `run` wrapper only adds broadcasting, which is incompatible with the test
+        // harness). Without a broadcast the script contract itself sends every transaction, so it is the deployer.
+        DeployGovernance script = new DeployGovernance();
+        _deployer = address(script);
+        (address governor, address timelock, address upgradeCouncil) =
+            script.deploy({token: _TOKEN, councilMultisig: _COUNCIL_MULTISIG, deployer: _deployer});
+
+        _governor = XanGovernor(payable(governor));
+        _timelock = TimelockController(payable(timelock));
+        _upgradeCouncil = XanUpgradeCouncil(upgradeCouncil);
+    }
+
+    function test_run_reverts_if_the_token_is_the_zero_address() public {
+        DeployGovernance script = new DeployGovernance();
+        vm.expectRevert(DeployGovernance.InvalidTokenAddress.selector, address(script));
+        script.deploy({token: address(0), councilMultisig: _COUNCIL_MULTISIG, deployer: address(script)});
+    }
+
+    function test_run_reverts_if_the_council_is_the_zero_address() public {
+        DeployGovernance script = new DeployGovernance();
+        vm.expectRevert(DeployGovernance.InvalidCouncilAddress.selector, address(script));
+        script.deploy({token: _TOKEN, councilMultisig: address(0), deployer: address(script)});
+    }
+
+    /// @notice The timelock self-administers: role changes require a passed governance operation, so an outsider
+    /// cannot grant itself scheduling or cancelling power.
+    function test_roles_cannot_be_changed_by_outsiders() public {
+        bytes32 proposerRole = _timelock.PROPOSER_ROLE();
+        bytes32 adminRole = _timelock.DEFAULT_ADMIN_ROLE();
+
+        vm.prank(_ATTACKER);
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, _ATTACKER, adminRole),
+            address(_timelock)
+        );
+        _timelock.grantRole(proposerRole, _ATTACKER);
+    }
+
+    /// @notice Exactly the governor and the council module may schedule and cancel timelock operations.
+    function test_run_grants_scheduling_and_cancelling_to_the_governor_and_the_module() public view {
+        bytes32 proposerRole = _timelock.PROPOSER_ROLE();
+        bytes32 cancellerRole = _timelock.CANCELLER_ROLE();
+
+        assertTrue(_timelock.hasRole(proposerRole, address(_governor)));
+        assertTrue(_timelock.hasRole(cancellerRole, address(_governor)));
+        assertTrue(_timelock.hasRole(proposerRole, address(_upgradeCouncil)));
+        assertTrue(_timelock.hasRole(cancellerRole, address(_upgradeCouncil)));
+
+        // Neither the council multisig nor the token hold timelock roles directly — all council power flows through
+        // the module's narrow interface.
+        assertFalse(_timelock.hasRole(proposerRole, _COUNCIL_MULTISIG));
+        assertFalse(_timelock.hasRole(cancellerRole, _COUNCIL_MULTISIG));
+        assertFalse(_timelock.hasRole(proposerRole, _TOKEN));
+    }
+
+    /// @notice Anyone may execute a ready operation: authority lives entirely in scheduling and cancelling.
+    function test_run_opens_the_executor_role() public view {
+        assertTrue(_timelock.hasRole(_timelock.EXECUTOR_ROLE(), address(0)));
+    }
+
+    /// @notice After deployment only the timelock administers its own roles; the deployer's temporary admin is gone.
+    function test_run_leaves_the_timelock_self_administered() public view {
+        bytes32 adminRole = _timelock.DEFAULT_ADMIN_ROLE();
+
+        assertTrue(_timelock.hasRole(adminRole, address(_timelock)));
+
+        // No deployer-side account retains admin: not the deployer, not the test contract, and none of the wired
+        // contracts.
+        assertFalse(_timelock.hasRole(adminRole, _deployer));
+        assertFalse(_timelock.hasRole(adminRole, address(this)));
+        assertFalse(_timelock.hasRole(adminRole, address(_governor)));
+        assertFalse(_timelock.hasRole(adminRole, address(_upgradeCouncil)));
+    }
+
+    function test_run_sets_the_timelock_min_delay() public view {
+        assertEq(_timelock.getMinDelay(), Parameters.DELAY_DURATION);
+    }
+
+    /// @notice The governor reads votes from the token, executes through the timelock, and carries the `Parameters`
+    /// settings — including the 50% quorum the council's capture-cost argument depends on (ADR-0007).
+    function test_run_configures_the_governor() public view {
+        assertEq(address(_governor.token()), _TOKEN);
+        assertEq(_governor.timelock(), address(_timelock));
+        assertEq(_governor.votingDelay(), Parameters.VOTING_DELAY);
+        assertEq(_governor.votingPeriod(), Parameters.VOTING_PERIOD);
+        assertEq(_governor.proposalThreshold(), Parameters.PROPOSAL_THRESHOLD);
+        assertEq(
+            _governor.quorumNumerator(), Parameters.QUORUM_RATIO_NUMERATOR * 100 / Parameters.QUORUM_RATIO_DENOMINATOR
+        );
+    }
+
+    /// @notice The timelock owns the module (and thus rotates the council); the multisig is the initial council.
+    function test_run_wires_the_module() public view {
+        assertEq(_upgradeCouncil.owner(), address(_timelock));
+        assertEq(_upgradeCouncil.council(), _COUNCIL_MULTISIG);
+        assertEq(
+            _upgradeCouncil.cancelWindow(),
+            uint256(Parameters.VOTING_DELAY) + Parameters.VOTING_PERIOD + Parameters.DELAY_DURATION
+                + Parameters.COUNCIL_CANCEL_BUFFER
+        );
+    }
+}
