@@ -27,7 +27,7 @@ library Parameters {
     uint256 internal constant QUORUM_RATIO_DENOMINATOR = 2;
 
     /// @notice The delay duration that must pass to upgrade to a new implementation.
-    uint32 internal constant DELAY_DURATION = 2 weeks;
+    uint32 internal constant DELAY_DURATION = 14 days;
 
     /* ========== Xan V2 ========== */
 
@@ -47,10 +47,10 @@ library Parameters {
     /* ========== Governance ========== */
 
     /// @notice The delay between a governor proposal's creation and the start of voting (timestamp clock).
-    uint48 internal constant VOTING_DELAY = 1 days;
+    uint48 internal constant VOTING_DELAY = 7 days;
 
     /// @notice The duration of a governor proposal's voting window.
-    uint32 internal constant VOTING_PERIOD = 1 weeks;
+    uint32 internal constant VOTING_PERIOD = 14 days;
 
     /// @notice The minimum voting power required to create a governor proposal.
     uint256 internal constant PROPOSAL_THRESHOLD = 10 ** 18; // 1 XAN
