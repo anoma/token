@@ -2,7 +2,9 @@
 pragma solidity ^0.8.30;
 
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {GovernorSettings} from "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
 import {Governor} from "@openzeppelin/contracts/governance/Governor.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
@@ -297,6 +299,88 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
         assertEq(cancelledId, councilOperationId);
         assertFalse(_timelock.isOperationPending(councilOperationId));
         assertTrue(_timelock.isOperationPending(voterOperationId));
+    }
+
+    /// @notice Executing a council upgrade frees the one-in-flight slot, so the council can schedule the next one.
+    function test_scheduleUpgrade_can_schedule_a_new_upgrade_after_execution() public {
+        address first = _newImplementation();
+        vm.prank(_COUNCIL_MULTISIG);
+        _upgradeCouncil.scheduleUpgrade(first, "");
+
+        skip(_upgradeCouncil.cancelWindow() + 1);
+        _executeCouncilUpgrade(first, "");
+        assertEq(_xanToken.implementation(), first);
+
+        address second = _newImplementation();
+        vm.prank(_COUNCIL_MULTISIG);
+        bytes32 secondId = _upgradeCouncil.scheduleUpgrade(second, "");
+        assertTrue(_timelock.isOperationPending(secondId));
+    }
+
+    /// @notice An executed upgrade is beyond recall: `cancelUpgrade` cannot rewind it.
+    function test_cancelUpgrade_reverts_if_the_upgrade_was_already_executed() public {
+        address newImpl = _newImplementation();
+        vm.prank(_COUNCIL_MULTISIG);
+        _upgradeCouncil.scheduleUpgrade(newImpl, "");
+
+        skip(_upgradeCouncil.cancelWindow() + 1);
+        _executeCouncilUpgrade(newImpl, "");
+
+        vm.prank(_COUNCIL_MULTISIG);
+        vm.expectRevert(IXanUpgradeCouncil.NoUpgradePending.selector, address(_upgradeCouncil));
+        _upgradeCouncil.cancelUpgrade();
+    }
+
+    /// @notice The voter body's last resort: revoking the module's timelock roles disarms the council entirely. The
+    /// timelock self-administers, so only a passed proposal (impersonated here) can do this — and only a passed
+    /// proposal can undo it.
+    function test_voter_body_can_disarm_the_module_by_revoking_its_roles() public {
+        bytes32 proposerRole = _timelock.PROPOSER_ROLE();
+        vm.startPrank(address(_timelock));
+        _timelock.revokeRole(proposerRole, address(_upgradeCouncil));
+        _timelock.revokeRole(_timelock.CANCELLER_ROLE(), address(_upgradeCouncil));
+        vm.stopPrank();
+
+        // The module's propose path is dead: the timelock rejects the role-less module.
+        address newImpl = _newImplementation();
+        vm.prank(_COUNCIL_MULTISIG);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(_upgradeCouncil), proposerRole
+            )
+        );
+        _upgradeCouncil.scheduleUpgrade(newImpl, "");
+    }
+
+    /// @notice The cancel window is computed live from the timelock's `minDelay`, so the timing invariant — the
+    /// voter body can always cancel a council upgrade — survives a governance change of the timelock delay.
+    function test_cancelWindow_tracks_a_timelock_minDelay_change() public {
+        uint256 windowBefore = _upgradeCouncil.cancelWindow();
+        uint256 delayBefore = _timelock.getMinDelay();
+
+        // Only the timelock itself may update its delay; impersonating it stands in for a passed proposal.
+        vm.prank(address(_timelock));
+        _timelock.updateDelay(delayBefore * 2);
+
+        assertEq(_upgradeCouncil.cancelWindow(), windowBefore + delayBefore);
+    }
+
+    /// @notice The cancel window is computed live from the governor's settings, so the timing invariant survives a
+    /// voter-body change of the voting period (exercised through a real proposal, the only path to the setter).
+    function test_cancelWindow_tracks_a_governor_settings_change_through_governance() public {
+        uint256 windowBefore = _upgradeCouncil.cancelWindow();
+        uint32 periodBefore = uint32(_governor.votingPeriod());
+
+        address[] memory targets = new address[](1);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        targets[0] = address(_governor);
+        calldatas[0] = abi.encodeCall(GovernorSettings.setVotingPeriod, (periodBefore * 2));
+
+        _passProposal({targets: targets, values: values, calldatas: calldatas, description: "double the voting period"});
+
+        assertEq(_governor.votingPeriod(), uint256(periodBefore) * 2);
+        assertEq(_upgradeCouncil.cancelWindow(), windowBefore + periodBefore);
     }
 
     /// @notice Voter supremacy is structural: the council has no cancel power over voter-body operations, so a
