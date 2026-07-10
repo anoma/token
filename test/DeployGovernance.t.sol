@@ -124,6 +124,20 @@ contract DeployGovernanceTest is Test {
         );
     }
 
+    /// @notice The token is a XanV1 proxy with no `clock()`, so the governor's EIP-6372 detection reverts into its
+    /// `try/catch` and falls back to the block-number clock — construction still succeeds. The governor holds the
+    /// proxy (not the implementation), so once the upgrade swaps in XanV2's timestamp clock, `clock()` follows it live.
+    function test_governor_falls_back_to_the_block_number_clock() public view {
+        // The token reverts on `clock()` (no such function on XanV1, and no fallback) — the revert the governor's
+        // `clock()` / `CLOCK_MODE()` try/catch absorbs.
+        (bool ok,) = _token.staticcall(abi.encodeWithSignature("clock()"));
+        assertFalse(ok, "XanV1 must not expose clock()");
+
+        // So the governor reports the block-number fallback, and the deployment nonetheless succeeded.
+        assertEq(_governor.clock(), uint48(block.number));
+        assertEq(_governor.CLOCK_MODE(), "mode=blocknumber&from=default");
+    }
+
     /// @notice The timelock owns the module (and thus rotates the council); the multisig is the initial council.
     function test_run_wires_the_module() public view {
         assertEq(_upgradeCouncil.owner(), address(_timelock));
