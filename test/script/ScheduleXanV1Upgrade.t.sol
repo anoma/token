@@ -65,7 +65,6 @@ contract ScheduleXanV1UpgradeTest is Test {
         _timelock.grantRole(proposerRole, caller);
     }
 
-    /// @notice `run` deploys the governance stack and schedules the V1->V2 upgrade through the V1 council.
     function test_run_deploys_governance_and_schedules_the_upgrade() public {
         // `run` schedules through the broadcast sender, so the V1 council must be that sender (`DEFAULT_SENDER`).
         address proxy = Upgrades.deployUUPSProxy(
@@ -78,7 +77,7 @@ contract ScheduleXanV1UpgradeTest is Test {
         // The governance stack is deployed and wired to the token and timelock.
         assertEq(address(XanGovernor(payable(governor)).token()), proxy, "governor not driven by the proxy");
         assertEq(XanGovernor(payable(governor)).timelock(), timelock, "governor not wired to the timelock");
-        assertEq(XanUpgradeCouncil(upgradeCouncil).owner(), timelock, "module not owned by the timelock");
+        assertEq(XanUpgradeCouncil(upgradeCouncil).owner(), timelock, "upgrade council not owned by the timelock");
 
         // The V2 implementation is scheduled through the V1 council for after the council delay.
         (address scheduledImpl, uint48 endTime) = XanV1(proxy).scheduledCouncilUpgrade();
@@ -86,7 +85,6 @@ contract ScheduleXanV1UpgradeTest is Test {
         assertEq(endTime, Time.timestamp() + Parameters.DELAY_DURATION, "unexpected upgrade delay");
     }
 
-    /// @notice `run` reverts when the broadcast sender is not the V1 council, so it cannot schedule the upgrade.
     function test_run_reverts_if_the_caller_is_not_the_v1_council() public {
         address proxy = Upgrades.deployUUPSProxy(
             "XanV1.sol:XanV1", abi.encodeCall(XanV1.initializeV1, (makeAddr("mintRecipient"), makeAddr("otherCouncil")))
@@ -96,8 +94,10 @@ contract ScheduleXanV1UpgradeTest is Test {
         _script.run({proxy: proxy, councilMultisig: _COUNCIL_MULTISIG});
     }
 
-    /// @notice Exactly the governor and the council module may schedule and cancel timelock operations.
-    function test_deployGovernance_grants_scheduling_and_cancelling_to_the_governor_and_the_module() public view {
+    function test_deployGovernance_grants_scheduling_and_cancelling_to_the_governor_and_the_upgrade_council()
+        public
+        view
+    {
         bytes32 proposerRole = _timelock.PROPOSER_ROLE();
         bytes32 cancellerRole = _timelock.CANCELLER_ROLE();
 
@@ -107,7 +107,7 @@ contract ScheduleXanV1UpgradeTest is Test {
         assertTrue(_timelock.hasRole(cancellerRole, address(_upgradeCouncil)));
 
         // Neither the council multisig nor the token hold timelock roles directly — all council power flows through
-        // the module's narrow interface.
+        // the upgrade council's narrow interface.
         assertFalse(_timelock.hasRole(proposerRole, _COUNCIL_MULTISIG));
         assertFalse(_timelock.hasRole(cancellerRole, _COUNCIL_MULTISIG));
         assertFalse(_timelock.hasRole(proposerRole, _token));
@@ -118,7 +118,6 @@ contract ScheduleXanV1UpgradeTest is Test {
         assertTrue(_timelock.hasRole(_timelock.EXECUTOR_ROLE(), address(0)));
     }
 
-    /// @notice After deployment only the timelock administers its own roles; the deployer's temporary admin is gone.
     function test_deployGovernance_leaves_the_timelock_self_administered() public view {
         bytes32 adminRole = _timelock.DEFAULT_ADMIN_ROLE();
 
@@ -136,8 +135,6 @@ contract ScheduleXanV1UpgradeTest is Test {
         assertEq(_timelock.getMinDelay(), Parameters.DELAY_DURATION);
     }
 
-    /// @notice The governor reads votes from the token, executes through the timelock, and carries the `Parameters`
-    /// settings — including the 50% quorum the council's capture-cost argument depends on (ADR-0007).
     function test_deployGovernance_configures_the_governor() public view {
         assertEq(address(_governor.token()), _token);
         assertEq(_governor.timelock(), address(_timelock));
@@ -149,8 +146,6 @@ contract ScheduleXanV1UpgradeTest is Test {
         );
     }
 
-    /// @notice The quorum-numerator checkpoint is keyed by the deploy timestamp, so the numerator holds from then
-    /// on with no earlier (block-number-keyed) checkpoint.
     function test_quorum_numerator_is_checkpointed_at_the_deploy_timestamp() public view {
         uint48 deployTimestamp = Time.timestamp();
         uint256 expectedNumerator = Parameters.QUORUM_RATIO_NUMERATOR * 100 / Parameters.QUORUM_RATIO_DENOMINATOR;
@@ -159,8 +154,7 @@ contract ScheduleXanV1UpgradeTest is Test {
         assertEq(_governor.quorumNumerator(deployTimestamp - 1), 0, "checkpoint exists before the deploy timestamp");
     }
 
-    /// @notice The timelock owns the module (and thus rotates the council); the multisig is the initial council.
-    function test_deployGovernance_wires_the_module() public view {
+    function test_deployGovernance_wires_the_upgrade_council() public view {
         assertEq(_upgradeCouncil.owner(), address(_timelock));
         assertEq(_upgradeCouncil.council(), _COUNCIL_MULTISIG);
         assertEq(
