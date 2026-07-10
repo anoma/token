@@ -12,8 +12,9 @@ import {IXanSecurityCouncil} from "./interfaces/IXanSecurityCouncil.sol";
 /// @author Anoma Foundation, 2026
 /// @notice The security council's on-chain interface to XAN governance. The council multisig is the module's
 /// `Ownable` owner; the module holds the timelock's `PROPOSER` and `CANCELLER` roles and has the power to:
-/// * Propose XAN token upgrades that the voter body can cancel.
-/// * Cancel proposals by the XAN voter body in the timelock.
+/// * Schedule XAN token upgrades that the voter body can cancel.
+/// * Withdraw its own pending upgrade.
+/// It holds no power over voter-body operations.
 /// @custom:security-contact security@anoma.foundation
 contract XanSecurityCouncil is IXanSecurityCouncil, Ownable {
     /// @notice The governor whose voting parameters size the cancel window.
@@ -84,48 +85,15 @@ contract XanSecurityCouncil is IXanSecurityCouncil, Ownable {
     }
 
     /// @inheritdoc IXanSecurityCouncil
-    function cancel(address target, uint256 value, bytes calldata data, bytes32 salt)
-        external
-        override
-        onlyOwner
-        returns (bytes32 operationId)
-    {
-        // The voter body's power to replace the council (`transferOwnership`) must survive the council's brake;
-        // otherwise a captured council could veto its own removal indefinitely. A `transferOwnership` call is therefore
-        // the one operation the council may not cancel.
-        if (target == address(this) && bytes4(data[:4]) == this.transferOwnership.selector) {
-            revert CannotCancelCouncilRotation();
-        }
+    /// @dev Callable only by the council (the owner). The module only ever aims the timelock's `CANCELLER` role at
+    /// the operation it scheduled itself, so the council has no cancel power over voter-body operations.
+    function cancelUpgrade() external override onlyOwner returns (bytes32 operationId) {
+        operationId = _pendingOperation;
+        require(operationId != bytes32(0) && _TIMELOCK.isOperationPending(operationId), NoUpgradePending());
 
-        operationId =
-            _TIMELOCK.hashOperation({target: target, value: value, data: data, predecessor: bytes32(0), salt: salt});
+        emit UpgradeCancelled(operationId);
 
-        _cancel(operationId);
-    }
-
-    /// @inheritdoc IXanSecurityCouncil
-    function cancelBatch(address[] calldata targets, uint256[] calldata values, bytes[] calldata payloads, bytes32 salt)
-        external
-        override
-        onlyOwner
-        returns (bytes32 operationId)
-    {
-        // The voter body's power to replace the council (`transferOwnership`) must survive the council's brake;
-        // otherwise a captured council could veto its own removal indefinitely. A standalone `transferOwnership` call
-        // is therefore the one operation the council may not cancel. Bundling it with anything else (length != 1) stays
-        // cancellable, so a malicious upgrade cannot ride along under this exemption.
-        if (
-            targets.length == 1 && targets[0] == address(this)
-                && bytes4(payloads[0][:4]) == this.transferOwnership.selector
-        ) {
-            revert CannotCancelCouncilRotation();
-        }
-
-        operationId = _TIMELOCK.hashOperationBatch({
-            targets: targets, values: values, payloads: payloads, predecessor: bytes32(0), salt: salt
-        });
-
-        _cancel(operationId);
+        _TIMELOCK.cancel(operationId);
     }
 
     /// @inheritdoc IXanSecurityCouncil
@@ -147,14 +115,6 @@ contract XanSecurityCouncil is IXanSecurityCouncil, Ownable {
     /// exceeds a full voter cancel cycle.
     function cancelWindow() public view override returns (uint256 delay) {
         delay = _GOVERNOR.votingDelay() + _GOVERNOR.votingPeriod() + _TIMELOCK.getMinDelay() + _CANCEL_BUFFER;
-    }
-
-    /// @notice Internal helper to cancel a proposal with a given operation ID.
-    /// @param operationId The ID of the operation to cancel.
-    function _cancel(bytes32 operationId) internal {
-        emit ProposalCancelled(operationId);
-
-        _TIMELOCK.cancel(operationId);
     }
 
     /// @notice Deterministic, council-tagged salt so a council upgrade never collides with a voter-body operation and

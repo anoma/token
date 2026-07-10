@@ -8,8 +8,8 @@ import {XanSecurityCouncil} from "../../src/XanSecurityCouncil.sol";
 import {XanGovernorFixture} from "./XanGovernorFixture.sol";
 
 /// @notice Extends the governor fixture with a wired `XanSecurityCouncil` module: the module is granted the timelock's
-/// `PROPOSER` and `CANCELLER` roles, so the council can schedule and cancel token upgrades and the voter body can cancel
-/// the council. Mirrors a real deployment where the token is owned by the timelock.
+/// `PROPOSER` and `CANCELLER` roles, so the council can schedule token upgrades (and withdraw its own pending one) and
+/// the voter body can cancel the council. Mirrors a real deployment where the token is owned by the timelock.
 abstract contract XanSecurityCouncilFixture is XanGovernorFixture {
     /// @notice The security council multisig.
     address internal immutable _COUNCIL_MULTISIG = makeAddr("securityCouncilMultisig");
