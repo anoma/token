@@ -5,48 +5,49 @@ import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {DeployXanV1} from "../script/DeployXanV1.s.sol";
-import {ScheduleXanV1Upgrade} from "../script/ScheduleXanV1Upgrade.s.sol";
+import {PrepareXanV1Upgrade} from "../script/PrepareXanV1Upgrade.s.sol";
 import {UpgradeXanV1} from "../script/UpgradeXanV1.s.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
 import {XanGovernor} from "../src/XanGovernor.sol";
 import {XanV1} from "../src/XanV1.sol";
 import {XanV2} from "../src/XanV2.sol";
 
-/// @notice Local integration test that runs the three production deployment scripts in sequence — `DeployXanV1`,
-/// `ScheduleXanV1Upgrade`, and `UpgradeXanV1` — against fresh state, exactly as an operator would, to demonstrate
-/// that the full V1->V2 upgrade flow works.
+/// @notice Local integration test that runs the production deployment scripts — `DeployXanV1`, `PrepareXanV1Upgrade`,
+/// and `UpgradeXanV1` — plus the V1 council's `scheduleCouncilUpgrade` (a Safe transaction in production), against
+/// fresh state, to demonstrate that the full V1->V2 upgrade flow works.
 contract XanV2UpgradeIntegrationTest is Test {
     address internal immutable _MINT_RECIPIENT = makeAddr("mintRecipient");
+    // The council multisig (a Safe{Wallet}) is both the V1 governance council — which schedules the upgrade — and the
+    // `XanUpgradeCouncil`.
     address internal immutable _COUNCIL_MULTISIG = makeAddr("councilMultisig");
 
     function test_scripts_drive_the_full_v1_to_v2_upgrade() public {
-        // The scripts broadcast with no explicit sender, so every call they make originates from `DEFAULT_SENDER`.
-        // The V1 governance council must therefore be `DEFAULT_SENDER` for `ScheduleXanV1Upgrade` to schedule the
-        // upgrade, since `scheduleCouncilUpgrade` is `onlyCouncil`.
-        address council = DEFAULT_SENDER;
-
-        // 1. Deploy the XanV1 proxy.
+        // 1. Deploy the XanV1 proxy governed by the council multisig.
         (address proxy, address implV1) =
-            new DeployXanV1().run({initialMintRecipient: _MINT_RECIPIENT, council: council});
+            new DeployXanV1().run({initialMintRecipient: _MINT_RECIPIENT, council: _COUNCIL_MULTISIG});
         uint256 supplyBefore = XanV1(proxy).totalSupply();
         assertEq(XanV1(proxy).implementation(), implV1, "proxy does not run V1");
-        assertEq(XanV1(proxy).governanceCouncil(), council, "V1 council mismatch");
+        assertEq(XanV1(proxy).governanceCouncil(), _COUNCIL_MULTISIG, "V1 council mismatch");
 
-        // 2. Deploy governance, prepare the V2 implementation, and schedule the council upgrade in one script. The
-        // timelock deployed here is baked into the V2 implementation bytecode as the token owner.
+        // 2. Deploy governance and prepare the V2 implementation (permissionless). The timelock deployed here is baked
+        // into the V2 implementation bytecode as the token owner. `run` does not schedule — it returns `implV2`.
         (address implV2, address governor, address timelock,) =
-            new ScheduleXanV1Upgrade().run({proxy: proxy, councilMultisig: _COUNCIL_MULTISIG});
+            new PrepareXanV1Upgrade().run({proxy: proxy, councilMultisig: _COUNCIL_MULTISIG});
+
+        // 3. The council Safe schedules the prepared implementation (the transaction the script surfaces via `implV2`).
+        vm.prank(_COUNCIL_MULTISIG);
+        XanV1(proxy).scheduleCouncilUpgrade({impl: implV2});
 
         (address scheduledImpl, uint48 endTime) = XanV1(proxy).scheduledCouncilUpgrade();
         assertEq(scheduledImpl, implV2, "council did not schedule the V2 implementation");
         assertEq(endTime, Time.timestamp() + Parameters.DELAY_DURATION, "unexpected upgrade delay");
 
-        // 3. Wait out the council delay, then execute the (permissionless) upgrade.
+        // 4. Wait out the council delay, then execute the (permissionless) upgrade.
         vm.warp(endTime);
         address executed = new UpgradeXanV1().run({proxy: proxy});
         assertEq(executed, implV2, "executed a different implementation than scheduled");
 
-        // 4. The proxy now runs XanV2 with the state baked into the implementation bytecode by `ScheduleXanV1Upgrade`:
+        // 5. The proxy now runs XanV2 with the state baked into the implementation bytecode by `PrepareXanV1Upgrade`:
         // the deployed timelock owns the token, the supply is conserved, and the vesting schedule matches the audited
         // `Parameters`.
         XanV2 tokenV2 = XanV2(proxy);
@@ -56,7 +57,7 @@ contract XanV2UpgradeIntegrationTest is Test {
         assertEq(tokenV2.vestingStart(), Parameters.VESTING_START, "vesting start mismatch");
         assertEq(tokenV2.vestingEnd(), Parameters.VESTING_START + Parameters.VESTING_DURATION, "vesting end mismatch");
 
-        // 5. Governance is now live on XanV2's timestamp clock. The quorum-numerator checkpoint recorded when the
+        // 6. Governance is now live on XanV2's timestamp clock. The quorum-numerator checkpoint recorded when the
         // governor was deployed (step 2) is timestamp-keyed, so `quorum(timepoint)` returns the configured fraction of
         // the voting supply seeded by the upgrade. `getPastTotalSupply` rejects the current timepoint, so advance one
         // second past the upgrade before querying.

@@ -7,19 +7,19 @@ import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {ScheduleXanV1Upgrade} from "../../script/ScheduleXanV1Upgrade.s.sol";
+import {PrepareXanV1Upgrade} from "../../script/PrepareXanV1Upgrade.s.sol";
 import {Parameters} from "../../src/libs/Parameters.sol";
 import {XanGovernor} from "../../src/XanGovernor.sol";
 import {XanUpgradeCouncil} from "../../src/XanUpgradeCouncil.sol";
 import {XanV1} from "../../src/XanV1.sol";
 
-/// @notice Pins the production governance wiring produced by `ScheduleXanV1Upgrade.deployGovernance`. It establishes
+/// @notice Pins the production governance wiring produced by `PrepareXanV1Upgrade.deployGovernance`. It establishes
 /// the entire security posture of the layer — who may schedule and cancel, that execution is permissionless, and that
 /// no residual deployer privilege survives — so every role assignment is asserted here explicitly.
-contract ScheduleXanV1UpgradeTest is Test {
+contract PrepareXanV1UpgradeTest is Test {
     address internal immutable _COUNCIL_MULTISIG = makeAddr("councilMultisig");
 
-    ScheduleXanV1Upgrade internal _script;
+    PrepareXanV1Upgrade internal _script;
     address internal _deployer;
     address internal _token;
     XanGovernor internal _governor;
@@ -28,13 +28,16 @@ contract ScheduleXanV1UpgradeTest is Test {
 
     function setUp() public {
         _token = Upgrades.deployUUPSProxy(
-            "XanV1.sol:XanV1", abi.encodeCall(XanV1.initializeV1, (makeAddr("mintRecipient"), makeAddr("v1Council")))
+            "XanV1.sol:XanV1", abi.encodeCall(XanV1.initializeV1, (makeAddr("mintRecipient"), _COUNCIL_MULTISIG))
         );
 
-        _script = new ScheduleXanV1Upgrade();
+        _script = new PrepareXanV1Upgrade();
         _deployer = address(_script);
+        // `deployGovernance` makes `msg.sender` the transient timelock admin and wires the roles as the script itself,
+        // so it must be called with the script pranked as the sender.
+        vm.prank(_deployer);
         (address governor, address timelock, address upgradeCouncil) =
-            _script.deployGovernance({token: _token, councilMultisig: _COUNCIL_MULTISIG, deployer: _deployer});
+            _script.deployGovernance({token: _token, councilMultisig: _COUNCIL_MULTISIG});
 
         _governor = XanGovernor(payable(governor));
         _timelock = TimelockController(payable(timelock));
@@ -42,13 +45,13 @@ contract ScheduleXanV1UpgradeTest is Test {
     }
 
     function test_deployGovernance_reverts_if_the_token_is_the_zero_address() public {
-        vm.expectRevert(ScheduleXanV1Upgrade.InvalidTokenAddress.selector, address(_script));
-        _script.deployGovernance({token: address(0), councilMultisig: _COUNCIL_MULTISIG, deployer: address(_script)});
+        vm.expectRevert(PrepareXanV1Upgrade.InvalidTokenAddress.selector, address(_script));
+        _script.deployGovernance({token: address(0), councilMultisig: _COUNCIL_MULTISIG});
     }
 
     function test_deployGovernance_reverts_if_the_council_is_the_zero_address() public {
-        vm.expectRevert(ScheduleXanV1Upgrade.InvalidCouncilAddress.selector, address(_script));
-        _script.deployGovernance({token: _token, councilMultisig: address(0), deployer: address(_script)});
+        vm.expectRevert(PrepareXanV1Upgrade.InvalidCouncilAddress.selector, address(_script));
+        _script.deployGovernance({token: _token, councilMultisig: address(0)});
     }
 
     function testFuzz_grantRole_reverts_if_the_caller_is_not_the_timelock(address caller) public {
@@ -65,33 +68,19 @@ contract ScheduleXanV1UpgradeTest is Test {
         _timelock.grantRole(proposerRole, caller);
     }
 
-    function test_run_deploys_governance_and_schedules_the_upgrade() public {
-        // `run` schedules through the broadcast sender, so the V1 council must be that sender (`DEFAULT_SENDER`).
-        address proxy = Upgrades.deployUUPSProxy(
-            "XanV1.sol:XanV1", abi.encodeCall(XanV1.initializeV1, (makeAddr("mintRecipient"), DEFAULT_SENDER))
-        );
-
+    function test_run_deploys_governance_and_prepares_the_upgrade() public {
         (address implV2, address governor, address timelock, address upgradeCouncil) =
-            _script.run({proxy: proxy, councilMultisig: _COUNCIL_MULTISIG});
+            _script.run({proxy: _token, councilMultisig: _COUNCIL_MULTISIG});
 
-        // The governance stack is deployed and wired to the token and timelock.
-        assertEq(address(XanGovernor(payable(governor)).token()), proxy, "governor not driven by the proxy");
+        // The governance stack is deployed and wired; the V2 implementation is prepared.
+        assertTrue(implV2 != address(0), "implV2 not prepared");
+        assertEq(address(XanGovernor(payable(governor)).token()), _token, "governor not driven by the proxy");
         assertEq(XanGovernor(payable(governor)).timelock(), timelock, "governor not wired to the timelock");
         assertEq(XanUpgradeCouncil(upgradeCouncil).owner(), timelock, "upgrade council not owned by the timelock");
 
-        // The V2 implementation is scheduled through the V1 council for after the council delay.
-        (address scheduledImpl, uint48 endTime) = XanV1(proxy).scheduledCouncilUpgrade();
-        assertEq(scheduledImpl, implV2, "run did not schedule implV2");
-        assertEq(endTime, Time.timestamp() + Parameters.DELAY_DURATION, "unexpected upgrade delay");
-    }
-
-    function test_run_reverts_if_the_caller_is_not_the_v1_council() public {
-        address proxy = Upgrades.deployUUPSProxy(
-            "XanV1.sol:XanV1", abi.encodeCall(XanV1.initializeV1, (makeAddr("mintRecipient"), makeAddr("otherCouncil")))
-        );
-
-        vm.expectRevert(abi.encodeWithSelector(XanV1.UnauthorizedCaller.selector, DEFAULT_SENDER), address(proxy));
-        _script.run({proxy: proxy, councilMultisig: _COUNCIL_MULTISIG});
+        // `run` does not schedule — the V1 council Safe schedules the returned `implV2` in a separate transaction.
+        (address scheduledImpl,) = XanV1(_token).scheduledCouncilUpgrade();
+        assertEq(scheduledImpl, address(0), "run must not schedule the upgrade");
     }
 
     function test_deployGovernance_grants_scheduling_and_cancelling_to_the_governor_and_the_upgrade_council()
