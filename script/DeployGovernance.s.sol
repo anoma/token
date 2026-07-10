@@ -9,10 +9,10 @@ import {Script} from "forge-std/Script.sol";
 
 import {Parameters} from "../src/libs/Parameters.sol";
 import {XanGovernor} from "../src/XanGovernor.sol";
-import {XanSecurityCouncil} from "../src/XanSecurityCouncil.sol";
+import {XanUpgradeCouncil} from "../src/XanUpgradeCouncil.sol";
 
 /// @notice Deploys and wires the XAN governance stack: a `TimelockController` (the eventual token owner), the
-/// `XanGovernor` driven by the token's `ERC20Votes`, and the `XanSecurityCouncil` upgrade module. The timelock's roles
+/// `XanGovernor` driven by the token's `ERC20Votes`, and the `XanUpgradeCouncil` upgrade module. The timelock's roles
 /// are granted to the governor and the council module, the executor role is opened, and the deployer's temporary admin
 /// is renounced so only governance can change roles afterwards.
 ///
@@ -24,7 +24,7 @@ contract DeployGovernance is Script {
 
     function run(address token, address councilMultisig)
         public
-        returns (address governor, address timelock, address securityCouncil)
+        returns (address governor, address timelock, address upgradeCouncil)
     {
         require(token != address(0), InvalidTokenAddress());
         require(councilMultisig != address(0), InvalidCouncilAddress());
@@ -52,7 +52,7 @@ contract DeployGovernance is Script {
         });
 
         // 3. Deploy the security council module
-        XanSecurityCouncil xanSecurityCouncil = new XanSecurityCouncil({
+        XanUpgradeCouncil xanUpgradeCouncil = new XanUpgradeCouncil({
             governor: IGovernor(address(xanGovernor)),
             timelock: timelockController,
             token: token,
@@ -69,8 +69,8 @@ contract DeployGovernance is Script {
         bytes32 cancellerRole = timelockController.CANCELLER_ROLE();
         timelockController.grantRole(proposerRole, address(xanGovernor));
         timelockController.grantRole(cancellerRole, address(xanGovernor));
-        timelockController.grantRole(proposerRole, address(xanSecurityCouncil));
-        timelockController.grantRole(cancellerRole, address(xanSecurityCouncil));
+        timelockController.grantRole(proposerRole, address(xanUpgradeCouncil));
+        timelockController.grantRole(cancellerRole, address(xanUpgradeCouncil));
         timelockController.grantRole(timelockController.EXECUTOR_ROLE(), address(0));
 
         // 5. Drop the deployer's admin; only the timelock (i.e. passed governance proposals) can change roles now.
@@ -80,6 +80,6 @@ contract DeployGovernance is Script {
 
         governor = address(xanGovernor);
         timelock = address(timelockController);
-        securityCouncil = address(xanSecurityCouncil);
+        upgradeCouncil = address(xanUpgradeCouncil);
     }
 }

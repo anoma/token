@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
-/// @title IXanSecurityCouncil
+/// @title IXanUpgradeCouncil
 /// @author Anoma Foundation, 2026
 /// @notice Interface of the security council module.
 /// @custom:security-contact security@anoma.foundation
-interface IXanSecurityCouncil {
+interface IXanUpgradeCouncil {
     /// @notice Emitted when a token upgrade is scheduled in the timelock.
     /// @param newImplementation The implementation the upgrade installs.
     /// @param operationId The scheduled timelock operation id.
