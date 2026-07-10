@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
-import {Upgrades, UnsafeUpgrades, Options} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
+import {Upgrades, Options} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
+import {UpgradeXanV1} from "../script/UpgradeXanV1.s.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
 import {XanV1} from "../src/XanV1.sol";
 import {XanV2} from "../src/XanV2.sol";
 
-/// @notice Fork integration tests that exercise the upgrade of the live XAN proxies on:
+/// @notice End-to-end fork tests that exercise the upgrade of the live XAN proxies on:
 /// * Mainnet
 /// * Sepolia
-contract XanV2UpgradeIntegrationTest is Test {
+contract XanV2UpgradeE2ETest is Test {
     struct TestCase {
         string name;
     }
@@ -49,11 +50,10 @@ contract XanV2UpgradeIntegrationTest is Test {
         (address scheduledImpl, uint48 endTime) = proxy.scheduledCouncilUpgrade();
         assertEq(scheduledImpl, implV2, "council did not schedule the implementation");
 
-        // 3. Wait out the council delay and execute the upgrade permissionlessly.
+        // 3. Wait out the council delay and execute the (permissionless) upgrade through the production script.
         vm.warp(endTime);
-        UnsafeUpgrades.upgradeProxy({
-            proxy: _XAN_PROXY, newImpl: implV2, data: abi.encodeCall(XanV2.reinitializeFromV1, ())
-        });
+        address executed = new UpgradeXanV1().run({proxy: _XAN_PROXY});
+        assertEq(executed, implV2, "executed a different implementation than scheduled");
 
         // 4. Ensure that the upgrade to XanV2 was successful and installed the baked-in state: the owner comes from
         // the implementation bytecode (not from attacker-controllable calldata), the supply is conserved, and the
