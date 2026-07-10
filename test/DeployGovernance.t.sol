@@ -3,38 +3,42 @@ pragma solidity ^0.8.30;
 
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {DeployGovernance} from "../script/DeployGovernance.s.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
 import {XanGovernor} from "../src/XanGovernor.sol";
 import {XanUpgradeCouncil} from "../src/XanUpgradeCouncil.sol";
+import {XanV1} from "../src/XanV1.sol";
 
 /// @notice Pins the production governance wiring produced by `DeployGovernance`. The deploy script establishes the
 /// entire security posture of the layer — who may schedule and cancel, that execution is permissionless, and that no
 /// residual deployer privilege survives — so every role assignment is asserted here explicitly.
 contract DeployGovernanceTest is Test {
-    address internal immutable _TOKEN = makeAddr("token");
     address internal immutable _COUNCIL_MULTISIG = makeAddr("councilMultisig");
     address internal immutable _ATTACKER = makeAddr("attacker");
 
+    address internal _token;
     XanGovernor internal _governor;
     TimelockController internal _timelock;
     XanUpgradeCouncil internal _upgradeCouncil;
     address internal _deployer;
 
     function setUp() public {
-        // The governor's constructor probes `token.clock()` (EIP-6372 detection) inside a try/catch, so the token
-        // stub must carry code and revert (PUSH1 0 PUSH1 0 REVERT) to hit the catch fallback; the wiring under test
-        // is otherwise independent of the token's behavior.
-        vm.etch(_TOKEN, hex"60006000fd");
+        // Use a real XanV1 proxy as the governance token. XanV1 has no `clock()`, so calling it reverts and the
+        // governor's EIP-6372 probe (a try/catch) falls back to a block-number clock; the wiring under test is
+        // independent of the token's behavior.
+        _token = Upgrades.deployUUPSProxy(
+            "XanV1.sol:XanV1", abi.encodeCall(XanV1.initializeV1, (makeAddr("mintRecipient"), makeAddr("v1Council")))
+        );
 
         // Exercise `deploy` directly (the `run` wrapper only adds broadcasting, which is incompatible with the test
         // harness). Without a broadcast the script contract itself sends every transaction, so it is the deployer.
         DeployGovernance script = new DeployGovernance();
         _deployer = address(script);
         (address governor, address timelock, address upgradeCouncil) =
-            script.deploy({token: _TOKEN, councilMultisig: _COUNCIL_MULTISIG, deployer: _deployer});
+            script.deploy({token: _token, councilMultisig: _COUNCIL_MULTISIG, deployer: _deployer});
 
         _governor = XanGovernor(payable(governor));
         _timelock = TimelockController(payable(timelock));
@@ -50,7 +54,7 @@ contract DeployGovernanceTest is Test {
     function test_run_reverts_if_the_council_is_the_zero_address() public {
         DeployGovernance script = new DeployGovernance();
         vm.expectRevert(DeployGovernance.InvalidCouncilAddress.selector, address(script));
-        script.deploy({token: _TOKEN, councilMultisig: address(0), deployer: address(script)});
+        script.deploy({token: _token, councilMultisig: address(0), deployer: address(script)});
     }
 
     /// @notice The timelock self-administers: role changes require a passed governance operation, so an outsider
@@ -81,7 +85,7 @@ contract DeployGovernanceTest is Test {
         // the module's narrow interface.
         assertFalse(_timelock.hasRole(proposerRole, _COUNCIL_MULTISIG));
         assertFalse(_timelock.hasRole(cancellerRole, _COUNCIL_MULTISIG));
-        assertFalse(_timelock.hasRole(proposerRole, _TOKEN));
+        assertFalse(_timelock.hasRole(proposerRole, _token));
     }
 
     /// @notice Anyone may execute a ready operation: authority lives entirely in scheduling and cancelling.
@@ -110,7 +114,7 @@ contract DeployGovernanceTest is Test {
     /// @notice The governor reads votes from the token, executes through the timelock, and carries the `Parameters`
     /// settings — including the 50% quorum the council's capture-cost argument depends on (ADR-0007).
     function test_run_configures_the_governor() public view {
-        assertEq(address(_governor.token()), _TOKEN);
+        assertEq(address(_governor.token()), _token);
         assertEq(_governor.timelock(), address(_timelock));
         assertEq(_governor.votingDelay(), Parameters.VOTING_DELAY);
         assertEq(_governor.votingPeriod(), Parameters.VOTING_PERIOD);
