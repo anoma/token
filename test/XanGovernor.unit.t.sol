@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {DeployGovernance} from "../script/DeployGovernance.s.sol";
+import {ScheduleXanV1Upgrade} from "../script/ScheduleXanV1Upgrade.s.sol";
 import {XanGovernor} from "../src/XanGovernor.sol";
 import {XanV1} from "../src/XanV1.sol";
 
@@ -13,8 +13,8 @@ contract XanGovernorUnitTest is Test {
     XanGovernor internal _governor;
 
     function setUp() public {
-        DeployGovernance script = new DeployGovernance();
-        (address governor,,) = script.deploy({
+        ScheduleXanV1Upgrade script = new ScheduleXanV1Upgrade();
+        (address governor,,) = script.deployGovernance({
             token: address(new XanV1()), councilMultisig: makeAddr("councilMultisig"), deployer: address(script)
         });
         _governor = XanGovernor(payable(governor));
