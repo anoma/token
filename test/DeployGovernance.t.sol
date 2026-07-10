@@ -19,42 +19,36 @@ contract DeployGovernanceTest is Test {
     address internal immutable _COUNCIL_MULTISIG = makeAddr("councilMultisig");
     address internal immutable _ATTACKER = makeAddr("attacker");
 
+    DeployGovernance internal _script;
+    address internal _deployer;
     address internal _token;
     XanGovernor internal _governor;
     TimelockController internal _timelock;
     XanUpgradeCouncil internal _upgradeCouncil;
-    address internal _deployer;
 
     function setUp() public {
-        // Use a real XanV1 proxy as the governance token. XanV1 has no `clock()`, so calling it reverts and the
-        // governor's EIP-6372 probe (a try/catch) falls back to a block-number clock; the wiring under test is
-        // independent of the token's behavior.
         _token = Upgrades.deployUUPSProxy(
             "XanV1.sol:XanV1", abi.encodeCall(XanV1.initializeV1, (makeAddr("mintRecipient"), makeAddr("v1Council")))
         );
 
-        // Exercise `deploy` directly (the `run` wrapper only adds broadcasting, which is incompatible with the test
-        // harness). Without a broadcast the script contract itself sends every transaction, so it is the deployer.
-        DeployGovernance script = new DeployGovernance();
-        _deployer = address(script);
+        _script = new DeployGovernance();
+        _deployer = address(_script);
         (address governor, address timelock, address upgradeCouncil) =
-            script.deploy({token: _token, councilMultisig: _COUNCIL_MULTISIG, deployer: _deployer});
+            _script.deploy({token: _token, councilMultisig: _COUNCIL_MULTISIG, deployer: _deployer});
 
         _governor = XanGovernor(payable(governor));
         _timelock = TimelockController(payable(timelock));
         _upgradeCouncil = XanUpgradeCouncil(upgradeCouncil);
     }
 
-    function test_run_reverts_if_the_token_is_the_zero_address() public {
-        DeployGovernance script = new DeployGovernance();
-        vm.expectRevert(DeployGovernance.InvalidTokenAddress.selector, address(script));
-        script.deploy({token: address(0), councilMultisig: _COUNCIL_MULTISIG, deployer: address(script)});
+    function test_deploy_reverts_if_the_token_is_the_zero_address() public {
+        vm.expectRevert(DeployGovernance.InvalidTokenAddress.selector, address(_script));
+        _script.deploy({token: address(0), councilMultisig: _COUNCIL_MULTISIG, deployer: address(_script)});
     }
 
-    function test_run_reverts_if_the_council_is_the_zero_address() public {
-        DeployGovernance script = new DeployGovernance();
-        vm.expectRevert(DeployGovernance.InvalidCouncilAddress.selector, address(script));
-        script.deploy({token: _token, councilMultisig: address(0), deployer: address(script)});
+    function test_deploy_reverts_if_the_council_is_the_zero_address() public {
+        vm.expectRevert(DeployGovernance.InvalidCouncilAddress.selector, address(_script));
+        _script.deploy({token: _token, councilMultisig: address(0), deployer: address(_script)});
     }
 
     /// @notice The timelock self-administers: role changes require a passed governance operation, so an outsider
