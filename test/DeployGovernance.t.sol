@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -118,18 +119,14 @@ contract DeployGovernanceTest is Test {
         );
     }
 
-    /// @notice The token is a XanV1 proxy with no `clock()`, so the governor's EIP-6372 detection reverts into its
-    /// `try/catch` and falls back to the block-number clock — construction still succeeds. The governor holds the
-    /// proxy (not the implementation), so once the upgrade swaps in XanV2's timestamp clock, `clock()` follows it live.
-    function test_governor_falls_back_to_the_block_number_clock() public view {
-        // The token reverts on `clock()` (no such function on XanV1, and no fallback) — the revert the governor's
-        // `clock()` / `CLOCK_MODE()` try/catch absorbs.
-        (bool ok,) = _token.staticcall(abi.encodeWithSignature("clock()"));
-        assertFalse(ok, "XanV1 must not expose clock()");
+    /// @notice The quorum-numerator checkpoint is keyed by the deploy timestamp, so the numerator holds from then
+    /// on with no earlier (block-number-keyed) checkpoint.
+    function test_quorum_numerator_is_checkpointed_at_the_deploy_timestamp() public view {
+        uint48 deployTimestamp = Time.timestamp();
+        uint256 expectedNumerator = Parameters.QUORUM_RATIO_NUMERATOR * 100 / Parameters.QUORUM_RATIO_DENOMINATOR;
 
-        // So the governor reports the block-number fallback, and the deployment nonetheless succeeded.
-        assertEq(_governor.clock(), uint48(block.number));
-        assertEq(_governor.CLOCK_MODE(), "mode=blocknumber&from=default");
+        assertEq(_governor.quorumNumerator(deployTimestamp), expectedNumerator, "numerator not set at deploy timestamp");
+        assertEq(_governor.quorumNumerator(deployTimestamp - 1), 0, "checkpoint exists before the deploy timestamp");
     }
 
     /// @notice The timelock owns the module (and thus rotates the council); the multisig is the initial council.

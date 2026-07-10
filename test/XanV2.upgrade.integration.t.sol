@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {DeployXanV1} from "../script/DeployXanV1.s.sol";
 import {ScheduleXanV1Upgrade} from "../script/ScheduleXanV1Upgrade.s.sol";
 import {UpgradeXanV1} from "../script/UpgradeXanV1.s.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
+import {XanGovernor} from "../src/XanGovernor.sol";
 import {XanV1} from "../src/XanV1.sol";
 import {XanV2} from "../src/XanV2.sol";
 
@@ -32,12 +34,12 @@ contract XanV2UpgradeIntegrationTest is Test {
 
         // 2. Deploy governance, prepare the V2 implementation, and schedule the council upgrade in one script. The
         // timelock deployed here is baked into the V2 implementation bytecode as the token owner.
-        (address implV2,, address timelock,) =
+        (address implV2, address governor, address timelock,) =
             new ScheduleXanV1Upgrade().run({proxy: proxy, councilMultisig: _COUNCIL_MULTISIG});
 
         (address scheduledImpl, uint48 endTime) = XanV1(proxy).scheduledCouncilUpgrade();
         assertEq(scheduledImpl, implV2, "council did not schedule the V2 implementation");
-        assertEq(endTime, uint48(block.timestamp) + Parameters.DELAY_DURATION, "unexpected upgrade delay");
+        assertEq(endTime, Time.timestamp() + Parameters.DELAY_DURATION, "unexpected upgrade delay");
 
         // 3. Wait out the council delay, then execute the (permissionless) upgrade.
         vm.warp(endTime);
@@ -53,5 +55,17 @@ contract XanV2UpgradeIntegrationTest is Test {
         assertEq(tokenV2.totalSupply(), supplyBefore, "supply changed by the upgrade");
         assertEq(tokenV2.vestingStart(), Parameters.VESTING_START, "vesting start mismatch");
         assertEq(tokenV2.vestingEnd(), Parameters.VESTING_START + Parameters.VESTING_DURATION, "vesting end mismatch");
+
+        // 5. Governance is now live on XanV2's timestamp clock. The quorum-numerator checkpoint recorded when the
+        // governor was deployed (step 2) is timestamp-keyed, so `quorum(timepoint)` returns the configured fraction of
+        // the voting supply seeded by the upgrade. `getPastTotalSupply` rejects the current timepoint, so advance one
+        // second past the upgrade before querying.
+        vm.warp(endTime + 1);
+        uint256 expectedNumerator = Parameters.QUORUM_RATIO_NUMERATOR * 100 / Parameters.QUORUM_RATIO_DENOMINATOR;
+        assertEq(
+            XanGovernor(payable(governor)).quorum(endTime),
+            supplyBefore * expectedNumerator / 100,
+            "quorum is not the configured fraction of the seeded voting supply"
+        );
     }
 }
