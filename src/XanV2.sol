@@ -56,7 +56,7 @@ contract XanV2 is
     }
 
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the V2 contract.
-    /// @param unlocked The cumulative amount each account has already unlocked (moved from locked to spendable).
+    /// @param unlocked The cumulative amount each account has already unlocked and that became transferable.
     /// @custom:storage-location erc7201:anoma.storage.Xan.v2
     struct XanV2Storage {
         mapping(address owner => uint256) unlocked;
@@ -108,8 +108,8 @@ contract XanV2 is
     /// @notice Thrown when a upgrade back to the XAN V1 implementation is attempted.
     error UpgradeToXanV1NotAllowed();
 
-    /// @notice Thrown when an account tries to move more than its unlocked (spendable) balance.
-    error UnlockedBalanceInsufficient(address sender, uint256 unlockedBalance, uint256 valueToLock);
+    /// @notice Thrown when an account tries to move more than its unlocked (transferable) balance.
+    error UnlockedBalanceInsufficient(address sender, uint256 unlockedBalance, uint256 valueToUnlock);
 
     /// @notice Thrown when `unlock` is called but no tokens have vested since the last unlock.
     error NothingToUnlock(address account);
@@ -265,7 +265,7 @@ contract XanV2 is
 
         require(
             value < unlockedBalance + 1,
-            UnlockedBalanceInsufficient({sender: from, unlockedBalance: unlockedBalance, valueToLock: value})
+            UnlockedBalanceInsufficient({sender: from, unlockedBalance: unlockedBalance, valueToUnlock: value})
         );
 
         super._update({from: from, to: to, value: value});

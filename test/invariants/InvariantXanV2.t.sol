@@ -99,8 +99,15 @@ contract XanV2Invariants is StdInvariant, Test {
         for (uint256 i = 0; i < actors.length; ++i) {
             address actor = actors[i];
 
-            assertLe(token.unlockableBalanceOf(actor), token.lockedBalanceOf(actor), "unlockable > locked");
-            assertLe(token.lockedBalanceOf(actor), token.balanceOf(actor), "locked > balance");
+            uint256 balance = token.balanceOf(actor);
+            uint256 locked = token.lockedBalanceOf(actor);
+            uint256 unlocked = token.unlockedBalanceOf(actor);
+            uint256 unlockable = token.unlockableBalanceOf(actor);
+
+            assertEq(locked + unlocked, balance, "locked + unlocked != balance");
+            assertLe(unlockable, locked, "unlockable > locked");
+            assertLe(locked, balance, "locked > balance");
+            assertLe(unlocked, balance, "unlocked > balance");
         }
     }
 }
