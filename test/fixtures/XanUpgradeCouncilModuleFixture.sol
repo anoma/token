@@ -4,22 +4,22 @@ pragma solidity ^0.8.30;
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 
 import {Parameters} from "../../src/libs/Parameters.sol";
-import {XanUpgradeCouncil} from "../../src/XanUpgradeCouncil.sol";
+import {XanUpgradeCouncilModule} from "../../src/XanUpgradeCouncilModule.sol";
 import {XanGovernorFixture} from "./XanGovernorFixture.sol";
 
-/// @notice Extends the governor fixture with a wired `XanUpgradeCouncil` module: the module is granted the timelock's
+/// @notice Extends the governor fixture with a wired `XanUpgradeCouncilModule`: the module is granted the timelock's
 /// `PROPOSER` and `CANCELLER` roles, so the council can schedule token upgrades (and withdraw its own pending one) and
 /// the voter body can cancel the council. Mirrors a real deployment where the token is owned by the timelock.
-abstract contract XanUpgradeCouncilFixture is XanGovernorFixture {
+abstract contract XanUpgradeCouncilModuleFixture is XanGovernorFixture {
     /// @notice The upgrade council multisig.
     address internal immutable _COUNCIL_MULTISIG = makeAddr("upgradeCouncilMultisig");
 
-    XanUpgradeCouncil internal _upgradeCouncil;
+    XanUpgradeCouncilModule internal _module;
 
     function setUp() public virtual override {
         super.setUp();
 
-        _upgradeCouncil = new XanUpgradeCouncil({
+        _module = new XanUpgradeCouncilModule({
             governor: IGovernor(address(_governor)),
             timelock: _timelock,
             token: address(_xanToken),
@@ -30,8 +30,8 @@ abstract contract XanUpgradeCouncilFixture is XanGovernorFixture {
         // The base fixture renounced the deployer's timelock admin, so roles are now changed only through the timelock
         // itself; impersonating it here stands in for the governance proposal that would grant these roles in prod.
         vm.startPrank(address(_timelock));
-        _timelock.grantRole(_timelock.PROPOSER_ROLE(), address(_upgradeCouncil));
-        _timelock.grantRole(_timelock.CANCELLER_ROLE(), address(_upgradeCouncil));
+        _timelock.grantRole(_timelock.PROPOSER_ROLE(), address(_module));
+        _timelock.grantRole(_timelock.CANCELLER_ROLE(), address(_module));
         vm.stopPrank();
     }
 }

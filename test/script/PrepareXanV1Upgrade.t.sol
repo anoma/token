@@ -10,7 +10,7 @@ import {Test} from "forge-std/Test.sol";
 import {PrepareXanV1Upgrade} from "../../script/PrepareXanV1Upgrade.s.sol";
 import {Parameters} from "../../src/libs/Parameters.sol";
 import {XanGovernor} from "../../src/XanGovernor.sol";
-import {XanUpgradeCouncil} from "../../src/XanUpgradeCouncil.sol";
+import {XanUpgradeCouncilModule} from "../../src/XanUpgradeCouncilModule.sol";
 import {XanV1} from "../../src/XanV1.sol";
 
 /// @notice Pins the production governance wiring produced by `PrepareXanV1Upgrade.deployGovernance`. It establishes
@@ -24,7 +24,7 @@ contract PrepareXanV1UpgradeTest is Test {
     address internal _token;
     XanGovernor internal _governor;
     TimelockController internal _timelock;
-    XanUpgradeCouncil internal _upgradeCouncil;
+    XanUpgradeCouncilModule internal _module;
 
     function setUp() public {
         _token = Upgrades.deployUUPSProxy(
@@ -36,12 +36,12 @@ contract PrepareXanV1UpgradeTest is Test {
         // `deployGovernance` makes `msg.sender` the transient timelock admin and wires the roles as the script itself,
         // so it must be called with the script pranked as the sender.
         vm.prank(_deployer);
-        (address governor, address timelock, address upgradeCouncil) =
+        (address governor, address timelock, address councilModule) =
             _script.deployGovernance({token: _token, councilMultisig: _COUNCIL_MULTISIG});
 
         _governor = XanGovernor(payable(governor));
         _timelock = TimelockController(payable(timelock));
-        _upgradeCouncil = XanUpgradeCouncil(upgradeCouncil);
+        _module = XanUpgradeCouncilModule(councilModule);
     }
 
     function test_deployGovernance_reverts_if_the_token_is_the_zero_address() public {
@@ -69,14 +69,14 @@ contract PrepareXanV1UpgradeTest is Test {
     }
 
     function test_run_deploys_governance_and_prepares_the_upgrade() public {
-        (address implV2, address governor, address timelock, address upgradeCouncil) =
+        (address implV2, address governor, address timelock, address councilModule) =
             _script.run({proxy: _token, councilMultisig: _COUNCIL_MULTISIG});
 
         // The governance stack is deployed and wired; the V2 implementation is prepared.
         assertTrue(implV2 != address(0), "implV2 not prepared");
         assertEq(address(XanGovernor(payable(governor)).token()), _token, "governor not driven by the proxy");
         assertEq(XanGovernor(payable(governor)).timelock(), timelock, "governor not wired to the timelock");
-        assertEq(XanUpgradeCouncil(upgradeCouncil).owner(), timelock, "upgrade council not owned by the timelock");
+        assertEq(XanUpgradeCouncilModule(councilModule).owner(), timelock, "upgrade council not owned by the timelock");
 
         // `run` does not schedule — the V1 council Safe schedules the returned `implV2` in a separate transaction.
         (address scheduledImpl,) = XanV1(_token).scheduledCouncilUpgrade();
@@ -92,8 +92,8 @@ contract PrepareXanV1UpgradeTest is Test {
 
         assertTrue(_timelock.hasRole(proposerRole, address(_governor)));
         assertTrue(_timelock.hasRole(cancellerRole, address(_governor)));
-        assertTrue(_timelock.hasRole(proposerRole, address(_upgradeCouncil)));
-        assertTrue(_timelock.hasRole(cancellerRole, address(_upgradeCouncil)));
+        assertTrue(_timelock.hasRole(proposerRole, address(_module)));
+        assertTrue(_timelock.hasRole(cancellerRole, address(_module)));
 
         // Neither the council multisig nor the token hold timelock roles directly — all council power flows through
         // the upgrade council's narrow interface.
@@ -117,7 +117,7 @@ contract PrepareXanV1UpgradeTest is Test {
         assertFalse(_timelock.hasRole(adminRole, _deployer));
         assertFalse(_timelock.hasRole(adminRole, address(this)));
         assertFalse(_timelock.hasRole(adminRole, address(_governor)));
-        assertFalse(_timelock.hasRole(adminRole, address(_upgradeCouncil)));
+        assertFalse(_timelock.hasRole(adminRole, address(_module)));
     }
 
     function test_deployGovernance_sets_the_timelock_min_delay() public view {
@@ -144,10 +144,10 @@ contract PrepareXanV1UpgradeTest is Test {
     }
 
     function test_deployGovernance_wires_the_upgrade_council() public view {
-        assertEq(_upgradeCouncil.owner(), address(_timelock));
-        assertEq(_upgradeCouncil.getCouncil(), _COUNCIL_MULTISIG);
+        assertEq(_module.owner(), address(_timelock));
+        assertEq(_module.getCouncil(), _COUNCIL_MULTISIG);
         assertEq(
-            _upgradeCouncil.cancelWindow(),
+            _module.cancelWindow(),
             uint256(Parameters.VOTING_DELAY) + Parameters.VOTING_PERIOD + Parameters.DELAY_DURATION
                 + Parameters.COUNCIL_CANCEL_BUFFER
         );

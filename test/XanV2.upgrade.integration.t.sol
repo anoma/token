@@ -18,7 +18,7 @@ import {XanV2} from "../src/XanV2.sol";
 contract XanV2UpgradeIntegrationTest is Test {
     address internal immutable _MINT_RECIPIENT = makeAddr("mintRecipient");
     // The council multisig (a Safe{Wallet}) is both the V1 governance council — which schedules the upgrade — and the
-    // `XanUpgradeCouncil`.
+    // `XanUpgradeCouncilModule`.
     address internal immutable _COUNCIL_MULTISIG = makeAddr("councilMultisig");
 
     function test_scripts_drive_the_full_v1_to_v2_upgrade() public {
