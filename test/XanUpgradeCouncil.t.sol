@@ -18,7 +18,7 @@ import {MockXanV2} from "./mocks/MockXanV2.sol";
 contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
     function test_constructor_reverts_if_the_governor_is_the_zero_address() public {
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
-        vm.expectRevert(IXanUpgradeCouncil.ZeroGovernorNotAllowed.selector, predicted);
+        vm.expectRevert(XanUpgradeCouncil.ZeroGovernorNotAllowed.selector, predicted);
         new XanUpgradeCouncil({
             governor: IGovernor(address(0)),
             timelock: _timelock,
@@ -43,7 +43,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
 
     function test_constructor_reverts_if_the_token_is_the_zero_address() public {
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
-        vm.expectRevert(IXanUpgradeCouncil.ZeroTokenNotAllowed.selector, predicted);
+        vm.expectRevert(XanUpgradeCouncil.ZeroTokenNotAllowed.selector, predicted);
         new XanUpgradeCouncil({
             governor: IGovernor(address(_governor)),
             timelock: _timelock,
@@ -55,7 +55,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
 
     function test_constructor_reverts_if_the_initial_council_is_the_zero_address() public {
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
-        vm.expectRevert(IXanUpgradeCouncil.ZeroCouncilNotAllowed.selector, predicted);
+        vm.expectRevert(XanUpgradeCouncil.ZeroCouncilNotAllowed.selector, predicted);
         new XanUpgradeCouncil({
             governor: IGovernor(address(_governor)),
             timelock: _timelock,
@@ -68,7 +68,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
     function test_scheduleUpgrade_reverts_if_the_caller_is_not_the_council() public {
         address newImpl = _newImplementation();
         vm.expectRevert(
-            abi.encodeWithSelector(IXanUpgradeCouncil.UnauthorizedCouncil.selector, address(this)),
+            abi.encodeWithSelector(XanUpgradeCouncil.UnauthorizedCouncil.selector, address(this)),
             address(_upgradeCouncil)
         );
         _upgradeCouncil.scheduleUpgrade(newImpl, "");
@@ -76,7 +76,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
 
     function test_scheduleUpgrade_reverts_if_the_implementation_is_the_zero_address() public {
         vm.prank(_COUNCIL_MULTISIG);
-        vm.expectRevert(IXanUpgradeCouncil.ZeroImplementationNotAllowed.selector, address(_upgradeCouncil));
+        vm.expectRevert(XanUpgradeCouncil.ZeroImplementationNotAllowed.selector, address(_upgradeCouncil));
         _upgradeCouncil.scheduleUpgrade(address(0), "");
     }
 
@@ -90,7 +90,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
         bytes32 pending = _upgradeCouncil.pendingUpgrade();
         vm.prank(_COUNCIL_MULTISIG);
         vm.expectRevert(
-            abi.encodeWithSelector(IXanUpgradeCouncil.UpgradeAlreadyPending.selector, pending), address(_upgradeCouncil)
+            abi.encodeWithSelector(XanUpgradeCouncil.UpgradeAlreadyPending.selector, pending), address(_upgradeCouncil)
         );
         _upgradeCouncil.scheduleUpgrade(second, "");
     }
@@ -248,7 +248,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
 
     function test_cancelUpgrade_reverts_if_no_upgrade_was_scheduled() public {
         vm.prank(_COUNCIL_MULTISIG);
-        vm.expectRevert(IXanUpgradeCouncil.NoUpgradePending.selector, address(_upgradeCouncil));
+        vm.expectRevert(XanUpgradeCouncil.NoUpgradePending.selector, address(_upgradeCouncil));
         _upgradeCouncil.cancelUpgrade();
     }
 
@@ -262,7 +262,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
 
         // A second cancel of the same (now-cancelled) upgrade reverts: the operation is no longer pending.
         vm.prank(_COUNCIL_MULTISIG);
-        vm.expectRevert(IXanUpgradeCouncil.NoUpgradePending.selector, address(_upgradeCouncil));
+        vm.expectRevert(XanUpgradeCouncil.NoUpgradePending.selector, address(_upgradeCouncil));
         _upgradeCouncil.cancelUpgrade();
     }
 
@@ -273,7 +273,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
 
         vm.prank(_OTHER);
         vm.expectRevert(
-            abi.encodeWithSelector(IXanUpgradeCouncil.UnauthorizedCouncil.selector, _OTHER), address(_upgradeCouncil)
+            abi.encodeWithSelector(XanUpgradeCouncil.UnauthorizedCouncil.selector, _OTHER), address(_upgradeCouncil)
         );
         _upgradeCouncil.cancelUpgrade();
     }
@@ -327,7 +327,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
         _executeCouncilUpgrade(newImpl, "");
 
         vm.prank(_COUNCIL_MULTISIG);
-        vm.expectRevert(IXanUpgradeCouncil.NoUpgradePending.selector, address(_upgradeCouncil));
+        vm.expectRevert(XanUpgradeCouncil.NoUpgradePending.selector, address(_upgradeCouncil));
         _upgradeCouncil.cancelUpgrade();
     }
 
@@ -403,7 +403,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
         vm.expectRevert(
-            abi.encodeWithSelector(IXanUpgradeCouncil.UnauthorizedCouncil.selector, _COUNCIL_MULTISIG),
+            abi.encodeWithSelector(XanUpgradeCouncil.UnauthorizedCouncil.selector, _COUNCIL_MULTISIG),
             address(_upgradeCouncil)
         );
         _upgradeCouncil.scheduleUpgrade(newImpl, "");
@@ -441,7 +441,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
 
     function test_setCouncil_reverts_if_the_new_council_is_the_zero_address() public {
         vm.prank(address(_timelock));
-        vm.expectRevert(IXanUpgradeCouncil.ZeroCouncilNotAllowed.selector, address(_upgradeCouncil));
+        vm.expectRevert(XanUpgradeCouncil.ZeroCouncilNotAllowed.selector, address(_upgradeCouncil));
         _upgradeCouncil.setCouncil(address(0));
     }
 
