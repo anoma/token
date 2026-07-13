@@ -24,27 +24,6 @@ interface IXanUpgradeCouncil {
     /// @param newCouncil The new council address.
     event CouncilChanged(address indexed previousCouncil, address indexed newCouncil);
 
-    /// @notice Thrown when a council-only function is called by another account.
-    error UnauthorizedCouncil(address caller);
-
-    /// @notice Thrown when the council schedules an upgrade while one is already pending (one upgrade in flight).
-    error UpgradeAlreadyPending(bytes32 operationId);
-
-    /// @notice Thrown when the governor address supplied to the constructor is zero.
-    error ZeroGovernorNotAllowed();
-
-    /// @notice Thrown when the token address supplied to the constructor is zero.
-    error ZeroTokenNotAllowed();
-
-    /// @notice Thrown when a council address (constructor `initialCouncil` or `setCouncil`) is zero.
-    error ZeroCouncilNotAllowed();
-
-    /// @notice Thrown when the implementation address supplied to `scheduleUpgrade` is zero.
-    error ZeroImplementationNotAllowed();
-
-    /// @notice Thrown when `cancelUpgrade` is called but no council upgrade is pending in the timelock.
-    error NoUpgradePending();
-
     /// @notice Schedules a token upgrade by scheduling it in the timelock.
     /// @param newImplementation The implementation to upgrade the token to.
     /// @param data The reinitialization calldata forwarded to `upgradeToAndCall` (may be empty).
