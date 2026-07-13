@@ -381,6 +381,10 @@ contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
         assertEq(_module.cancelWindow(), windowBefore + periodBefore);
     }
 
+    function test_constructor_sets_the_timelock() public view {
+        assertEq(_module.getTimelock(), address(_timelock));
+    }
+
     function test_constructor_sets_the_council() public view {
         assertEq(_module.getCouncil(), _COUNCIL_MULTISIG);
     }
