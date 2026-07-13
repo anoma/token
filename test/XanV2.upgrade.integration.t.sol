@@ -5,15 +5,15 @@ import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {DeployXanV1} from "../script/DeployXanV1.s.sol";
-import {PrepareXanV1Upgrade} from "../script/PrepareXanV1Upgrade.s.sol";
-import {UpgradeXanV1} from "../script/UpgradeXanV1.s.sol";
+import {ExecuteXanV2Upgrade} from "../script/ExecuteXanV2Upgrade.s.sol";
+import {PrepareXanV2Upgrade} from "../script/PrepareXanV2Upgrade.s.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
 import {XanGovernor} from "../src/XanGovernor.sol";
 import {XanV1} from "../src/XanV1.sol";
 import {XanV2} from "../src/XanV2.sol";
 
-/// @notice Local integration test that runs the production deployment scripts — `DeployXanV1`, `PrepareXanV1Upgrade`,
-/// and `UpgradeXanV1` — plus the V1 council's `scheduleCouncilUpgrade` (a Safe transaction in production), against
+/// @notice Local integration test that runs the production deployment scripts — `DeployXanV1`, `PrepareXanV2Upgrade`,
+/// and `ExecuteXanV2Upgrade` — plus the V1 council's `scheduleCouncilUpgrade` (a Safe transaction in production), against
 /// fresh state, to demonstrate that the full V1->V2 upgrade flow works.
 contract XanV2UpgradeIntegrationTest is Test {
     address internal immutable _MINT_RECIPIENT = makeAddr("mintRecipient");
@@ -32,7 +32,7 @@ contract XanV2UpgradeIntegrationTest is Test {
         // 2. Deploy governance and prepare the V2 implementation (permissionless). The timelock deployed here is baked
         // into the V2 implementation bytecode as the token owner. `run` does not schedule — it returns `implV2`.
         (address implV2, address governor, address timelock,) =
-            new PrepareXanV1Upgrade().run({proxy: proxy, councilMultisig: _COUNCIL_MULTISIG});
+            new PrepareXanV2Upgrade().run({proxy: proxy, councilMultisig: _COUNCIL_MULTISIG});
 
         // 3. The council Safe schedules the prepared implementation (the transaction the script surfaces via `implV2`).
         vm.prank(_COUNCIL_MULTISIG);
@@ -44,10 +44,10 @@ contract XanV2UpgradeIntegrationTest is Test {
 
         // 4. Wait out the council delay, then execute the (permissionless) upgrade.
         vm.warp(endTime);
-        address executed = new UpgradeXanV1().run({proxy: proxy});
+        address executed = new ExecuteXanV2Upgrade().run({proxy: proxy});
         assertEq(executed, implV2, "executed a different implementation than scheduled");
 
-        // 5. The proxy now runs XanV2 with the state baked into the implementation bytecode by `PrepareXanV1Upgrade`:
+        // 5. The proxy now runs XanV2 with the state baked into the implementation bytecode by `PrepareXanV2Upgrade`:
         // the deployed timelock owns the token, the supply is conserved, and the vesting schedule matches the audited
         // `Parameters`.
         XanV2 tokenV2 = XanV2(proxy);

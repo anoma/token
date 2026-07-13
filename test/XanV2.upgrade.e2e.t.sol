@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {Upgrades, Options} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {UpgradeXanV1} from "../script/UpgradeXanV1.s.sol";
+import {ExecuteXanV2Upgrade} from "../script/ExecuteXanV2Upgrade.s.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
 import {XanV1} from "../src/XanV1.sol";
 import {XanV2} from "../src/XanV2.sol";
@@ -52,7 +52,7 @@ contract XanV2UpgradeE2ETest is Test {
 
         // 3. Wait out the council delay and execute the (permissionless) upgrade through the production script.
         vm.warp(endTime);
-        address executed = new UpgradeXanV1().run({proxy: _XAN_PROXY});
+        address executed = new ExecuteXanV2Upgrade().run({proxy: _XAN_PROXY});
         assertEq(executed, implV2, "executed a different implementation than scheduled");
 
         // 4. Ensure that the upgrade to XanV2 was successful and installed the baked-in state: the owner comes from

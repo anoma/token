@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {PrepareXanV1Upgrade} from "../script/PrepareXanV1Upgrade.s.sol";
+import {PrepareXanV2Upgrade} from "../script/PrepareXanV2Upgrade.s.sol";
 import {XanGovernor} from "../src/XanGovernor.sol";
 import {XanV1} from "../src/XanV1.sol";
 
@@ -13,7 +13,7 @@ contract XanGovernorUnitTest is Test {
     XanGovernor internal _governor;
 
     function setUp() public {
-        PrepareXanV1Upgrade script = new PrepareXanV1Upgrade();
+        PrepareXanV2Upgrade script = new PrepareXanV2Upgrade();
         address token = address(new XanV1());
         address councilMultisig = makeAddr("councilMultisig");
         // `deployGovernance` makes `msg.sender` the transient timelock admin and wires the roles as the script itself.

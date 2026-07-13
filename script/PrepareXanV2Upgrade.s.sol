@@ -16,7 +16,7 @@ import {XanUpgradeCouncilModule} from "../src/XanUpgradeCouncilModule.sol";
 /// implementation with the deployed timelock baked in as the token owner. The upgrade is *not* scheduled here: the V1
 /// governance council is a multisig, so it must execute `scheduleCouncilUpgrade(implV2)` itself using the returned
 /// `implV2`.
-contract PrepareXanV1Upgrade is Script {
+contract PrepareXanV2Upgrade is Script {
     error InvalidTokenAddress();
     error InvalidCouncilAddress();
 

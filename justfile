@@ -81,7 +81,7 @@ deploy deployer initial-mint-recipient council chain *args:
 prepare-upgrade-simulate sender proxy council chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
-    forge script script/PrepareXanV1Upgrade.s.sol:PrepareXanV1Upgrade \
+    forge script script/PrepareXanV2Upgrade.s.sol:PrepareXanV2Upgrade \
         --sig "run(address,address)" {{ proxy }} {{ council }} \
         --rpc-url {{ chain }} --sender {{ sender }} {{ args }}
 
@@ -91,7 +91,7 @@ prepare-upgrade-simulate sender proxy council chain *args:
 prepare-upgrade deployer sender proxy council chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
-    forge script script/PrepareXanV1Upgrade.s.sol:PrepareXanV1Upgrade \
+    forge script script/PrepareXanV2Upgrade.s.sol:PrepareXanV2Upgrade \
         --sig "run(address,address)" {{ proxy }} {{ council }} \
         --broadcast --rpc-url {{ chain }} --account {{ deployer }} --sender {{ sender }} {{ args }}
 
@@ -99,7 +99,7 @@ prepare-upgrade deployer sender proxy council chain *args:
 upgrade-simulate proxy chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
-    forge script script/UpgradeXanV1.s.sol:UpgradeXanV1 \
+    forge script script/ExecuteXanV2Upgrade.s.sol:ExecuteXanV2Upgrade \
         --sig "run(address)" {{ proxy }} \
         --rpc-url {{ chain }} {{ args }}
 
@@ -107,7 +107,7 @@ upgrade-simulate proxy chain *args:
 upgrade deployer proxy chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
-    forge script script/UpgradeXanV1.s.sol:UpgradeXanV1 \
+    forge script script/ExecuteXanV2Upgrade.s.sol:ExecuteXanV2Upgrade \
         --sig "run(address)" {{ proxy }} \
         --broadcast --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
 
