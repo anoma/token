@@ -87,7 +87,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
         vm.prank(_COUNCIL_MULTISIG);
         _upgradeCouncil.scheduleUpgrade(first, "");
 
-        bytes32 pending = _upgradeCouncil.pendingUpgrade();
+        bytes32 pending = _upgradeCouncil.getPendingUpgradeOperationId();
         vm.prank(_COUNCIL_MULTISIG);
         vm.expectRevert(
             abi.encodeWithSelector(XanUpgradeCouncil.UpgradeAlreadyPending.selector, pending), address(_upgradeCouncil)
@@ -100,7 +100,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
 
         vm.prank(_COUNCIL_MULTISIG);
         _upgradeCouncil.scheduleUpgrade(newImpl, "");
-        bytes32 firstId = _upgradeCouncil.pendingUpgrade();
+        bytes32 firstId = _upgradeCouncil.getPendingUpgradeOperationId();
 
         // Withdraw the upgrade, clearing the in-flight slot.
         vm.prank(_COUNCIL_MULTISIG);
@@ -200,7 +200,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
         _upgradeCouncil.scheduleUpgrade(newImpl, "");
-        bytes32 operationId = _upgradeCouncil.pendingUpgrade();
+        bytes32 operationId = _upgradeCouncil.getPendingUpgradeOperationId();
 
         address[] memory targets = new address[](1);
         uint256[] memory values = new uint256[](1);
@@ -234,7 +234,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
         _upgradeCouncil.scheduleUpgrade(newImpl, "");
-        bytes32 operationId = _upgradeCouncil.pendingUpgrade();
+        bytes32 operationId = _upgradeCouncil.getPendingUpgradeOperationId();
 
         vm.expectEmit(address(_upgradeCouncil));
         emit IXanUpgradeCouncil.UpgradeCancelled(operationId);
@@ -397,7 +397,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
 
         skip(_timelock.getMinDelay() + 1);
         _governor.execute({targets: targets, values: values, calldatas: calldatas, descriptionHash: descriptionHash});
-        assertEq(_upgradeCouncil.council(), replacementCouncil);
+        assertEq(_upgradeCouncil.getCouncil(), replacementCouncil);
 
         // The ousted council is now powerless: its privileged entry points reject it.
         address newImpl = _newImplementation();
@@ -417,7 +417,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
 
         vm.prank(address(_timelock));
         _upgradeCouncil.setCouncil(newCouncil);
-        assertEq(_upgradeCouncil.council(), newCouncil);
+        assertEq(_upgradeCouncil.getCouncil(), newCouncil);
     }
 
     function test_setCouncil_reverts_if_the_caller_is_the_council() public {
@@ -447,7 +447,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
 
     function test_constructor_sets_the_timelock_as_owner_and_the_multisig_as_council() public view {
         assertEq(_upgradeCouncil.owner(), address(_timelock));
-        assertEq(_upgradeCouncil.council(), _COUNCIL_MULTISIG);
+        assertEq(_upgradeCouncil.getCouncil(), _COUNCIL_MULTISIG);
     }
 
     function test_cancelWindow_exceeds_the_voter_cancel_cycle() public view {
