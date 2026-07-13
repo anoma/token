@@ -97,7 +97,7 @@ contract XanGovernor is
 
     /// @inheritdoc IERC6372
     /// @dev Pins the clock to the timestamp rather than inheriting `GovernorVotes`'s adaptive clock.
-    function clock() public view virtual override(Governor, GovernorVotes) returns (uint48 timepoint) {
+    function clock() public view override(Governor, GovernorVotes) returns (uint48 timepoint) {
         timepoint = Time.timestamp();
     }
 
@@ -105,7 +105,7 @@ contract XanGovernor is
 
     /// @inheritdoc IERC6372
     /// @dev Pins the clock mode to timestamp rather than inheriting `GovernorVotes`'s adaptive clock mode.
-    function CLOCK_MODE() public pure virtual override(Governor, GovernorVotes) returns (string memory mode) {
+    function CLOCK_MODE() public pure override(Governor, GovernorVotes) returns (string memory mode) {
         mode = "mode=timestamp";
     }
 
