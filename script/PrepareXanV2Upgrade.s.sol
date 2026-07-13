@@ -86,12 +86,12 @@ contract PrepareXanV2Upgrade is Script {
             initialQuorumNumerator: Parameters.QUORUM_RATIO_NUMERATOR * 100 / Parameters.QUORUM_RATIO_DENOMINATOR
         });
 
-        // 3. Deploy the upgrade council module; the timelock is its `Ownable` owner and rotates the council.
+        // 3. Deploy the upgrade council module
         XanUpgradeCouncilModule xanUpgradeCouncil = new XanUpgradeCouncilModule({
             governor: IGovernor(address(xanGovernor)),
             timelock: timelockController,
+            council: councilMultisig,
             token: token,
-            initialCouncil: councilMultisig,
             cancelBuffer: Parameters.COUNCIL_CANCEL_BUFFER
         });
 

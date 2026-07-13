@@ -3,7 +3,6 @@ pragma solidity ^0.8.30;
 
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {GovernorSettings} from "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
 import {Governor} from "@openzeppelin/contracts/governance/Governor.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
@@ -22,21 +21,20 @@ contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
         new XanUpgradeCouncilModule({
             governor: IGovernor(address(0)),
             timelock: _timelock,
+            council: _COUNCIL_MULTISIG,
             token: address(_xanToken),
-            initialCouncil: _COUNCIL_MULTISIG,
             cancelBuffer: Parameters.COUNCIL_CANCEL_BUFFER
         });
     }
 
     function test_constructor_reverts_if_the_timelock_is_the_zero_address() public {
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
-        // The timelock is the module's `Ownable` owner, so a zero timelock trips the `Ownable` zero-owner check.
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)), predicted);
+        vm.expectRevert(XanUpgradeCouncilModule.ZeroTimelockNotAllowed.selector, predicted);
         new XanUpgradeCouncilModule({
             governor: IGovernor(address(_governor)),
             timelock: TimelockController(payable(address(0))),
+            council: _COUNCIL_MULTISIG,
             token: address(_xanToken),
-            initialCouncil: _COUNCIL_MULTISIG,
             cancelBuffer: Parameters.COUNCIL_CANCEL_BUFFER
         });
     }
@@ -47,20 +45,20 @@ contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
         new XanUpgradeCouncilModule({
             governor: IGovernor(address(_governor)),
             timelock: _timelock,
+            council: _COUNCIL_MULTISIG,
             token: address(0),
-            initialCouncil: _COUNCIL_MULTISIG,
             cancelBuffer: Parameters.COUNCIL_CANCEL_BUFFER
         });
     }
 
-    function test_constructor_reverts_if_the_initial_council_is_the_zero_address() public {
+    function test_constructor_reverts_if_the_council_is_the_zero_address() public {
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
         vm.expectRevert(XanUpgradeCouncilModule.ZeroCouncilNotAllowed.selector, predicted);
         new XanUpgradeCouncilModule({
             governor: IGovernor(address(_governor)),
             timelock: _timelock,
+            council: address(0),
             token: address(_xanToken),
-            initialCouncil: address(0),
             cancelBuffer: Parameters.COUNCIL_CANCEL_BUFFER
         });
     }
@@ -383,67 +381,11 @@ contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
         assertEq(_module.cancelWindow(), windowBefore + periodBefore);
     }
 
-    /// @notice Voter supremacy is structural: the council has no cancel power over voter-body operations, so a
-    /// standalone `setCouncil` rotation passes unhindered and the ousted council loses its privileges.
-    function test_voter_body_can_rotate_the_council_through_the_governor() public {
-        address replacementCouncil = makeAddr("replacementCouncil");
-        address[] memory targets = new address[](1);
-        uint256[] memory values = new uint256[](1);
-        bytes[] memory calldatas = new bytes[](1);
-        targets[0] = address(_module);
-        calldatas[0] = abi.encodeCall(IXanUpgradeCouncilModule.setCouncil, (replacementCouncil));
-
-        bytes32 descriptionHash = _queueVoterBodyProposal(targets, values, calldatas, "replace the council");
-
-        skip(_timelock.getMinDelay() + 1);
-        _governor.execute({targets: targets, values: values, calldatas: calldatas, descriptionHash: descriptionHash});
-        assertEq(_module.getCouncil(), replacementCouncil);
-
-        // The ousted council is now powerless: its privileged entry points reject it.
-        address newImpl = _newImplementation();
-        vm.prank(_COUNCIL_MULTISIG);
-        vm.expectRevert(
-            abi.encodeWithSelector(XanUpgradeCouncilModule.UnauthorizedCouncil.selector, _COUNCIL_MULTISIG),
-            address(_module)
-        );
-        _module.scheduleUpgrade(newImpl, "");
+    function test_constructor_sets_the_timelock() public view {
+        assertEq(_module.getTimelock(), address(_timelock));
     }
 
-    function test_setCouncil_lets_the_voter_body_rotate_the_council() public {
-        address newCouncil = makeAddr("newCouncil");
-
-        vm.expectEmit(address(_module));
-        emit IXanUpgradeCouncilModule.CouncilChanged({previousCouncil: _COUNCIL_MULTISIG, newCouncil: newCouncil});
-
-        vm.prank(address(_timelock));
-        _module.setCouncil(newCouncil);
-        assertEq(_module.getCouncil(), newCouncil);
-    }
-
-    function test_setCouncil_reverts_if_the_caller_is_the_council() public {
-        // The council cannot rotate itself on-chain: rotation is the owner's (the timelock's) power alone. A multisig
-        // rotates its signers internally without changing its address.
-        vm.prank(_COUNCIL_MULTISIG);
-        vm.expectRevert(
-            abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _COUNCIL_MULTISIG), address(_module)
-        );
-        _module.setCouncil(makeAddr("newCouncil"));
-    }
-
-    function test_setCouncil_reverts_if_the_caller_is_not_the_timelock() public {
-        vm.prank(_OTHER);
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _OTHER), address(_module));
-        _module.setCouncil(makeAddr("newCouncil"));
-    }
-
-    function test_setCouncil_reverts_if_the_new_council_is_the_zero_address() public {
-        vm.prank(address(_timelock));
-        vm.expectRevert(XanUpgradeCouncilModule.ZeroCouncilNotAllowed.selector, address(_module));
-        _module.setCouncil(address(0));
-    }
-
-    function test_constructor_sets_the_timelock_as_owner_and_the_multisig_as_council() public view {
-        assertEq(_module.owner(), address(_timelock));
+    function test_constructor_sets_the_council() public view {
         assertEq(_module.getCouncil(), _COUNCIL_MULTISIG);
     }
 

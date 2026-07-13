@@ -19,11 +19,6 @@ interface IXanUpgradeCouncilModule {
     /// @param operationId The cancelled timelock operation id.
     event UpgradeCancelled(bytes32 indexed operationId);
 
-    /// @notice Emitted when the council multisig is rotated.
-    /// @param previousCouncil The previous council address.
-    /// @param newCouncil The new council address.
-    event CouncilChanged(address indexed previousCouncil, address indexed newCouncil);
-
     /// @notice Schedules a token upgrade by scheduling it in the timelock.
     /// @param newImplementation The implementation to upgrade the token to.
     /// @param data The reinitialization calldata forwarded to `upgradeToAndCall` (may be empty).
@@ -34,17 +29,13 @@ interface IXanUpgradeCouncilModule {
     /// @return operationId The cancelled timelock operation id.
     function cancelUpgrade() external returns (bytes32 operationId);
 
-    /// @notice Rotates the council multisig.
-    /// @param newCouncil The new council address.
-    function setCouncil(address newCouncil) external;
-
-    /// @notice Returns the current council multisig.
-    /// @return councilAddress The council address.
-    function getCouncil() external view returns (address councilAddress);
+    /// @notice Returns the council multisig.
+    /// @return council The council address.
+    function getCouncil() external view returns (address council);
 
     /// @notice Returns the timelock that owns the token and through which upgrades are scheduled and cancelled.
-    /// @return timelockAddress The timelock address.
-    function getTimelock() external view returns (address timelockAddress);
+    /// @return timelock The timelock address.
+    function getTimelock() external view returns (address timelock);
 
     /// @notice Returns the most recently scheduled council upgrade operation id (may already be executed or
     /// cancelled).

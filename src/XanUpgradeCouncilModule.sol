@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
@@ -10,28 +9,27 @@ import {IXanUpgradeCouncilModule} from "./interfaces/IXanUpgradeCouncilModule.so
 
 /// @title XanUpgradeCouncilModule
 /// @author Anoma Foundation, 2026
-/// @notice The upgrade council's on-chain interface to XAN governance. The timelock is the module's `Ownable` owner
-/// and rotates the council multisig via `setCouncil`; the module holds the timelock's `PROPOSER` and `CANCELLER`
-/// roles and lets the council:
-/// * Schedule XAN token upgrades that the voter body can cancel.
+/// @notice The upgrade council's on-chain interface to XAN governance. The module holds the timelock's `PROPOSER` and
+/// `CANCELLER` roles and lets the council:
+/// * Schedule a XAN token upgrade that the voter body can cancel.
 /// * Withdraw its own pending upgrade.
 /// It holds no power over voter-body operations.
 /// @custom:security-contact security@anoma.foundation
-contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule, Ownable {
+contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
     /// @notice The governor whose voting parameters size the cancel window.
     IGovernor private immutable _GOVERNOR;
 
     /// @notice The timelock that owns the token and through which upgrades are scheduled, cancelled, and executed.
     TimelockController private immutable _TIMELOCK;
 
+    /// @notice The council multisig that can schedule and cancel upgrade proposals.
+    address private immutable _COUNCIL;
+
     /// @notice The XAN token proxy that upgrades target.
     address private immutable _TOKEN;
 
     /// @notice Reaction-time margin added on top of the voter cancel cycle when sizing the cancel window.
     uint256 private immutable _CANCEL_BUFFER;
-
-    /// @notice The council multisig.
-    address private _council;
 
     /// @notice The most recently scheduled council upgrade operation id.
     bytes32 private _pendingUpgradeOperationId;
@@ -45,10 +43,13 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule, Ownable {
     /// @notice Thrown when the governor address supplied to the constructor is zero.
     error ZeroGovernorNotAllowed();
 
+    /// @notice Thrown when the timelock address supplied to the constructor is zero.
+    error ZeroTimelockNotAllowed();
+
     /// @notice Thrown when the token address supplied to the constructor is zero.
     error ZeroTokenNotAllowed();
 
-    /// @notice Thrown when a council address (constructor `initialCouncil` or `setCouncil`) is zero.
+    /// @notice Thrown when the council address supplied to the constructor is zero.
     error ZeroCouncilNotAllowed();
 
     /// @notice Thrown when the implementation address supplied to `scheduleUpgrade` is zero.
@@ -59,32 +60,27 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule, Ownable {
 
     /// @notice Restricts a function to the council multisig.
     modifier onlyCouncil() {
-        require(msg.sender == _council, UnauthorizedCouncil(msg.sender));
+        _checkCouncil();
         _;
     }
 
     /// @notice Deploys the module. It must be granted the timelock's `PROPOSER` and `CANCELLER` roles after deployment.
     /// @param governor The governor whose `votingDelay`/`votingPeriod` size the cancel window.
-    /// @param timelock The timelock that owns the token (and, as the module's `Ownable` owner, rotates the council).
+    /// @param timelock The timelock that owns the token and through which upgrades are scheduled and cancelled.
+    /// @param council The council multisig.
     /// @param token The XAN token proxy.
-    /// @param initialCouncil The initial council multisig.
     /// @param cancelBuffer The reaction-time margin added to the cancel cycle when sizing the cancel window.
-    constructor(
-        IGovernor governor,
-        TimelockController timelock,
-        address token,
-        address initialCouncil,
-        uint256 cancelBuffer
-    ) Ownable(address(timelock)) {
+    constructor(IGovernor governor, TimelockController timelock, address council, address token, uint256 cancelBuffer) {
         require(address(governor) != address(0), ZeroGovernorNotAllowed());
+        require(address(timelock) != address(0), ZeroTimelockNotAllowed());
+        require(council != address(0), ZeroCouncilNotAllowed());
         require(token != address(0), ZeroTokenNotAllowed());
-        require(initialCouncil != address(0), ZeroCouncilNotAllowed());
 
         _GOVERNOR = governor;
         _TIMELOCK = timelock;
+        _COUNCIL = council;
         _TOKEN = token;
         _CANCEL_BUFFER = cancelBuffer;
-        _council = initialCouncil;
     }
 
     /// @inheritdoc IXanUpgradeCouncilModule
@@ -129,24 +125,13 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule, Ownable {
     }
 
     /// @inheritdoc IXanUpgradeCouncilModule
-    /// @dev Callable only by the timelock (the owner), i.e. through a passed voter-body proposal. The council cannot
-    /// rotate itself on-chain; a multisig rotates its signers internally without changing its address.
-    function setCouncil(address newCouncil) external override onlyOwner {
-        require(newCouncil != address(0), ZeroCouncilNotAllowed());
-
-        emit CouncilChanged({previousCouncil: _council, newCouncil: newCouncil});
-
-        _council = newCouncil;
+    function getCouncil() external view override returns (address council) {
+        council = _COUNCIL;
     }
 
     /// @inheritdoc IXanUpgradeCouncilModule
-    function getCouncil() external view override returns (address councilAddress) {
-        councilAddress = _council;
-    }
-
-    /// @inheritdoc IXanUpgradeCouncilModule
-    function getTimelock() external view override returns (address timelockAddress) {
-        timelockAddress = address(_TIMELOCK);
+    function getTimelock() external view override returns (address timelock) {
+        timelock = address(_TIMELOCK);
     }
 
     /// @inheritdoc IXanUpgradeCouncilModule
@@ -159,6 +144,11 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule, Ownable {
     /// exceeds a full voter cancel cycle.
     function cancelWindow() public view override returns (uint256 delay) {
         delay = _GOVERNOR.votingDelay() + _GOVERNOR.votingPeriod() + _TIMELOCK.getMinDelay() + _CANCEL_BUFFER;
+    }
+
+    /// @notice Checks that the caller is the council.
+    function _checkCouncil() internal view {
+        require(_COUNCIL == msg.sender, UnauthorizedCouncil({caller: msg.sender}));
     }
 
     /// @notice Deterministic, council-tagged salt so a council upgrade never collides with a voter-body operation and
