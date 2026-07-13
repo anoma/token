@@ -50,7 +50,7 @@ library Parameters {
     /// @notice The minimum voting power required to create a governor proposal.
     uint256 internal constant PROPOSAL_THRESHOLD = 10 ** 18; // 1 XAN
 
-    /// @notice Reaction-time margin added on top of a full voter cancel cycle when the `XanUpgradeCouncil` module
+    /// @notice Reaction-time margin added on top of a full voter cancel cycle when the `XanUpgradeCouncilModule`
     /// sizes its backup upgrade delay, so the voter body has time to notice and cancel.
     uint256 internal constant COUNCIL_CANCEL_BUFFER = 7 days;
 }

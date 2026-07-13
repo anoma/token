@@ -9,17 +9,17 @@ import {Governor} from "@openzeppelin/contracts/governance/Governor.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
-import {IXanUpgradeCouncil} from "../src/interfaces/IXanUpgradeCouncil.sol";
+import {IXanUpgradeCouncilModule} from "../src/interfaces/IXanUpgradeCouncilModule.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
-import {XanUpgradeCouncil} from "../src/XanUpgradeCouncil.sol";
-import {XanUpgradeCouncilFixture} from "./fixtures/XanUpgradeCouncilFixture.sol";
+import {XanUpgradeCouncilModule} from "../src/XanUpgradeCouncilModule.sol";
+import {XanUpgradeCouncilModuleFixture} from "./fixtures/XanUpgradeCouncilModuleFixture.sol";
 import {MockXanV2} from "./mocks/MockXanV2.sol";
 
-contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
+contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
     function test_constructor_reverts_if_the_governor_is_the_zero_address() public {
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
-        vm.expectRevert(XanUpgradeCouncil.ZeroGovernorNotAllowed.selector, predicted);
-        new XanUpgradeCouncil({
+        vm.expectRevert(XanUpgradeCouncilModule.ZeroGovernorNotAllowed.selector, predicted);
+        new XanUpgradeCouncilModule({
             governor: IGovernor(address(0)),
             timelock: _timelock,
             token: address(_xanToken),
@@ -32,7 +32,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
         // The timelock is the module's `Ownable` owner, so a zero timelock trips the `Ownable` zero-owner check.
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)), predicted);
-        new XanUpgradeCouncil({
+        new XanUpgradeCouncilModule({
             governor: IGovernor(address(_governor)),
             timelock: TimelockController(payable(address(0))),
             token: address(_xanToken),
@@ -43,8 +43,8 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
 
     function test_constructor_reverts_if_the_token_is_the_zero_address() public {
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
-        vm.expectRevert(XanUpgradeCouncil.ZeroTokenNotAllowed.selector, predicted);
-        new XanUpgradeCouncil({
+        vm.expectRevert(XanUpgradeCouncilModule.ZeroTokenNotAllowed.selector, predicted);
+        new XanUpgradeCouncilModule({
             governor: IGovernor(address(_governor)),
             timelock: _timelock,
             token: address(0),
@@ -55,8 +55,8 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
 
     function test_constructor_reverts_if_the_initial_council_is_the_zero_address() public {
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
-        vm.expectRevert(XanUpgradeCouncil.ZeroCouncilNotAllowed.selector, predicted);
-        new XanUpgradeCouncil({
+        vm.expectRevert(XanUpgradeCouncilModule.ZeroCouncilNotAllowed.selector, predicted);
+        new XanUpgradeCouncilModule({
             governor: IGovernor(address(_governor)),
             timelock: _timelock,
             token: address(_xanToken),
@@ -68,16 +68,16 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
     function test_scheduleUpgrade_reverts_if_the_caller_is_not_the_council() public {
         address newImpl = _newImplementation();
         vm.expectRevert(
-            abi.encodeWithSelector(XanUpgradeCouncil.UnauthorizedCouncil.selector, address(this)),
-            address(_upgradeCouncil)
+            abi.encodeWithSelector(XanUpgradeCouncilModule.UnauthorizedCouncil.selector, address(this)),
+            address(_module)
         );
-        _upgradeCouncil.scheduleUpgrade(newImpl, "");
+        _module.scheduleUpgrade(newImpl, "");
     }
 
     function test_scheduleUpgrade_reverts_if_the_implementation_is_the_zero_address() public {
         vm.prank(_COUNCIL_MULTISIG);
-        vm.expectRevert(XanUpgradeCouncil.ZeroImplementationNotAllowed.selector, address(_upgradeCouncil));
-        _upgradeCouncil.scheduleUpgrade(address(0), "");
+        vm.expectRevert(XanUpgradeCouncilModule.ZeroImplementationNotAllowed.selector, address(_module));
+        _module.scheduleUpgrade(address(0), "");
     }
 
     function test_scheduleUpgrade_reverts_if_an_upgrade_is_already_pending() public {
@@ -85,33 +85,33 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
         address second = _newImplementation();
 
         vm.prank(_COUNCIL_MULTISIG);
-        _upgradeCouncil.scheduleUpgrade(first, "");
+        _module.scheduleUpgrade(first, "");
 
-        bytes32 pending = _upgradeCouncil.getPendingUpgradeOperationId();
+        bytes32 pending = _module.getPendingUpgradeOperationId();
         vm.prank(_COUNCIL_MULTISIG);
         vm.expectRevert(
-            abi.encodeWithSelector(XanUpgradeCouncil.UpgradeAlreadyPending.selector, pending), address(_upgradeCouncil)
+            abi.encodeWithSelector(XanUpgradeCouncilModule.UpgradeAlreadyPending.selector, pending), address(_module)
         );
-        _upgradeCouncil.scheduleUpgrade(second, "");
+        _module.scheduleUpgrade(second, "");
     }
 
     function test_scheduleUpgrade_can_be_rescheduled_after_a_cancel() public {
         address newImpl = _newImplementation();
 
         vm.prank(_COUNCIL_MULTISIG);
-        _upgradeCouncil.scheduleUpgrade(newImpl, "");
-        bytes32 firstId = _upgradeCouncil.getPendingUpgradeOperationId();
+        _module.scheduleUpgrade(newImpl, "");
+        bytes32 firstId = _module.getPendingUpgradeOperationId();
 
         // Withdraw the upgrade, clearing the in-flight slot.
         vm.prank(_COUNCIL_MULTISIG);
-        _upgradeCouncil.cancelUpgrade();
+        _module.cancelUpgrade();
         assertFalse(_timelock.isOperationPending(firstId));
 
         // The cancelled operation is no longer pending, so the same upgrade re-schedules: this exercises the
         // `!isOperationPending` branch of the in-flight guard (the first schedule took the `== bytes32(0)` branch).
         // The deterministic salt makes the re-scheduled id identical to the first.
         vm.prank(_COUNCIL_MULTISIG);
-        bytes32 secondId = _upgradeCouncil.scheduleUpgrade(newImpl, "");
+        bytes32 secondId = _module.scheduleUpgrade(newImpl, "");
         assertEq(secondId, firstId);
         assertTrue(_timelock.isOperationPending(secondId));
     }
@@ -122,18 +122,18 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
         (address target, bytes memory payload, bytes32 salt) = _councilUpgradeCall(newImpl, "");
         bytes32 expectedId =
             _timelock.hashOperation({target: target, value: 0, data: payload, predecessor: bytes32(0), salt: salt});
-        uint256 executableAt = block.timestamp + _upgradeCouncil.cancelWindow();
+        uint256 executableAt = block.timestamp + _module.cancelWindow();
 
-        vm.expectEmit(address(_upgradeCouncil));
-        emit IXanUpgradeCouncil.UpgradeScheduled({
+        vm.expectEmit(address(_module));
+        emit IXanUpgradeCouncilModule.UpgradeScheduled({
             newImplementation: newImpl, operationId: expectedId, data: "", executableAt: executableAt
         });
 
         vm.prank(_COUNCIL_MULTISIG);
-        _upgradeCouncil.scheduleUpgrade(newImpl, "");
+        _module.scheduleUpgrade(newImpl, "");
 
         // Wait out the cancel window, then anyone executes via the timelock.
-        skip(_upgradeCouncil.cancelWindow() + 1);
+        skip(_module.cancelWindow() + 1);
         _executeCouncilUpgrade(newImpl, "");
 
         assertEq(_xanToken.implementation(), newImpl);
@@ -156,21 +156,21 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
         assertTrue(expectedId != emptyId);
 
         // The event carries the forwarded calldata verbatim.
-        vm.expectEmit(address(_upgradeCouncil));
-        emit IXanUpgradeCouncil.UpgradeScheduled({
+        vm.expectEmit(address(_module));
+        emit IXanUpgradeCouncilModule.UpgradeScheduled({
             newImplementation: newImpl,
             operationId: expectedId,
             data: data,
-            executableAt: block.timestamp + _upgradeCouncil.cancelWindow()
+            executableAt: block.timestamp + _module.cancelWindow()
         });
 
         vm.prank(_COUNCIL_MULTISIG);
-        bytes32 operationId = _upgradeCouncil.scheduleUpgrade(newImpl, data);
+        bytes32 operationId = _module.scheduleUpgrade(newImpl, data);
         assertEq(operationId, expectedId);
 
         // Execution forwards `data` to `upgradeToAndCall`, so the upgrade applies and the payload runs without
         // reverting.
-        skip(_upgradeCouncil.cancelWindow() + 1);
+        skip(_module.cancelWindow() + 1);
         _timelock.execute({target: target, value: 0, payload: payload, predecessor: bytes32(0), salt: salt});
         assertEq(_xanToken.implementation(), newImpl);
     }
@@ -178,10 +178,10 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
     function test_scheduleUpgrade_cannot_be_executed_before_the_delay() public {
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
-        _upgradeCouncil.scheduleUpgrade(newImpl, "");
+        _module.scheduleUpgrade(newImpl, "");
 
         // One second before the window closes the operation is not yet executable.
-        skip(_upgradeCouncil.cancelWindow() - 1);
+        skip(_module.cancelWindow() - 1);
         (address target, bytes memory payload, bytes32 salt) = _councilUpgradeCall(newImpl, "");
         bytes32 execId =
             _timelock.hashOperation({target: target, value: 0, data: payload, predecessor: bytes32(0), salt: salt});
@@ -199,8 +199,8 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
     function test_voter_body_can_cancel_a_council_upgrade_through_the_governor() public {
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
-        _upgradeCouncil.scheduleUpgrade(newImpl, "");
-        bytes32 operationId = _upgradeCouncil.getPendingUpgradeOperationId();
+        _module.scheduleUpgrade(newImpl, "");
+        bytes32 operationId = _module.getPendingUpgradeOperationId();
 
         address[] memory targets = new address[](1);
         uint256[] memory values = new uint256[](1);
@@ -215,7 +215,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
 
         // The council upgrade is cancelled; it can no longer be executed even after the cancel window.
         assertFalse(_timelock.isOperationPending(operationId));
-        skip(_upgradeCouncil.cancelWindow() + 1);
+        skip(_module.cancelWindow() + 1);
         (address target, bytes memory payload, bytes32 salt) = _councilUpgradeCall(newImpl, "");
         bytes32 execId =
             _timelock.hashOperation({target: target, value: 0, data: payload, predecessor: bytes32(0), salt: salt});
@@ -233,14 +233,14 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
     function test_cancelUpgrade_lets_the_council_withdraw_its_own_upgrade() public {
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
-        _upgradeCouncil.scheduleUpgrade(newImpl, "");
-        bytes32 operationId = _upgradeCouncil.getPendingUpgradeOperationId();
+        _module.scheduleUpgrade(newImpl, "");
+        bytes32 operationId = _module.getPendingUpgradeOperationId();
 
-        vm.expectEmit(address(_upgradeCouncil));
-        emit IXanUpgradeCouncil.UpgradeCancelled(operationId);
+        vm.expectEmit(address(_module));
+        emit IXanUpgradeCouncilModule.UpgradeCancelled(operationId);
 
         vm.prank(_COUNCIL_MULTISIG);
-        bytes32 cancelledId = _upgradeCouncil.cancelUpgrade();
+        bytes32 cancelledId = _module.cancelUpgrade();
 
         assertEq(cancelledId, operationId);
         assertFalse(_timelock.isOperationPending(operationId));
@@ -248,34 +248,34 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
 
     function test_cancelUpgrade_reverts_if_no_upgrade_was_scheduled() public {
         vm.prank(_COUNCIL_MULTISIG);
-        vm.expectRevert(XanUpgradeCouncil.NoUpgradePending.selector, address(_upgradeCouncil));
-        _upgradeCouncil.cancelUpgrade();
+        vm.expectRevert(XanUpgradeCouncilModule.NoUpgradePending.selector, address(_module));
+        _module.cancelUpgrade();
     }
 
     function test_cancelUpgrade_reverts_if_the_upgrade_is_no_longer_pending() public {
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
-        _upgradeCouncil.scheduleUpgrade(newImpl, "");
+        _module.scheduleUpgrade(newImpl, "");
 
         vm.prank(_COUNCIL_MULTISIG);
-        _upgradeCouncil.cancelUpgrade();
+        _module.cancelUpgrade();
 
         // A second cancel of the same (now-cancelled) upgrade reverts: the operation is no longer pending.
         vm.prank(_COUNCIL_MULTISIG);
-        vm.expectRevert(XanUpgradeCouncil.NoUpgradePending.selector, address(_upgradeCouncil));
-        _upgradeCouncil.cancelUpgrade();
+        vm.expectRevert(XanUpgradeCouncilModule.NoUpgradePending.selector, address(_module));
+        _module.cancelUpgrade();
     }
 
     function test_cancelUpgrade_reverts_if_the_caller_is_not_the_council() public {
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
-        _upgradeCouncil.scheduleUpgrade(newImpl, "");
+        _module.scheduleUpgrade(newImpl, "");
 
         vm.prank(_OTHER);
         vm.expectRevert(
-            abi.encodeWithSelector(XanUpgradeCouncil.UnauthorizedCouncil.selector, _OTHER), address(_upgradeCouncil)
+            abi.encodeWithSelector(XanUpgradeCouncilModule.UnauthorizedCouncil.selector, _OTHER), address(_module)
         );
-        _upgradeCouncil.cancelUpgrade();
+        _module.cancelUpgrade();
     }
 
     /// @notice The property replacing the removed general brake: the module's only cancel aims at its own pending
@@ -290,10 +290,10 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
 
         address councilImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
-        bytes32 councilOperationId = _upgradeCouncil.scheduleUpgrade(councilImpl, "");
+        bytes32 councilOperationId = _module.scheduleUpgrade(councilImpl, "");
 
         vm.prank(_COUNCIL_MULTISIG);
-        bytes32 cancelledId = _upgradeCouncil.cancelUpgrade();
+        bytes32 cancelledId = _module.cancelUpgrade();
 
         // Only the council's own operation is gone; the voter-body operation is untouched.
         assertEq(cancelledId, councilOperationId);
@@ -305,15 +305,15 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
     function test_scheduleUpgrade_can_schedule_a_new_upgrade_after_execution() public {
         address first = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
-        _upgradeCouncil.scheduleUpgrade(first, "");
+        _module.scheduleUpgrade(first, "");
 
-        skip(_upgradeCouncil.cancelWindow() + 1);
+        skip(_module.cancelWindow() + 1);
         _executeCouncilUpgrade(first, "");
         assertEq(_xanToken.implementation(), first);
 
         address second = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
-        bytes32 secondId = _upgradeCouncil.scheduleUpgrade(second, "");
+        bytes32 secondId = _module.scheduleUpgrade(second, "");
         assertTrue(_timelock.isOperationPending(secondId));
     }
 
@@ -321,14 +321,14 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
     function test_cancelUpgrade_reverts_if_the_upgrade_was_already_executed() public {
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
-        _upgradeCouncil.scheduleUpgrade(newImpl, "");
+        _module.scheduleUpgrade(newImpl, "");
 
-        skip(_upgradeCouncil.cancelWindow() + 1);
+        skip(_module.cancelWindow() + 1);
         _executeCouncilUpgrade(newImpl, "");
 
         vm.prank(_COUNCIL_MULTISIG);
-        vm.expectRevert(XanUpgradeCouncil.NoUpgradePending.selector, address(_upgradeCouncil));
-        _upgradeCouncil.cancelUpgrade();
+        vm.expectRevert(XanUpgradeCouncilModule.NoUpgradePending.selector, address(_module));
+        _module.cancelUpgrade();
     }
 
     /// @notice The voter body's last resort: revoking the module's timelock roles disarms the council entirely. The
@@ -337,8 +337,8 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
     function test_voter_body_can_disarm_the_module_by_revoking_its_roles() public {
         bytes32 proposerRole = _timelock.PROPOSER_ROLE();
         vm.startPrank(address(_timelock));
-        _timelock.revokeRole(proposerRole, address(_upgradeCouncil));
-        _timelock.revokeRole(_timelock.CANCELLER_ROLE(), address(_upgradeCouncil));
+        _timelock.revokeRole(proposerRole, address(_module));
+        _timelock.revokeRole(_timelock.CANCELLER_ROLE(), address(_module));
         vm.stopPrank();
 
         // The module's propose path is dead: the timelock rejects the role-less module.
@@ -346,29 +346,29 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
         vm.prank(_COUNCIL_MULTISIG);
         vm.expectRevert(
             abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector, address(_upgradeCouncil), proposerRole
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(_module), proposerRole
             )
         );
-        _upgradeCouncil.scheduleUpgrade(newImpl, "");
+        _module.scheduleUpgrade(newImpl, "");
     }
 
     /// @notice The cancel window is computed live from the timelock's `minDelay`, so the timing invariant — the
     /// voter body can always cancel a council upgrade — survives a governance change of the timelock delay.
     function test_cancelWindow_tracks_a_timelock_minDelay_change() public {
-        uint256 windowBefore = _upgradeCouncil.cancelWindow();
+        uint256 windowBefore = _module.cancelWindow();
         uint256 delayBefore = _timelock.getMinDelay();
 
         // Only the timelock itself may update its delay; impersonating it stands in for a passed proposal.
         vm.prank(address(_timelock));
         _timelock.updateDelay(delayBefore * 2);
 
-        assertEq(_upgradeCouncil.cancelWindow(), windowBefore + delayBefore);
+        assertEq(_module.cancelWindow(), windowBefore + delayBefore);
     }
 
     /// @notice The cancel window is computed live from the governor's settings, so the timing invariant survives a
     /// voter-body change of the voting period (exercised through a real proposal, the only path to the setter).
     function test_cancelWindow_tracks_a_governor_settings_change_through_governance() public {
-        uint256 windowBefore = _upgradeCouncil.cancelWindow();
+        uint256 windowBefore = _module.cancelWindow();
         uint32 periodBefore = uint32(_governor.votingPeriod());
 
         address[] memory targets = new address[](1);
@@ -380,7 +380,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
         _passProposal({targets: targets, values: values, calldatas: calldatas, description: "double the voting period"});
 
         assertEq(_governor.votingPeriod(), uint256(periodBefore) * 2);
-        assertEq(_upgradeCouncil.cancelWindow(), windowBefore + periodBefore);
+        assertEq(_module.cancelWindow(), windowBefore + periodBefore);
     }
 
     /// @notice Voter supremacy is structural: the council has no cancel power over voter-body operations, so a
@@ -390,34 +390,34 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
         address[] memory targets = new address[](1);
         uint256[] memory values = new uint256[](1);
         bytes[] memory calldatas = new bytes[](1);
-        targets[0] = address(_upgradeCouncil);
-        calldatas[0] = abi.encodeCall(IXanUpgradeCouncil.setCouncil, (replacementCouncil));
+        targets[0] = address(_module);
+        calldatas[0] = abi.encodeCall(IXanUpgradeCouncilModule.setCouncil, (replacementCouncil));
 
         bytes32 descriptionHash = _queueVoterBodyProposal(targets, values, calldatas, "replace the council");
 
         skip(_timelock.getMinDelay() + 1);
         _governor.execute({targets: targets, values: values, calldatas: calldatas, descriptionHash: descriptionHash});
-        assertEq(_upgradeCouncil.getCouncil(), replacementCouncil);
+        assertEq(_module.getCouncil(), replacementCouncil);
 
         // The ousted council is now powerless: its privileged entry points reject it.
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
         vm.expectRevert(
-            abi.encodeWithSelector(XanUpgradeCouncil.UnauthorizedCouncil.selector, _COUNCIL_MULTISIG),
-            address(_upgradeCouncil)
+            abi.encodeWithSelector(XanUpgradeCouncilModule.UnauthorizedCouncil.selector, _COUNCIL_MULTISIG),
+            address(_module)
         );
-        _upgradeCouncil.scheduleUpgrade(newImpl, "");
+        _module.scheduleUpgrade(newImpl, "");
     }
 
     function test_setCouncil_lets_the_voter_body_rotate_the_council() public {
         address newCouncil = makeAddr("newCouncil");
 
-        vm.expectEmit(address(_upgradeCouncil));
-        emit IXanUpgradeCouncil.CouncilChanged({previousCouncil: _COUNCIL_MULTISIG, newCouncil: newCouncil});
+        vm.expectEmit(address(_module));
+        emit IXanUpgradeCouncilModule.CouncilChanged({previousCouncil: _COUNCIL_MULTISIG, newCouncil: newCouncil});
 
         vm.prank(address(_timelock));
-        _upgradeCouncil.setCouncil(newCouncil);
-        assertEq(_upgradeCouncil.getCouncil(), newCouncil);
+        _module.setCouncil(newCouncil);
+        assertEq(_module.getCouncil(), newCouncil);
     }
 
     function test_setCouncil_reverts_if_the_caller_is_the_council() public {
@@ -425,35 +425,32 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
         // rotates its signers internally without changing its address.
         vm.prank(_COUNCIL_MULTISIG);
         vm.expectRevert(
-            abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _COUNCIL_MULTISIG),
-            address(_upgradeCouncil)
+            abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _COUNCIL_MULTISIG), address(_module)
         );
-        _upgradeCouncil.setCouncil(makeAddr("newCouncil"));
+        _module.setCouncil(makeAddr("newCouncil"));
     }
 
     function test_setCouncil_reverts_if_the_caller_is_not_the_timelock() public {
         vm.prank(_OTHER);
-        vm.expectRevert(
-            abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _OTHER), address(_upgradeCouncil)
-        );
-        _upgradeCouncil.setCouncil(makeAddr("newCouncil"));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _OTHER), address(_module));
+        _module.setCouncil(makeAddr("newCouncil"));
     }
 
     function test_setCouncil_reverts_if_the_new_council_is_the_zero_address() public {
         vm.prank(address(_timelock));
-        vm.expectRevert(XanUpgradeCouncil.ZeroCouncilNotAllowed.selector, address(_upgradeCouncil));
-        _upgradeCouncil.setCouncil(address(0));
+        vm.expectRevert(XanUpgradeCouncilModule.ZeroCouncilNotAllowed.selector, address(_module));
+        _module.setCouncil(address(0));
     }
 
     function test_constructor_sets_the_timelock_as_owner_and_the_multisig_as_council() public view {
-        assertEq(_upgradeCouncil.owner(), address(_timelock));
-        assertEq(_upgradeCouncil.getCouncil(), _COUNCIL_MULTISIG);
+        assertEq(_module.owner(), address(_timelock));
+        assertEq(_module.getCouncil(), _COUNCIL_MULTISIG);
     }
 
     function test_cancelWindow_exceeds_the_voter_cancel_cycle() public view {
         uint256 voterCancelCycle = _governor.votingDelay() + _governor.votingPeriod() + _timelock.getMinDelay();
-        assertEq(_upgradeCouncil.cancelWindow(), voterCancelCycle + Parameters.COUNCIL_CANCEL_BUFFER);
-        assertGt(_upgradeCouncil.cancelWindow(), voterCancelCycle);
+        assertEq(_module.cancelWindow(), voterCancelCycle + Parameters.COUNCIL_CANCEL_BUFFER);
+        assertGt(_module.cancelWindow(), voterCancelCycle);
     }
 
     /// @notice Deploys a fresh implementation to upgrade the token to.
@@ -518,7 +515,7 @@ contract XanUpgradeCouncilTest is XanUpgradeCouncilFixture {
     {
         target = address(_xanToken);
         payload = abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (newImpl, data));
-        salt = keccak256(abi.encode("XanUpgradeCouncil.upgrade", newImpl, data));
+        salt = keccak256(abi.encode("XanUpgradeCouncilModule.upgrade", newImpl, data));
     }
 
     /// @notice The timelock salt the governor derives from a proposal's description hash.

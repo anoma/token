@@ -10,9 +10,9 @@ import {Script} from "forge-std/Script.sol";
 
 import {Parameters} from "../src/libs/Parameters.sol";
 import {XanGovernor} from "../src/XanGovernor.sol";
-import {XanUpgradeCouncil} from "../src/XanUpgradeCouncil.sol";
+import {XanUpgradeCouncilModule} from "../src/XanUpgradeCouncilModule.sol";
 
-/// @notice Deploys the XAN governance stack (timelock, `XanGovernor`, `XanUpgradeCouncil`) and prepares the XanV1->V2
+/// @notice Deploys the XAN governance stack (timelock, `XanGovernor`, `XanUpgradeCouncilModule`) and prepares the XanV1->V2
 /// implementation with the deployed timelock baked in as the token owner. The upgrade is *not* scheduled here: the V1
 /// governance council is a multisig, so it must execute `scheduleCouncilUpgrade(implV2)` itself using the returned
 /// `implV2`.
@@ -26,17 +26,18 @@ contract PrepareXanV1Upgrade is Script {
     /// @return implV2 The XanV2 implementation the V1 council must schedule via `scheduleCouncilUpgrade`.
     /// @return governor The deployed `XanGovernor`.
     /// @return timelock The deployed `TimelockController` — the token owner baked into `implV2`.
-    /// @return upgradeCouncil The deployed `XanUpgradeCouncil` module.
+    /// @return upgradeCouncilModule The deployed `XanUpgradeCouncilModule`.
     function run(address proxy, address councilMultisig)
         public
-        returns (address implV2, address governor, address timelock, address upgradeCouncil)
+        returns (address implV2, address governor, address timelock, address upgradeCouncilModule)
     {
         vm.startBroadcast(msg.sender);
 
         // Deploy and wire governance first: its timelock becomes the token's owner, so it must exist before the V2
         // implementation (which bakes the owner into its bytecode) is prepared.
         {
-            (governor, timelock, upgradeCouncil) = deployGovernance({token: proxy, councilMultisig: councilMultisig});
+            (governor, timelock, upgradeCouncilModule) =
+                deployGovernance({token: proxy, councilMultisig: councilMultisig});
         }
 
         // Prepare the XanV2 upgrade implementation. The freshly deployed timelock (as owner) and the vesting schedule
@@ -51,18 +52,18 @@ contract PrepareXanV1Upgrade is Script {
     }
 
     /// @notice Deploys and wires the XAN governance stack: a `TimelockController` (the eventual token owner), the
-    /// `XanGovernor` driven by the token's `ERC20Votes`, and the `XanUpgradeCouncil` module. The timelock's roles
+    /// `XanGovernor` driven by the token's `ERC20Votes`, and the `XanUpgradeCouncilModule`. The timelock's roles
     /// are granted to the governor and the council module, the executor role is opened, and the caller's temporary
     /// admin is renounced so only governance can change roles afterwards.
     /// @param token The XAN token proxy.
     /// @param councilMultisig The initial council multisig.
     /// @return governor The deployed `XanGovernor`.
     /// @return timelock The deployed `TimelockController` (the eventual token owner).
-    /// @return upgradeCouncil The deployed `XanUpgradeCouncil` module.
+    /// @return councilModule The deployed `XanUpgradeCouncilModule`.
     /// @dev The caller (`msg.sender`) is the transient timelock admin that wires the roles and then renounces it.
     function deployGovernance(address token, address councilMultisig)
         public
-        returns (address governor, address timelock, address upgradeCouncil)
+        returns (address governor, address timelock, address councilModule)
     {
         require(token != address(0), InvalidTokenAddress());
         require(councilMultisig != address(0), InvalidCouncilAddress());
@@ -86,7 +87,7 @@ contract PrepareXanV1Upgrade is Script {
         });
 
         // 3. Deploy the upgrade council module; the timelock is its `Ownable` owner and rotates the council.
-        XanUpgradeCouncil xanUpgradeCouncil = new XanUpgradeCouncil({
+        XanUpgradeCouncilModule xanUpgradeCouncil = new XanUpgradeCouncilModule({
             governor: IGovernor(address(xanGovernor)),
             timelock: timelockController,
             token: token,
@@ -112,6 +113,6 @@ contract PrepareXanV1Upgrade is Script {
 
         governor = address(xanGovernor);
         timelock = address(timelockController);
-        upgradeCouncil = address(xanUpgradeCouncil);
+        councilModule = address(xanUpgradeCouncil);
     }
 }

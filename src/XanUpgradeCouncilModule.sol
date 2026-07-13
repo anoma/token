@@ -6,9 +6,9 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
-import {IXanUpgradeCouncil} from "./interfaces/IXanUpgradeCouncil.sol";
+import {IXanUpgradeCouncilModule} from "./interfaces/IXanUpgradeCouncilModule.sol";
 
-/// @title XanUpgradeCouncil
+/// @title XanUpgradeCouncilModule
 /// @author Anoma Foundation, 2026
 /// @notice The upgrade council's on-chain interface to XAN governance. The timelock is the module's `Ownable` owner
 /// and rotates the council multisig via `setCouncil`; the module holds the timelock's `PROPOSER` and `CANCELLER`
@@ -17,7 +17,7 @@ import {IXanUpgradeCouncil} from "./interfaces/IXanUpgradeCouncil.sol";
 /// * Withdraw its own pending upgrade.
 /// It holds no power over voter-body operations.
 /// @custom:security-contact security@anoma.foundation
-contract XanUpgradeCouncil is IXanUpgradeCouncil, Ownable {
+contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule, Ownable {
     /// @notice The governor whose voting parameters size the cancel window.
     IGovernor private immutable _GOVERNOR;
 
@@ -87,7 +87,7 @@ contract XanUpgradeCouncil is IXanUpgradeCouncil, Ownable {
         _council = initialCouncil;
     }
 
-    /// @inheritdoc IXanUpgradeCouncil
+    /// @inheritdoc IXanUpgradeCouncilModule
     /// @dev Callable only by the council. The delay is sized (see `cancelWindow`) to leave a full voter cancel cycle.
     /// Only one council upgrade may be pending at a time.
     function scheduleUpgrade(address newImplementation, bytes calldata data)
@@ -116,7 +116,7 @@ contract XanUpgradeCouncil is IXanUpgradeCouncil, Ownable {
         _TIMELOCK.schedule({target: _TOKEN, value: 0, data: call, predecessor: bytes32(0), salt: salt, delay: delay});
     }
 
-    /// @inheritdoc IXanUpgradeCouncil
+    /// @inheritdoc IXanUpgradeCouncilModule
     /// @dev Callable only by the council. The module only ever aims the timelock's `CANCELLER` role at the operation
     /// it scheduled itself, so the council has no cancel power over voter-body operations.
     function cancelUpgrade() external override onlyCouncil returns (bytes32 operationId) {
@@ -128,7 +128,7 @@ contract XanUpgradeCouncil is IXanUpgradeCouncil, Ownable {
         _TIMELOCK.cancel(operationId);
     }
 
-    /// @inheritdoc IXanUpgradeCouncil
+    /// @inheritdoc IXanUpgradeCouncilModule
     /// @dev Callable only by the timelock (the owner), i.e. through a passed voter-body proposal. The council cannot
     /// rotate itself on-chain; a multisig rotates its signers internally without changing its address.
     function setCouncil(address newCouncil) external override onlyOwner {
@@ -139,22 +139,22 @@ contract XanUpgradeCouncil is IXanUpgradeCouncil, Ownable {
         _council = newCouncil;
     }
 
-    /// @inheritdoc IXanUpgradeCouncil
+    /// @inheritdoc IXanUpgradeCouncilModule
     function getCouncil() external view override returns (address councilAddress) {
         councilAddress = _council;
     }
 
-    /// @inheritdoc IXanUpgradeCouncil
+    /// @inheritdoc IXanUpgradeCouncilModule
     function getTimelock() external view override returns (address timelockAddress) {
         timelockAddress = address(_TIMELOCK);
     }
 
-    /// @inheritdoc IXanUpgradeCouncil
+    /// @inheritdoc IXanUpgradeCouncilModule
     function getPendingUpgradeOperationId() external view override returns (bytes32 operationId) {
         operationId = _pendingUpgradeOperationId;
     }
 
-    /// @inheritdoc IXanUpgradeCouncil
+    /// @inheritdoc IXanUpgradeCouncilModule
     /// @dev Computed live as `votingDelay + votingPeriod + timelock.getMinDelay() + buffer`, so the window always
     /// exceeds a full voter cancel cycle.
     function cancelWindow() public view override returns (uint256 delay) {
@@ -167,6 +167,6 @@ contract XanUpgradeCouncil is IXanUpgradeCouncil, Ownable {
     /// @param data The reinitialization calldata forwarded to `upgradeToAndCall`.
     /// @return salt The operation salt.
     function _salt(address newImplementation, bytes calldata data) private pure returns (bytes32 salt) {
-        salt = keccak256(abi.encode("XanUpgradeCouncil.upgrade", newImplementation, data));
+        salt = keccak256(abi.encode("XanUpgradeCouncilModule.upgrade", newImplementation, data));
     }
 }
