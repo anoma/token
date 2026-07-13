@@ -76,36 +76,23 @@ deploy deployer initial-mint-recipient council chain *args:
         --sig "run(address,address)" {{ initial-mint-recipient }} {{ council }} \
         --broadcast --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
 
-# Simulate the governance deployment (timelock + governor + upgrade council) (dry-run)
-deploy-governance-simulate token council chain *args:
+# Simulate deploying governance + preparing the XanV1→V2 upgrade implementation (dry-run). `sender` is the deployer,
+# who becomes the transient timelock admin (`run` broadcasts as `msg.sender`).
+prepare-upgrade-simulate sender proxy council chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
-    forge script script/DeployGovernance.s.sol:DeployGovernance \
-        --sig "run(address,address)" {{ token }} {{ council }} \
-        --rpc-url {{ chain }} {{ args }}
-
-# Deploy the governance stack (timelock + governor + upgrade council)
-deploy-governance deployer token council chain *args:
-    @echo "Cleaning contracts to ensure reproducible build..."
-    @just clean
-    forge script script/DeployGovernance.s.sol:DeployGovernance \
-        --sig "run(address,address)" {{ token }} {{ council }} \
-        --broadcast --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
-
-# Simulate scheduling the XanV1→V2 upgrade through the V1 council (dry-run)
-schedule-upgrade-simulate proxy sender chain *args:
-    @echo "Cleaning contracts to ensure reproducible build..."
-    @just clean
-    forge script script/ScheduleXanV1Upgrade.s.sol:ScheduleXanV1Upgrade \
-        --sig "run(address)" {{ proxy }} \
+    forge script script/PrepareXanV1Upgrade.s.sol:PrepareXanV1Upgrade \
+        --sig "run(address,address)" {{ proxy }} {{ council }} \
         --rpc-url {{ chain }} --sender {{ sender }} {{ args }}
 
-# Schedule the XanV1→V2 upgrade through the V1 council
-schedule-upgrade deployer proxy sender chain *args:
+# Deploy governance + prepare the XanV1→V2 upgrade implementation. `sender` (the address behind `deployer`) becomes the
+# transient timelock admin. The returned `implV2` must then be scheduled by the V1 council multisig via
+# `scheduleCouncilUpgrade(implV2)` before running `upgrade`.
+prepare-upgrade deployer sender proxy council chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
-    forge script script/ScheduleXanV1Upgrade.s.sol:ScheduleXanV1Upgrade \
-        --sig "run(address)" {{ proxy }} \
+    forge script script/PrepareXanV1Upgrade.s.sol:PrepareXanV1Upgrade \
+        --sig "run(address,address)" {{ proxy }} {{ council }} \
         --broadcast --rpc-url {{ chain }} --account {{ deployer }} --sender {{ sender }} {{ args }}
 
 # Simulate executing the scheduled XanV1→V2 upgrade (permissionless) (dry-run)

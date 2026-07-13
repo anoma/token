@@ -1,75 +1,72 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
-import {Upgrades, UnsafeUpgrades, Options} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {Test} from "forge-std/Test.sol";
 
+import {DeployXanV1} from "../script/DeployXanV1.s.sol";
+import {PrepareXanV1Upgrade} from "../script/PrepareXanV1Upgrade.s.sol";
+import {UpgradeXanV1} from "../script/UpgradeXanV1.s.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
+import {XanGovernor} from "../src/XanGovernor.sol";
 import {XanV1} from "../src/XanV1.sol";
 import {XanV2} from "../src/XanV2.sol";
 
-/// @notice Fork integration tests that exercise the upgrade of the live XAN proxies on:
-/// * Mainnet
-/// * Sepolia
+/// @notice Local integration test that runs the production deployment scripts — `DeployXanV1`, `PrepareXanV1Upgrade`,
+/// and `UpgradeXanV1` — plus the V1 council's `scheduleCouncilUpgrade` (a Safe transaction in production), against
+/// fresh state, to demonstrate that the full V1->V2 upgrade flow works.
 contract XanV2UpgradeIntegrationTest is Test {
-    struct TestCase {
-        string name;
-    }
+    address internal immutable _MINT_RECIPIENT = makeAddr("mintRecipient");
+    // The council multisig (a Safe{Wallet}) is both the V1 governance council — which schedules the upgrade — and the
+    // `XanUpgradeCouncil`.
+    address internal immutable _COUNCIL_MULTISIG = makeAddr("councilMultisig");
 
-    /// @notice The live XAN proxy address (identical on Ethereum mainnet and Sepolia).
-    address internal constant _XAN_PROXY = 0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7;
+    function test_scripts_drive_the_full_v1_to_v2_upgrade() public {
+        // 1. Deploy the XanV1 proxy governed by the council multisig.
+        (address proxy, address implV1) =
+            new DeployXanV1().run({initialMintRecipient: _MINT_RECIPIENT, council: _COUNCIL_MULTISIG});
+        uint256 supplyBefore = XanV1(proxy).totalSupply();
+        assertEq(XanV1(proxy).implementation(), implV1, "proxy does not run V1");
+        assertEq(XanV1(proxy).governanceCouncil(), _COUNCIL_MULTISIG, "V1 council mismatch");
 
-    /// @notice The V1 implementation address baked into `XanV2` as the storage key for every vesting principal
-    /// (identical on Ethereum mainnet and Sepolia; mirrors `XanV2._XAN_V1_IMPLEMENTATION`).
-    address internal constant _XAN_V1_IMPLEMENTATION = 0x03997b568FE70E91A53c458DC19dc29e0bC2735E;
+        // 2. Deploy governance and prepare the V2 implementation (permissionless). The timelock deployed here is baked
+        // into the V2 implementation bytecode as the token owner. `run` does not schedule — it returns `implV2`.
+        (address implV2, address governor, address timelock,) =
+            new PrepareXanV1Upgrade().run({proxy: proxy, councilMultisig: _COUNCIL_MULTISIG});
 
-    address internal immutable _INITIAL_OWNER = makeAddr("initialOwner");
+        // 3. The council Safe schedules the prepared implementation (the transaction the script surfaces via `implV2`).
+        vm.prank(_COUNCIL_MULTISIG);
+        XanV1(proxy).scheduleCouncilUpgrade({impl: implV2});
 
-    function tableNetworksTest_XanV2_council_scheduling_and_upgrade_succeeds_on_all_supported_networks(TestCase memory network)
-        public
-    {
-        vm.createSelectFork(network.name);
+        (address scheduledImpl, uint48 endTime) = XanV1(proxy).scheduledCouncilUpgrade();
+        assertEq(scheduledImpl, implV2, "council did not schedule the V2 implementation");
+        assertEq(endTime, Time.timestamp() + Parameters.DELAY_DURATION, "unexpected upgrade delay");
 
-        XanV1 proxy = XanV1(_XAN_PROXY);
-
-        // The vesting principal is read from V1 storage keyed by the V1 implementation address baked into `XanV2`;
-        // if the live implementation differed, every principal would silently read zero after the upgrade.
-        assertEq(proxy.implementation(), _XAN_V1_IMPLEMENTATION, "live V1 implementation != baked constant");
-        uint256 supplyBefore = proxy.totalSupply();
-
-        // 1. Prepare and schedule the XanV2 implementation.
-        Options memory opts;
-        opts.constructorData = abi.encode(_INITIAL_OWNER, Parameters.VESTING_START, Parameters.VESTING_DURATION);
-        address implV2 = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});
-
-        // 2. Schedule the council upgrade as the governance council.
-        vm.prank(proxy.governanceCouncil());
-        proxy.scheduleCouncilUpgrade({impl: implV2});
-
-        (address scheduledImpl, uint48 endTime) = proxy.scheduledCouncilUpgrade();
-        assertEq(scheduledImpl, implV2, "council did not schedule the implementation");
-
-        // 3. Wait out the council delay and execute the upgrade permissionlessly.
+        // 4. Wait out the council delay, then execute the (permissionless) upgrade.
         vm.warp(endTime);
-        UnsafeUpgrades.upgradeProxy({
-            proxy: _XAN_PROXY, newImpl: implV2, data: abi.encodeCall(XanV2.reinitializeFromV1, ())
-        });
+        address executed = new UpgradeXanV1().run({proxy: proxy});
+        assertEq(executed, implV2, "executed a different implementation than scheduled");
 
-        // 4. Ensure that the upgrade to XanV2 was successful and installed the baked-in state: the owner comes from
-        // the implementation bytecode (not from attacker-controllable calldata), the supply is conserved, and the
-        // vesting schedule matches the audited parameters.
-        XanV2 tokenV2 = XanV2(_XAN_PROXY);
+        // 5. The proxy now runs XanV2 with the state baked into the implementation bytecode by `PrepareXanV1Upgrade`:
+        // the deployed timelock owns the token, the supply is conserved, and the vesting schedule matches the audited
+        // `Parameters`.
+        XanV2 tokenV2 = XanV2(proxy);
         assertEq(tokenV2.implementation(), implV2, "proxy not upgraded to V2");
-        assertEq(tokenV2.owner(), _INITIAL_OWNER, "owner not installed from the implementation bytecode");
+        assertEq(tokenV2.owner(), timelock, "owner is not the deployed timelock");
         assertEq(tokenV2.totalSupply(), supplyBefore, "supply changed by the upgrade");
         assertEq(tokenV2.vestingStart(), Parameters.VESTING_START, "vesting start mismatch");
         assertEq(tokenV2.vestingEnd(), Parameters.VESTING_START + Parameters.VESTING_DURATION, "vesting end mismatch");
-    }
 
-    /// @notice The networks on which XanV1 is deployed.
-    function fixtureNetwork() public pure returns (TestCase[] memory network) {
-        network = new TestCase[](2);
-        network[0] = TestCase({name: "mainnet"});
-        network[1] = TestCase({name: "sepolia"});
+        // 6. Governance is now live on XanV2's timestamp clock. The quorum-numerator checkpoint recorded when the
+        // governor was deployed (step 2) is timestamp-keyed, so `quorum(timepoint)` returns the configured fraction of
+        // the voting supply seeded by the upgrade. `getPastTotalSupply` rejects the current timepoint, so advance one
+        // second past the upgrade before querying.
+        vm.warp(endTime + 1);
+        uint256 expectedNumerator = Parameters.QUORUM_RATIO_NUMERATOR * 100 / Parameters.QUORUM_RATIO_DENOMINATOR;
+        assertEq(
+            XanGovernor(payable(governor)).quorum(endTime),
+            supplyBefore * expectedNumerator / 100,
+            "quorum is not the configured fraction of the seeded voting supply"
+        );
     }
 }

@@ -39,11 +39,6 @@ library Parameters {
     /// @dev Three years. Vesting is continuous (every block).
     uint48 internal constant VESTING_DURATION = 3 * 365 days;
 
-    /// @notice The address of the XAN Governor DAO timelock controller; the initial owner who can upgrade the XAN proxy
-    /// through a scheduled DAO proposal.
-    //! IMPORTANT: This address is currently a placeholder and must be changed before scheduling the upgrade to V2.
-    address internal constant XAN_GOVERNOR_TIMELOCK_CONTROLLER = 0x0000000000000000000000000000000000000000;
-
     /* ========== Governance ========== */
 
     /// @notice The delay between a governor proposal's creation and the start of voting (timestamp clock).
