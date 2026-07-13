@@ -22,8 +22,8 @@ abstract contract XanUpgradeCouncilModuleFixture is XanGovernorFixture {
         _module = new XanUpgradeCouncilModule({
             governor: IGovernor(address(_governor)),
             timelock: _timelock,
+            council: _COUNCIL_MULTISIG,
             token: address(_xanToken),
-            initialCouncil: _COUNCIL_MULTISIG,
             cancelBuffer: Parameters.COUNCIL_CANCEL_BUFFER
         });
 

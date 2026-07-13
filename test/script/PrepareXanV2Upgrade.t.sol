@@ -76,7 +76,7 @@ contract PrepareXanV2UpgradeTest is Test {
         assertTrue(implV2 != address(0), "implV2 not prepared");
         assertEq(address(XanGovernor(payable(governor)).token()), _token, "governor not driven by the proxy");
         assertEq(XanGovernor(payable(governor)).timelock(), timelock, "governor not wired to the timelock");
-        assertEq(XanUpgradeCouncilModule(councilModule).owner(), timelock, "upgrade council not owned by the timelock");
+        assertEq(XanUpgradeCouncilModule(councilModule).getCouncil(), _COUNCIL_MULTISIG, "upgrade council not wired");
 
         // `run` does not schedule — the V1 council Safe schedules the returned `implV2` in a separate transaction.
         (address scheduledImpl,) = XanV1(_token).scheduledCouncilUpgrade();
@@ -144,7 +144,6 @@ contract PrepareXanV2UpgradeTest is Test {
     }
 
     function test_deployGovernance_wires_the_upgrade_council() public view {
-        assertEq(_module.owner(), address(_timelock));
         assertEq(_module.getCouncil(), _COUNCIL_MULTISIG);
         assertEq(
             _module.cancelWindow(),
