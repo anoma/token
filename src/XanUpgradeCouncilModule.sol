@@ -11,7 +11,7 @@ import {IXanUpgradeCouncilModule} from "./interfaces/IXanUpgradeCouncilModule.so
 /// @author Anoma Foundation, 2026
 /// @notice The upgrade council's on-chain interface to XAN governance. The module holds the timelock's `PROPOSER` and
 /// `CANCELLER` roles and lets the council:
-/// * Schedule XAN token upgrades that the voter body can cancel.
+/// * Schedule a XAN token upgrade that the voter body can cancel.
 /// * Withdraw its own pending upgrade.
 /// It holds no power over voter-body operations.
 /// @custom:security-contact security@anoma.foundation
@@ -22,9 +22,7 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
     /// @notice The timelock that owns the token and through which upgrades are scheduled, cancelled, and executed.
     TimelockController private immutable _TIMELOCK;
 
-    /// @notice The council multisig that can schedule and cancel upgrade proposals. Immutable for the module's
-    /// lifetime: replacing the council means deploying a new module and re-granting it the timelock roles (revoking
-    /// the old module's) through a voter-body proposal.
+    /// @notice The council multisig that can schedule and cancel upgrade proposals.
     address private immutable _COUNCIL;
 
     /// @notice The XAN token proxy that upgrades target.

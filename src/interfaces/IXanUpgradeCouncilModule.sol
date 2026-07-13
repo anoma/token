@@ -29,7 +29,7 @@ interface IXanUpgradeCouncilModule {
     /// @return operationId The cancelled timelock operation id.
     function cancelUpgrade() external returns (bytes32 operationId);
 
-    /// @notice Returns the council multisig (fixed for the module's lifetime).
+    /// @notice Returns the council multisig.
     /// @return councilAddress The council address.
     function getCouncil() external view returns (address councilAddress);
 

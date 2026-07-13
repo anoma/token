@@ -86,7 +86,7 @@ contract PrepareXanV2Upgrade is Script {
             initialQuorumNumerator: Parameters.QUORUM_RATIO_NUMERATOR * 100 / Parameters.QUORUM_RATIO_DENOMINATOR
         });
 
-        // 3. Deploy the upgrade council module; the timelock owns the token and the council is fixed for its lifetime.
+        // 3. Deploy the upgrade council module
         XanUpgradeCouncilModule xanUpgradeCouncil = new XanUpgradeCouncilModule({
             governor: IGovernor(address(xanGovernor)),
             timelock: timelockController,
