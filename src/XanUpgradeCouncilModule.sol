@@ -62,7 +62,7 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
 
     /// @notice Restricts a function to the council multisig.
     modifier onlyCouncil() {
-        require(msg.sender == _COUNCIL, UnauthorizedCouncil(msg.sender));
+        _checkCouncil();
         _;
     }
 
@@ -127,13 +127,13 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
     }
 
     /// @inheritdoc IXanUpgradeCouncilModule
-    function getCouncil() external view override returns (address councilAddress) {
-        councilAddress = _COUNCIL;
+    function getCouncil() external view override returns (address council) {
+        council = _COUNCIL;
     }
 
     /// @inheritdoc IXanUpgradeCouncilModule
-    function getTimelock() external view override returns (address timelockAddress) {
-        timelockAddress = address(_TIMELOCK);
+    function getTimelock() external view override returns (address timelock) {
+        timelock = address(_TIMELOCK);
     }
 
     /// @inheritdoc IXanUpgradeCouncilModule
@@ -146,6 +146,11 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
     /// exceeds a full voter cancel cycle.
     function cancelWindow() public view override returns (uint256 delay) {
         delay = _GOVERNOR.votingDelay() + _GOVERNOR.votingPeriod() + _TIMELOCK.getMinDelay() + _CANCEL_BUFFER;
+    }
+
+    /// @notice Checks that the caller is the council.
+    function _checkCouncil() internal view {
+        require(_COUNCIL == msg.sender, UnauthorizedCouncil({caller: msg.sender}));
     }
 
     /// @notice Deterministic, council-tagged salt so a council upgrade never collides with a voter-body operation and
