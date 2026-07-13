@@ -34,7 +34,7 @@ contract XanUpgradeCouncil is IXanUpgradeCouncil, Ownable {
     address private _council;
 
     /// @notice The most recently scheduled council upgrade operation id.
-    bytes32 private _pendingOperation;
+    bytes32 private _pendingUpgradeOperationId;
 
     /// @notice Thrown when a council-only function is called by another account.
     error UnauthorizedCouncil(address caller);
@@ -99,8 +99,8 @@ contract XanUpgradeCouncil is IXanUpgradeCouncil, Ownable {
         require(newImplementation != address(0), ZeroImplementationNotAllowed());
         // One council upgrade in flight at a time.
         require(
-            _pendingOperation == bytes32(0) || !_TIMELOCK.isOperationPending(_pendingOperation),
-            UpgradeAlreadyPending(_pendingOperation)
+            _pendingUpgradeOperationId == bytes32(0) || !_TIMELOCK.isOperationPending(_pendingUpgradeOperationId),
+            UpgradeAlreadyPending(_pendingUpgradeOperationId)
         );
 
         bytes memory call = abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (newImplementation, data));
@@ -109,7 +109,7 @@ contract XanUpgradeCouncil is IXanUpgradeCouncil, Ownable {
 
         operationId =
             _TIMELOCK.hashOperation({target: _TOKEN, value: 0, data: call, predecessor: bytes32(0), salt: salt});
-        _pendingOperation = operationId;
+        _pendingUpgradeOperationId = operationId;
 
         emit UpgradeScheduled(newImplementation, operationId, data, block.timestamp + delay);
 
@@ -120,7 +120,7 @@ contract XanUpgradeCouncil is IXanUpgradeCouncil, Ownable {
     /// @dev Callable only by the council. The module only ever aims the timelock's `CANCELLER` role at the operation
     /// it scheduled itself, so the council has no cancel power over voter-body operations.
     function cancelUpgrade() external override onlyCouncil returns (bytes32 operationId) {
-        operationId = _pendingOperation;
+        operationId = _pendingUpgradeOperationId;
         require(operationId != bytes32(0) && _TIMELOCK.isOperationPending(operationId), NoUpgradePending());
 
         emit UpgradeCancelled(operationId);
@@ -140,13 +140,18 @@ contract XanUpgradeCouncil is IXanUpgradeCouncil, Ownable {
     }
 
     /// @inheritdoc IXanUpgradeCouncil
-    function council() external view override returns (address councilAddress) {
+    function getCouncil() external view override returns (address councilAddress) {
         councilAddress = _council;
     }
 
     /// @inheritdoc IXanUpgradeCouncil
-    function pendingUpgrade() external view override returns (bytes32 operationId) {
-        operationId = _pendingOperation;
+    function getTimelock() external view override returns (address timelockAddress) {
+        timelockAddress = address(_TIMELOCK);
+    }
+
+    /// @inheritdoc IXanUpgradeCouncil
+    function getPendingUpgradeOperationId() external view override returns (bytes32 operationId) {
+        operationId = _pendingUpgradeOperationId;
     }
 
     /// @inheritdoc IXanUpgradeCouncil

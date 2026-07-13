@@ -40,12 +40,16 @@ interface IXanUpgradeCouncil {
 
     /// @notice Returns the current council multisig.
     /// @return councilAddress The council address.
-    function council() external view returns (address councilAddress);
+    function getCouncil() external view returns (address councilAddress);
+
+    /// @notice Returns the timelock that owns the token and through which upgrades are scheduled and cancelled.
+    /// @return timelockAddress The timelock address.
+    function getTimelock() external view returns (address timelockAddress);
 
     /// @notice Returns the most recently scheduled council upgrade operation id (may already be executed or
     /// cancelled).
     /// @return operationId The tracked operation id.
-    function pendingUpgrade() external view returns (bytes32 operationId);
+    function getPendingUpgradeOperationId() external view returns (bytes32 operationId);
 
     /// @notice Returns the cancel window: the time a scheduled council upgrade waits in the timelock before it can be
     /// executed.

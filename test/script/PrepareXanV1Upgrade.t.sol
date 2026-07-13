@@ -145,7 +145,7 @@ contract PrepareXanV1UpgradeTest is Test {
 
     function test_deployGovernance_wires_the_upgrade_council() public view {
         assertEq(_upgradeCouncil.owner(), address(_timelock));
-        assertEq(_upgradeCouncil.council(), _COUNCIL_MULTISIG);
+        assertEq(_upgradeCouncil.getCouncil(), _COUNCIL_MULTISIG);
         assertEq(
             _upgradeCouncil.cancelWindow(),
             uint256(Parameters.VOTING_DELAY) + Parameters.VOTING_PERIOD + Parameters.DELAY_DURATION
