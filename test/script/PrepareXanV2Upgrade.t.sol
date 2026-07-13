@@ -7,19 +7,19 @@ import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {PrepareXanV1Upgrade} from "../../script/PrepareXanV1Upgrade.s.sol";
+import {PrepareXanV2Upgrade} from "../../script/PrepareXanV2Upgrade.s.sol";
 import {Parameters} from "../../src/libs/Parameters.sol";
 import {XanGovernor} from "../../src/XanGovernor.sol";
 import {XanUpgradeCouncilModule} from "../../src/XanUpgradeCouncilModule.sol";
 import {XanV1} from "../../src/XanV1.sol";
 
-/// @notice Pins the production governance wiring produced by `PrepareXanV1Upgrade.deployGovernance`. It establishes
+/// @notice Pins the production governance wiring produced by `PrepareXanV2Upgrade.deployGovernance`. It establishes
 /// the entire security posture of the layer — who may schedule and cancel, that execution is permissionless, and that
 /// no residual deployer privilege survives — so every role assignment is asserted here explicitly.
-contract PrepareXanV1UpgradeTest is Test {
+contract PrepareXanV2UpgradeTest is Test {
     address internal immutable _COUNCIL_MULTISIG = makeAddr("councilMultisig");
 
-    PrepareXanV1Upgrade internal _script;
+    PrepareXanV2Upgrade internal _script;
     address internal _deployer;
     address internal _token;
     XanGovernor internal _governor;
@@ -31,7 +31,7 @@ contract PrepareXanV1UpgradeTest is Test {
             "XanV1.sol:XanV1", abi.encodeCall(XanV1.initializeV1, (makeAddr("mintRecipient"), _COUNCIL_MULTISIG))
         );
 
-        _script = new PrepareXanV1Upgrade();
+        _script = new PrepareXanV2Upgrade();
         _deployer = address(_script);
         // `deployGovernance` makes `msg.sender` the transient timelock admin and wires the roles as the script itself,
         // so it must be called with the script pranked as the sender.
@@ -45,12 +45,12 @@ contract PrepareXanV1UpgradeTest is Test {
     }
 
     function test_deployGovernance_reverts_if_the_token_is_the_zero_address() public {
-        vm.expectRevert(PrepareXanV1Upgrade.InvalidTokenAddress.selector, address(_script));
+        vm.expectRevert(PrepareXanV2Upgrade.InvalidTokenAddress.selector, address(_script));
         _script.deployGovernance({token: address(0), councilMultisig: _COUNCIL_MULTISIG});
     }
 
     function test_deployGovernance_reverts_if_the_council_is_the_zero_address() public {
-        vm.expectRevert(PrepareXanV1Upgrade.InvalidCouncilAddress.selector, address(_script));
+        vm.expectRevert(PrepareXanV2Upgrade.InvalidCouncilAddress.selector, address(_script));
         _script.deployGovernance({token: _token, councilMultisig: address(0)});
     }
 

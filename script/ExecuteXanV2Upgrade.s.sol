@@ -10,7 +10,7 @@ import {Script} from "forge-std/Script.sol";
 import {XanV1} from "../src/XanV1.sol";
 import {XanV2} from "../src/XanV2.sol";
 
-contract UpgradeXanV1 is Script {
+contract ExecuteXanV2Upgrade is Script {
     error ZeroImplementationV2NotAllowed();
 
     function run(address proxy) public returns (address implementationV2) {
@@ -23,7 +23,7 @@ contract UpgradeXanV1 is Script {
 
         vm.startBroadcast();
 
-        // The owner and vesting start are baked into `implV2` at deployment (see `PrepareXanV1Upgrade`),
+        // The owner and vesting start are baked into `implV2` at deployment (see `PrepareXanV2Upgrade`),
         // so `reinitializeFromV1` takes no arguments and executing this upgrade cannot influence them.
         UnsafeUpgrades.upgradeProxy({
             proxy: proxy, newImpl: implementationV2, data: abi.encodeCall(XanV2.reinitializeFromV1, ())
