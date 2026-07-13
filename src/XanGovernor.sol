@@ -9,7 +9,7 @@ import {
     GovernorVotesQuorumFraction
 } from "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import {Governor} from "@openzeppelin/contracts/governance/Governor.sol";
-import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
+import {IGovernor, IERC6372} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
@@ -95,7 +95,7 @@ contract XanGovernor is
         threshold = super.proposalThreshold();
     }
 
-    /// @inheritdoc GovernorVotes
+    /// @inheritdoc IERC6372
     /// @dev Pins the clock to the timestamp rather than inheriting `GovernorVotes`'s adaptive clock.
     function clock() public view virtual override(Governor, GovernorVotes) returns (uint48 timepoint) {
         timepoint = Time.timestamp();
@@ -103,7 +103,7 @@ contract XanGovernor is
 
     /* solhint-disable func-name-mixedcase */
 
-    /// @inheritdoc GovernorVotes
+    /// @inheritdoc IERC6372
     /// @dev Pins the clock mode to timestamp rather than inheriting `GovernorVotes`'s adaptive clock mode.
     function CLOCK_MODE() public pure virtual override(Governor, GovernorVotes) returns (string memory mode) {
         mode = "mode=timestamp";
