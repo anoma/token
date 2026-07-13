@@ -11,7 +11,7 @@ flowchart LR
     voters([Voter body])
     gov[XanGovernor]
     multisig([Multisig])
-    module[XanUpgradeCouncil]
+    module[XanUpgradeCouncilModule]
     timelock[Timelock]
     token[(XanV2)]
 
@@ -29,7 +29,7 @@ flowchart LR
 - **XanV2** — the token. Governance-agnostic; its only privileged power is an owner-authorized upgrade. Carries `ERC20Votes` voting power (the full balance, including still-locked vesting tokens), so holders can delegate and vote.
 - **Timelock** — owns the token and is the only account that can upgrade it. Every privileged action waits out a delay before anyone may execute it.
 - **XanGovernor** — the voter body's instrument: holders delegate and vote, and an accepted proposal is queued through the timelock and then executed.
-- **XanUpgradeCouncil** — a multisig-fronted module that can initiate a token upgrade as a backup when the voter body is inactive. It can withdraw its own pending upgrade but holds no power over voter-body operations.
+- **XanUpgradeCouncilModule** — a module fronting a fixed council multisig that can initiate a token upgrade as a backup when the voter body is inactive. It can withdraw its own pending upgrade but holds no power over voter-body operations.
 
 ### Interplay
 
@@ -45,7 +45,7 @@ flowchart LR
 
 **XanGovernor**: The OpenZeppelin `Governor` DAO driven by the token's votes; the voter body's on-chain instrument. Power: propose, tally votes (quorum plus a `For` majority), and queue and execute accepted proposals through the timelock.
 
-**XanUpgradeCouncil**: The upgrade council's on-chain module. Powers: initiate a token upgrade (upgrades-only, one at a time) as a backup for an inactive voter body — the upgrade takes longer than a voter proposal, so the voter body can cancel it — and withdraw its own pending upgrade. It holds no power over voter-body operations. Subordinate to the voter body, which alone can rotate the council. Distinct from V1's defunct in-token `governanceCouncil`.
+**XanUpgradeCouncilModule**: The upgrade council's on-chain module. Powers: initiate a token upgrade (upgrades-only, one at a time) as a backup for an inactive voter body — the upgrade takes longer than a voter proposal, so the voter body can cancel it — and withdraw its own pending upgrade. It holds no power over voter-body operations. Its council multisig is fixed for the module's lifetime: the voter body cannot swap a member on-chain, but it can replace the council wholesale by disarming this module (revoking its powers) and deploying a new one. Distinct from V1's defunct in-token `governanceCouncil`.
 
 **Timelock** (`TimelockController`): The OpenZeppelin timelock that owns the token and executes accepted operations after a delay. Anyone may execute once the delay elapses; it self-administers, so its roles change only through governance.
 
