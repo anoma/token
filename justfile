@@ -19,7 +19,7 @@ clean:
 
 # Build contracts
 build *args:
-    forge build --sizes --ast {{ args }}
+    forge build {{ args }}
 
 # Format contracts
 fmt *args:
@@ -42,6 +42,12 @@ static-analysis:
 # Run contract tests
 test *args:
     forge test --force {{ args }}
+
+# Generate a coverage report, excluding the `test/` dir. Append args, e.g. `just coverage --report lcov`.
+coverage *args:
+    @echo "==> Building..."
+    @just build
+    forge coverage --no-match-coverage "(test)" {{ args }}
 
 # Prerequisites check (mirrors CI)
 check:
