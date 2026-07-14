@@ -261,12 +261,13 @@ contract XanV2 is
         override(ERC20Upgradeable, ERC20VotesUpgradeable)
     {
         // Require the unlocked balance to be at least the updated value.
-        uint256 unlockedBalance = unlockedBalanceOf(from);
-
-        require(
-            value < unlockedBalance + 1,
-            UnlockedBalanceInsufficient({sender: from, unlockedBalance: unlockedBalance, valueToUnlock: value})
-        );
+        {
+            uint256 unlockedBalance = unlockedBalanceOf(from);
+            require(
+                value < unlockedBalance + 1,
+                UnlockedBalanceInsufficient({sender: from, unlockedBalance: unlockedBalance, valueToUnlock: value})
+            );
+        }
 
         super._update({from: from, to: to, value: value});
     }
