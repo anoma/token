@@ -63,6 +63,18 @@ contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
         });
     }
 
+    function test_constructor_reverts_if_the_cancel_buffer_is_zero() public {
+        address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
+        vm.expectRevert(XanUpgradeCouncilModule.ZeroCancelBufferNotAllowed.selector, predicted);
+        new XanUpgradeCouncilModule({
+            governor: IGovernor(address(_governor)),
+            timelock: _timelock,
+            council: _COUNCIL_MULTISIG,
+            token: address(_xanToken),
+            cancelBuffer: 0
+        });
+    }
+
     function test_scheduleUpgrade_reverts_if_the_caller_is_not_the_council() public {
         address newImpl = _newImplementation();
         vm.expectRevert(

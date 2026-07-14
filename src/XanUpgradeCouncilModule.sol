@@ -52,6 +52,10 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
     /// @notice Thrown when the council address supplied to the constructor is zero.
     error ZeroCouncilNotAllowed();
 
+    /// @notice Thrown when the cancel buffer supplied to the constructor is zero, which would collapse the cancel
+    /// window down to the bare voter cancel cycle and leave the voter body no reaction time to cancel.
+    error ZeroCancelBufferNotAllowed();
+
     /// @notice Thrown when the implementation address supplied to `scheduleUpgrade` is zero.
     error ZeroImplementationNotAllowed();
 
@@ -75,6 +79,7 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
         require(address(timelock) != address(0), ZeroTimelockNotAllowed());
         require(council != address(0), ZeroCouncilNotAllowed());
         require(token != address(0), ZeroTokenNotAllowed());
+        require(cancelBuffer != 0, ZeroCancelBufferNotAllowed());
 
         _GOVERNOR = governor;
         _TIMELOCK = timelock;
