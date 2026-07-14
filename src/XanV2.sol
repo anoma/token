@@ -259,6 +259,11 @@ contract XanV2 is
         internal
         override(ERC20Upgradeable, ERC20VotesUpgradeable)
     {
+        // NOTE: Unlike V1, this gate has no `from == address(0)` minting exemption since V2 has neither mint nor burn.
+        // So `from`/`to` are never `address(0)` here and the mint/burn legs are intentionally unreachable.
+        // A future implementation that (re)introduces minting or burning MUST first exempt
+        // the `from == address(0)` / `to == address(0)` legs, or every mint would revert on the check below.
+
         // Require the unlocked balance to be at least the updated value.
         {
             uint256 unlockedBalance = unlockedBalanceOf(from);
