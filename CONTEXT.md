@@ -1,6 +1,6 @@
 # CONTEXT
 
-> Domain glossary and architecture overview for the Anoma (XAN) token and its governance: the V1→V2 upgrade, linear vesting of formerly-locked balances, `ERC20Votes` governance, and the upgrade council. This is conceptual orientation only — the audit-grade token spec is [docs/XanV2-upgrade.md](docs/XanV2-upgrade.md), the governance reference is [docs/governance.md](docs/governance.md), and the design decisions are the ADRs in [docs/adr/](docs/adr/).
+> Domain glossary and architecture overview for the Anoma (XAN) token and its governance: the V1→V2 upgrade, linear vesting of formerly-locked balances, `ERC20Votes` governance, and the upgrade council. This is conceptual orientation only — the audit-grade token spec is [docs/01-XanV2-upgrade.md](docs/01-XanV2-upgrade.md), the governance reference is [docs/02-XanV2-governance.md](docs/02-XanV2-governance.md), and the design decisions are the ADRs in [docs/adr/](docs/adr/).
 
 ## Architecture
 
@@ -33,7 +33,7 @@ flowchart LR
 
 ### Interplay
 
-- **Two upgrade paths**, both ending as a timelocked upgrade: a **voter-body proposal**, or a **council-initiated upgrade**. The council path is *slower*, not faster — it sits in a window longer than a voter proposal, so the voter body always has time to cancel it; its value is liveness (it works when the voter body cannot reach quorum), not speed.
+- **Two upgrade paths**, both ending as a timelocked upgrade: a **voter-body proposal**, or a **council-initiated upgrade**. The council path is _slower_, not faster — it sits in a window longer than a voter proposal, so the voter body always has time to cancel it; its value is liveness (it works when the voter body cannot reach quorum), not speed.
 - **One-way cancel**: the voter body can cancel the council's upgrade through a governor proposal, and the council can withdraw its own pending upgrade — but the council cannot cancel voter-body operations. Cancelling only blocks — no funds can move this way.
 - **Voter supremacy**: the voter body can cancel the council's upgrades, replace the council, and revoke the module's powers; the council holds no reciprocal check over the voter body. The one gap is an **inactive voter body** — the scenario the council exists for — where the council's long delay and off-chain monitoring are the only checks.
 
