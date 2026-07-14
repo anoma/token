@@ -46,11 +46,11 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
     /// @notice Thrown when the timelock address supplied to the constructor is zero.
     error ZeroTimelockNotAllowed();
 
-    /// @notice Thrown when the token address supplied to the constructor is zero.
-    error ZeroTokenNotAllowed();
-
     /// @notice Thrown when the council address supplied to the constructor is zero.
     error ZeroCouncilNotAllowed();
+
+    /// @notice Thrown when the token address supplied to the constructor is zero.
+    error ZeroTokenNotAllowed();
 
     /// @notice Thrown when the cancel buffer supplied to the constructor is zero, which would collapse the cancel
     /// window down to the bare voter cancel cycle and leave the voter body no reaction time to cancel.
