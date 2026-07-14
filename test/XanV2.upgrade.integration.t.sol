@@ -53,6 +53,7 @@ contract XanV2UpgradeIntegrationTest is Test {
         XanV2 tokenV2 = XanV2(proxy);
         assertEq(tokenV2.implementation(), implV2, "proxy not upgraded to V2");
         assertEq(tokenV2.owner(), timelock, "owner is not the deployed timelock");
+        assertEq(tokenV2.initialOwner(), timelock, "baked initial owner is not the deployed timelock");
         assertEq(tokenV2.totalSupply(), supplyBefore, "supply changed by the upgrade");
         assertEq(tokenV2.vestingStart(), Parameters.VESTING_START, "vesting start mismatch");
         assertEq(tokenV2.vestingEnd(), Parameters.VESTING_START + Parameters.VESTING_DURATION, "vesting end mismatch");

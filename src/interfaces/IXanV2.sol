@@ -35,6 +35,10 @@ interface IXanV2 {
     /// @return lockedBalance The locked balance.
     function lockedBalanceOf(address account) external view returns (uint256 lockedBalance);
 
+    /// @notice Returns the initial owner baked into the implementation bytecode at construction.
+    /// @return initialProxyOwner The initial owner installed at reinitialization.
+    function initialOwner() external view returns (address initialProxyOwner);
+
     /// @notice Returns the timestamp at which vesting started.
     /// @return start The vesting start timestamp.
     function vestingStart() external view returns (uint48 start);
