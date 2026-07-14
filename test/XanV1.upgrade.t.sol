@@ -235,6 +235,26 @@ contract XanV1UpgradeTest is Test {
         _xanProxy.upgradeToAndCall({newImplementation: _councilProposedImpl, data: ""});
     }
 
+    function test_authorizeUpgrade_passes_council_upgrade_if_the_voter_body_implementation_is_below_quorum() public {
+        vm.prank(_COUNCIL);
+        _xanProxy.scheduleCouncilUpgrade(_councilProposedImpl);
+
+        // The voter body has a most-voted implementation, but it stays *below* quorum, so it does not pre-empt the
+        // council upgrade: `_isQuorumAndMinLockedSupplyReached(mostVotedImpl)` is false and the council path proceeds.
+        vm.startPrank(_defaultSender);
+        _xanProxy.lock(1);
+        _xanProxy.castVote(_voterProposedImpl);
+        vm.stopPrank();
+        assertEq(_xanProxy.mostVotedImplementation(), _voterProposedImpl);
+
+        skip(Parameters.DELAY_DURATION + 1);
+
+        vm.expectEmit(address(_xanProxy));
+        emit IERC1967.Upgraded(_councilProposedImpl);
+        _xanProxy.upgradeToAndCall({newImplementation: _councilProposedImpl, data: ""});
+        assertEq(_xanProxy.implementation(), _councilProposedImpl);
+    }
+
     function test_authorizeUpgrade_reverts_council_upgrade_if_the_delay_period_has_not_ended() public {
         vm.prank(_COUNCIL);
         _xanProxy.scheduleCouncilUpgrade(_councilProposedImpl);
