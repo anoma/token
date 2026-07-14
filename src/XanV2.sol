@@ -79,12 +79,6 @@ contract XanV2 is
         0x52ac9b9514a24171c0416c0576d612fe5fab9f5a41dcf77ddbf6be60ca9da600;
 
     /// @notice The initial owner of the proxy.
-    /// @dev Read only once, by `__Ownable_init` in `reinitializeFromV1`, to set the initial owner.
-    /// Afterwards the live owner lives in `OwnableUpgradeable` storage and can change via `transferOwnership`, so this
-    /// immutable may become stale and must never be read as the current owner. This is intentional and binds the
-    /// initial owner to the V2 implementation bytecode that V1 governance votes on before the upgrade, instead of
-    /// providing it via a `reinitializeFromV1` argument. This is critical because `reinitializeFromV1` can be called
-    /// permissionlessly by anyone after the upgrade delay has passed.
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     address private immutable _INITIAL_OWNER;
 
@@ -124,16 +118,16 @@ contract XanV2 is
 
     /// @notice Disables the initializers on the implementation contract to prevent it from being left uninitialized,
     /// and binds the owner and vesting schedule into the implementation bytecode.
-    /// @param initialOwner The owner of the proxy after the upgrade (e.g. a multisig or DAO).
+    /// @param initialProxyOwner The owner of the proxy after the upgrade.
     /// @param vestingStartTimestamp The timestamp at which the linear vesting of the formerly locked balances starts.
     /// @param vestingDuration The duration over which the formerly locked balances vest linearly.
     /// @custom:oz-upgrades-unsafe-allow constructor state-variable-immutable
-    constructor(address initialOwner, uint48 vestingStartTimestamp, uint48 vestingDuration) {
-        require(initialOwner != address(0), ZeroOwnerNotAllowed());
+    constructor(address initialProxyOwner, uint48 vestingStartTimestamp, uint48 vestingDuration) {
+        require(initialProxyOwner != address(0), ZeroOwnerNotAllowed());
         require(vestingStartTimestamp != 0, ZeroVestingStartNotAllowed());
         require(vestingDuration != 0, ZeroVestingDurationNotAllowed());
 
-        _INITIAL_OWNER = initialOwner;
+        _INITIAL_OWNER = initialProxyOwner;
         _VESTING_START = vestingStartTimestamp;
         _VESTING_DURATION = vestingDuration;
 
@@ -221,6 +215,11 @@ contract XanV2 is
         uint256 alreadyUnlocked = _getXanV2Storage().unlocked[account];
 
         value = vested > alreadyUnlocked ? vested - alreadyUnlocked : 0;
+    }
+
+    /// @inheritdoc IXanV2
+    function initialOwner() public view override returns (address initialProxyOwner) {
+        initialProxyOwner = _INITIAL_OWNER;
     }
 
     /// @inheritdoc IXanV2
