@@ -99,7 +99,7 @@ contract PrepareXanV2Upgrade is Script {
         // * The governor and the council module can schedule and cancel.
         // * Anyone may execute after the delay.
         // * The council module constrains its scheduling to token upgrades and its cancellation to its own pending
-        //   upgrade.
+        // upgrade.
         bytes32 proposerRole = timelockController.PROPOSER_ROLE();
         bytes32 cancellerRole = timelockController.CANCELLER_ROLE();
         timelockController.grantRole(proposerRole, address(xanGovernor));
