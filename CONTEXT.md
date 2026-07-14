@@ -13,13 +13,17 @@ flowchart LR
     multisig([Multisig])
     module[XanUpgradeCouncilModule]
     timelock[Timelock]
+    proxy[ERC1967Proxy]
+    tokenV1[(XanV1)]
     token[(XanV2)]
 
     voters -->|delegate + vote| gov
     gov -->|proposals| timelock
     multisig -->|propose upgrade| module
     module --> timelock
-    timelock -->|owns + upgrades| token
+    timelock -->|owns + upgrades| proxy
+    proxy -. formerly .-x tokenV1
+    proxy -->|delegates to| token
 
     voters -. cancel + replace .-> module
 ```
