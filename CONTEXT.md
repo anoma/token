@@ -25,7 +25,7 @@ flowchart LR
     proxy -. formerly .-x tokenV1
     proxy -->|delegates to| token
 
-    voters -. cancel + replace .-> module
+    voters -->|cancel + replace| module
 ```
 
 ### Actors
