@@ -1,6 +1,6 @@
 [profile.default]
 evm_version = "osaka"
-solc = "0.8.35"
+solc = "0.8.36"
 optimizer = true
 via_ir = true
 ffi = true
