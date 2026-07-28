@@ -9,7 +9,7 @@ import {Script} from "forge-std/Script.sol";
 import {XanV1} from "../src/XanV1.sol";
 
 /// @notice Deploys the XanV1 implementation behind a UUPS proxy and initializes it with the initial mint recipient
-/// (the token distributor) and the governance council.
+/// and the governance council.
 contract DeployXanV1 is Script {
     function run(address initialMintRecipient, address council) public returns (address proxy, address implementation) {
         vm.startBroadcast();
