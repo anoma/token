@@ -33,7 +33,7 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
     uint256 private immutable _EXTRA_DELAY;
 
     /// @notice The most recently scheduled council upgrade operation id.
-    bytes32 private _pendingUpgradeOperationId;
+    bytes32 private _lastScheduledUpgradeOperationId;
 
     /// @notice Thrown when a council-only function is called by another account.
     error UnauthorizedCouncil(address caller);
@@ -101,8 +101,9 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
         require(newImplementation != address(0), ZeroImplementationNotAllowed());
         // One council upgrade in flight at a time.
         require(
-            _pendingUpgradeOperationId == bytes32(0) || !_TIMELOCK.isOperationPending(_pendingUpgradeOperationId),
-            UpgradeAlreadyPending(_pendingUpgradeOperationId)
+            _lastScheduledUpgradeOperationId == bytes32(0)
+                || !_TIMELOCK.isOperationPending(_lastScheduledUpgradeOperationId),
+            UpgradeAlreadyPending(_lastScheduledUpgradeOperationId)
         );
 
         bytes memory call = abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (newImplementation, data));
@@ -111,7 +112,7 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
 
         operationId =
             _TIMELOCK.hashOperation({target: _TOKEN, value: 0, data: call, predecessor: bytes32(0), salt: salt});
-        _pendingUpgradeOperationId = operationId;
+        _lastScheduledUpgradeOperationId = operationId;
 
         emit UpgradeScheduled(newImplementation, operationId, data, block.timestamp + delay);
 
@@ -122,7 +123,7 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
     /// @dev Callable only by the council. The module only ever aims the timelock's `CANCELLER` role at the operation
     /// it scheduled itself, so the council has no cancel power over voter-body operations.
     function cancelUpgrade() external override onlyCouncil returns (bytes32 operationId) {
-        operationId = _pendingUpgradeOperationId;
+        operationId = _lastScheduledUpgradeOperationId;
         require(operationId != bytes32(0) && _TIMELOCK.isOperationPending(operationId), NoUpgradePending());
 
         emit UpgradeCancelled(operationId);
@@ -156,8 +157,8 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
     }
 
     /// @inheritdoc IXanUpgradeCouncilModule
-    function getPendingUpgradeOperationId() external view override returns (bytes32 operationId) {
-        operationId = _pendingUpgradeOperationId;
+    function getLastScheduledUpgradeOperationId() external view override returns (bytes32 operationId) {
+        operationId = _lastScheduledUpgradeOperationId;
     }
 
     /// @inheritdoc IXanUpgradeCouncilModule
