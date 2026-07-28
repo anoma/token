@@ -42,13 +42,13 @@ library Parameters {
     /* ========== Governance ========== */
 
     /// @notice The delay between a governor proposal's creation and the start of voting (timestamp clock).
-    uint48 internal constant VOTING_DELAY = 7 days;
+    uint48 internal constant GOVERNOR_VOTING_DELAY = 7 days;
 
     /// @notice The duration of a governor proposal's voting window.
-    uint32 internal constant VOTING_PERIOD = 14 days;
+    uint32 internal constant GOVERNOR_VOTING_PERIOD = 14 days;
 
     /// @notice The minimum voting power required to create a governor proposal.
-    uint256 internal constant PROPOSAL_THRESHOLD = 10 ** 18; // 1 XAN
+    uint256 internal constant GOVERNOR_PROPOSAL_THRESHOLD = 10 ** 18; // 1 XAN
 
     /// @notice Reaction-time margin added on top of a full voter cancel cycle when the `XanUpgradeCouncilModule`
     /// sizes its backup upgrade delay, so the voter body has time to notice and cancel.

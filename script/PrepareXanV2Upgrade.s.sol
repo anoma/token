@@ -80,9 +80,9 @@ contract PrepareXanV2Upgrade is Script {
         XanGovernor xanGovernor = new XanGovernor({
             xanToken: IVotes(token),
             timelockController: timelockController,
-            initialVotingDelay: Parameters.VOTING_DELAY,
-            initialVotingPeriod: Parameters.VOTING_PERIOD,
-            initialProposalThreshold: Parameters.PROPOSAL_THRESHOLD,
+            initialVotingDelay: Parameters.GOVERNOR_VOTING_DELAY,
+            initialVotingPeriod: Parameters.GOVERNOR_VOTING_PERIOD,
+            initialProposalThreshold: Parameters.GOVERNOR_PROPOSAL_THRESHOLD,
             initialQuorumNumerator: Parameters.QUORUM_RATIO_NUMERATOR * 100 / Parameters.QUORUM_RATIO_DENOMINATOR
         });
 

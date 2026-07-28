@@ -127,9 +127,9 @@ contract PrepareXanV2UpgradeTest is Test {
     function test_deployGovernance_configures_the_governor() public view {
         assertEq(address(_governor.token()), _token);
         assertEq(_governor.timelock(), address(_timelock));
-        assertEq(_governor.votingDelay(), Parameters.VOTING_DELAY);
-        assertEq(_governor.votingPeriod(), Parameters.VOTING_PERIOD);
-        assertEq(_governor.proposalThreshold(), Parameters.PROPOSAL_THRESHOLD);
+        assertEq(_governor.votingDelay(), Parameters.GOVERNOR_VOTING_DELAY);
+        assertEq(_governor.votingPeriod(), Parameters.GOVERNOR_VOTING_PERIOD);
+        assertEq(_governor.proposalThreshold(), Parameters.GOVERNOR_PROPOSAL_THRESHOLD);
         assertEq(
             _governor.quorumNumerator(), Parameters.QUORUM_RATIO_NUMERATOR * 100 / Parameters.QUORUM_RATIO_DENOMINATOR
         );
@@ -148,7 +148,7 @@ contract PrepareXanV2UpgradeTest is Test {
         assertEq(_module.getCouncil(), _COUNCIL_MULTISIG);
         assertEq(
             _module.cancelWindow(),
-            uint256(Parameters.VOTING_DELAY) + Parameters.VOTING_PERIOD + Parameters.DELAY_DURATION
+            uint256(Parameters.GOVERNOR_VOTING_DELAY) + Parameters.GOVERNOR_VOTING_PERIOD + Parameters.DELAY_DURATION
                 + Parameters.COUNCIL_CANCEL_BUFFER
         );
     }
