@@ -10,6 +10,8 @@ import {Script} from "forge-std/Script.sol";
 import {XanV1} from "../src/XanV1.sol";
 import {XanV2} from "../src/XanV2.sol";
 
+/// @notice Permissionlessly executes a council-scheduled XanV1 to XanV2 upgrade once the delay has ended, running
+/// `upgradeToAndCall` with the argument-free `reinitializeFromV1`.
 contract ExecuteXanV2Upgrade is Script {
     error ZeroImplementationV2NotAllowed();
 
