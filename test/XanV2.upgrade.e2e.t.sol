@@ -63,7 +63,9 @@ contract XanV2UpgradeE2ETest is Test {
         assertEq(tokenV2.owner(), _INITIAL_OWNER, "owner not installed from the implementation bytecode");
         assertEq(tokenV2.totalSupply(), supplyBefore, "supply changed by the upgrade");
         assertEq(tokenV2.vestingStart(), Parameters.XAN_VESTING_START, "vesting start mismatch");
-        assertEq(tokenV2.vestingEnd(), Parameters.XAN_VESTING_START + Parameters.XAN_VESTING_DURATION, "vesting end mismatch");
+        assertEq(
+            tokenV2.vestingEnd(), Parameters.XAN_VESTING_START + Parameters.XAN_VESTING_DURATION, "vesting end mismatch"
+        );
     }
 
     /// @notice The networks on which XanV1 is deployed.

@@ -165,7 +165,9 @@ contract XanV2ReinitializationTest is Test {
 
         // Point the V2 mock at the locally deployed V1 implementation (the vesting principal is stored under it).
         v2Impl = address(
-            new MockXanV2(v1Proxy.implementation(), _OWNER, Parameters.XAN_VESTING_START, Parameters.XAN_VESTING_DURATION)
+            new MockXanV2(
+                v1Proxy.implementation(), _OWNER, Parameters.XAN_VESTING_START, Parameters.XAN_VESTING_DURATION
+            )
         );
 
         vm.startPrank(_defaultSender);
