@@ -401,6 +401,18 @@ contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
         assertEq(_module.getCouncil(), _COUNCIL_MULTISIG);
     }
 
+    function test_constructor_sets_the_governor() public view {
+        assertEq(_module.getGovernor(), address(_governor));
+    }
+
+    function test_constructor_sets_the_token() public view {
+        assertEq(_module.getToken(), address(_xanToken));
+    }
+
+    function test_constructor_sets_the_cancel_buffer() public view {
+        assertEq(_module.getCancelBuffer(), Parameters.COUNCIL_CANCEL_BUFFER);
+    }
+
     function test_cancelWindow_exceeds_the_voter_cancel_cycle() public view {
         uint256 voterCancelCycle = _governor.votingDelay() + _governor.votingPeriod() + _timelock.getMinDelay();
         assertEq(_module.cancelWindow(), voterCancelCycle + Parameters.COUNCIL_CANCEL_BUFFER);
