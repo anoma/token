@@ -104,7 +104,48 @@ sequenceDiagram
     T->>K: upgradeToAndCall
 ```
 
-The council upgrade window (see section [XanUpgradeCouncilModule](#4-xanupgradecouncilmodule)) is longer than a voter-body upgrade (~35 days) and deliberately exceeds a full voter-cancel cycle, so the voter body can always cancel it. Its value is liveness — it works when the voter body cannot reach quorum — not speed.
+### Timings
+
+The council upgrade window (42 days, see section [XanUpgradeCouncilModule](#4-xanupgradecouncilmodule)) is longer than a voter-body upgrade (~35 days) and deliberately exceeds a full voter-proposal cycle, so the voter body can always cancel it. Its value is liveness — it works when the voter body cannot reach quorum — not speed.
+
+<!-- prettier-ignore -->
+```mermaid
+%%{init: {'gantt': {'useWidth': 800},'themeVariables': {'sectionBkgColor': 'rgba(0,0,0,0)', 'sectionBkgColor2': 'rgba(0,0,0,0)', 'altSectionBkgColor': 'rgba(0,0,0,0)'}}}%%
+
+gantt
+    title Voter-body Proposal
+    dateFormat  YYYY-MM-DD
+    tickInterval 3month
+    todayMarker off
+
+    ​                            : lead, 2026-02-01, 0d
+
+    Proposal creation           : vert, v0, 2026-02-08, 0d
+    Voting delay (7 d)          : vd, 2026-02-08, 7d
+    
+    Vote start                  : vert, v0, after vd, 0d
+    Voting period (14 d)        : vp, after vd, 14d
+    Proposal scheduled          : vert, v0, after vp, 0d
+    
+    Timelock min delay (14 d)   : tq, after vp, 14d
+    Executable: vert, v1, after tq, 0d
+```
+
+<!-- prettier-ignore -->
+```mermaid
+%%{init: {'gantt': {'useWidth': 800},'themeVariables': {'sectionBkgColor': 'rgba(0,0,0,0)', 'sectionBkgColor2': 'rgba(0,0,0,0)', 'altSectionBkgColor': 'rgba(0,0,0,0)'}}}%%
+gantt
+    title Council Upgrade
+    dateFormat  YYYY-MM-DD
+    tickInterval 3month
+    todayMarker off
+    
+    ​                           : lead, 2026-02-01, 0d
+        
+    Upgrade scheduled          : vert, us, 2026-02-01, 0d
+    Execution Delay (42 d)     : ed, after us, 42d
+    Executable                 : vert, ex, after ed, 0d
+```
 
 ## 6. Cancellation
 
