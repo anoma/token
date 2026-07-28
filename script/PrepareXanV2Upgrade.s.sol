@@ -73,7 +73,7 @@ contract PrepareXanV2Upgrade is Script {
         // self-administers, so governance controls roles afterwards.
         address[] memory none = new address[](0);
         TimelockController timelockController = new TimelockController({
-            minDelay: Parameters.DELAY_DURATION, proposers: none, executors: none, admin: msg.sender
+            minDelay: Parameters.TIMELOCK_MIN_DELAY, proposers: none, executors: none, admin: msg.sender
         });
 
         // 2. Deploy the Xan Governor
@@ -83,7 +83,7 @@ contract PrepareXanV2Upgrade is Script {
             initialVotingDelay: Parameters.GOVERNOR_VOTING_DELAY,
             initialVotingPeriod: Parameters.GOVERNOR_VOTING_PERIOD,
             initialProposalThreshold: Parameters.GOVERNOR_PROPOSAL_THRESHOLD,
-            initialQuorumNumerator: Parameters.QUORUM_RATIO_NUMERATOR * 100 / Parameters.QUORUM_RATIO_DENOMINATOR
+            initialQuorumNumerator: Parameters.GOVERNOR_QUORUM_NUMERATOR
         });
 
         // 3. Deploy the upgrade council module

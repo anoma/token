@@ -25,12 +25,10 @@ abstract contract XanGovernorFixture is Test {
     uint32 internal constant _VOTING_PERIOD = 50;
     /// @notice Voting power required to create a proposal.
     uint256 internal constant _PROPOSAL_THRESHOLD = 1 ether;
-    /// @notice Quorum as a percentage of the voting supply, reusing the V1 quorum ratio (50%). `GovernorVotesQuorumFraction`
-    /// uses a denominator of 100, so the V1 ratio is rescaled from its denominator of `QUORUM_RATIO_DENOMINATOR`.
-    uint256 internal constant _QUORUM_NUMERATOR =
-        Parameters.QUORUM_RATIO_NUMERATOR * 100 / Parameters.QUORUM_RATIO_DENOMINATOR;
-    /// @notice The minimum delay enforced by the timelock between queueing and execution, reusing the V1 upgrade delay.
-    uint256 internal constant _TIMELOCK_MIN_DELAY = Parameters.DELAY_DURATION;
+    /// @notice Quorum as a percentage of the voting supply (50%).
+    uint256 internal constant _QUORUM_NUMERATOR = Parameters.GOVERNOR_QUORUM_NUMERATOR;
+    /// @notice The minimum delay enforced by the timelock between queueing and execution.
+    uint256 internal constant _TIMELOCK_MIN_DELAY = Parameters.TIMELOCK_MIN_DELAY;
 
     /// @notice Voter A's weight: half the supply, exactly the governor quorum.
     uint256 internal constant _HALF = Parameters.SUPPLY / 2;
@@ -74,7 +72,9 @@ abstract contract XanGovernorFixture is Test {
 
         // The owner (the timelock) and vesting schedule are bound into the implementation bytecode at deployment.
         address xanV2Impl = address(
-            new MockXanV2(_v1Implementation, address(_timelock), Parameters.XAN_VESTING_START, Parameters.XAN_VESTING_DURATION)
+            new MockXanV2(
+                _v1Implementation, address(_timelock), Parameters.XAN_VESTING_START, Parameters.XAN_VESTING_DURATION
+            )
         );
 
         // Seed a three-voter electorate as locked V1 principals: A (`_voterA`) keeps 50%, B and C get 25% each.
