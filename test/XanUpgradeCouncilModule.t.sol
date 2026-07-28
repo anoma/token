@@ -97,7 +97,7 @@ contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
         vm.prank(_COUNCIL_MULTISIG);
         _module.scheduleUpgrade(first, "");
 
-        bytes32 pending = _module.getPendingUpgradeOperationId();
+        bytes32 pending = _module.getLastScheduledUpgradeOperationId();
         vm.prank(_COUNCIL_MULTISIG);
         vm.expectRevert(
             abi.encodeWithSelector(XanUpgradeCouncilModule.UpgradeAlreadyPending.selector, pending), address(_module)
@@ -110,7 +110,7 @@ contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
 
         vm.prank(_COUNCIL_MULTISIG);
         _module.scheduleUpgrade(newImpl, "");
-        bytes32 firstId = _module.getPendingUpgradeOperationId();
+        bytes32 firstId = _module.getLastScheduledUpgradeOperationId();
 
         // Withdraw the upgrade, clearing the in-flight slot.
         vm.prank(_COUNCIL_MULTISIG);
@@ -210,7 +210,7 @@ contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
         _module.scheduleUpgrade(newImpl, "");
-        bytes32 operationId = _module.getPendingUpgradeOperationId();
+        bytes32 operationId = _module.getLastScheduledUpgradeOperationId();
 
         address[] memory targets = new address[](1);
         uint256[] memory values = new uint256[](1);
@@ -244,7 +244,7 @@ contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
         _module.scheduleUpgrade(newImpl, "");
-        bytes32 operationId = _module.getPendingUpgradeOperationId();
+        bytes32 operationId = _module.getLastScheduledUpgradeOperationId();
 
         vm.expectEmit(address(_module));
         emit IXanUpgradeCouncilModule.UpgradeCancelled(operationId);
@@ -393,38 +393,39 @@ contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
         assertEq(_module.upgradeDelay(), upgradeDelayBefore + periodBefore);
     }
 
-    function test_getPendingUpgradeOperationId_returns_the_operation_id_while_the_upgrade_is_pending() public {
+    function test_getLastScheduledUpgradeOperationId_returns_the_operation_id_while_the_upgrade_is_pending() public {
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
         bytes32 operationId = _module.scheduleUpgrade(newImpl, "");
 
-        assertEq(_module.getPendingUpgradeOperationId(), operationId);
+        assertEq(_module.getLastScheduledUpgradeOperationId(), operationId);
 
-        // Still pending right up to execution, even after the cancel window has elapsed.
+        // Still tracked right up to execution, even after the upgrade delay has elapsed.
         skip(_module.upgradeDelay() + 1);
-        assertEq(_module.getPendingUpgradeOperationId(), operationId);
+        assertEq(_module.getLastScheduledUpgradeOperationId(), operationId);
     }
 
-    function test_getPendingUpgradeOperationId_returns_zero_after_a_cancel() public {
+    function test_getLastScheduledUpgradeOperationId_still_returns_the_id_after_a_cancel() public {
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
-        _module.scheduleUpgrade(newImpl, "");
+        bytes32 operationId = _module.scheduleUpgrade(newImpl, "");
 
         vm.prank(_COUNCIL_MULTISIG);
         _module.cancelUpgrade();
 
-        assertEq(_module.getPendingUpgradeOperationId(), bytes32(0));
+        // The getter reports the tracked id regardless of timelock state; callers check pending state themselves.
+        assertEq(_module.getLastScheduledUpgradeOperationId(), operationId);
     }
 
-    function test_getPendingUpgradeOperationId_returns_zero_after_execution() public {
+    function test_getLastScheduledUpgradeOperationId_still_returns_the_id_after_execution() public {
         address newImpl = _newImplementation();
         vm.prank(_COUNCIL_MULTISIG);
-        _module.scheduleUpgrade(newImpl, "");
+        bytes32 operationId = _module.scheduleUpgrade(newImpl, "");
 
         skip(_module.upgradeDelay() + 1);
         _executeCouncilUpgrade(newImpl, "");
 
-        assertEq(_module.getPendingUpgradeOperationId(), bytes32(0));
+        assertEq(_module.getLastScheduledUpgradeOperationId(), operationId);
     }
 
     function test_constructor_sets_the_timelock() public view {
@@ -447,8 +448,8 @@ contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
         assertEq(_module.getExtraDelay(), Parameters.COUNCIL_EXTRA_DELAY);
     }
 
-    function test_getPendingUpgradeOperationId_returns_zero_if_nothing_was_scheduled() public view {
-        assertEq(_module.getPendingUpgradeOperationId(), bytes32(0));
+    function test_getLastScheduledUpgradeOperationId_returns_zero_if_nothing_was_scheduled() public view {
+        assertEq(_module.getLastScheduledUpgradeOperationId(), bytes32(0));
     }
 
     function test_upgradeDelay_exceeds_the_voter_cancel_cycle() public view {

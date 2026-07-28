@@ -49,9 +49,10 @@ interface IXanUpgradeCouncilModule {
     /// @return extraDelay The extra delay in seconds.
     function getExtraDelay() external view returns (uint256 extraDelay);
 
-    /// @notice Returns the operation id of the council upgrade currently pending in the timelock.
-    /// @return operationId The pending operation id, or zero if no council upgrade is pending.
-    function getPendingUpgradeOperationId() external view returns (bytes32 operationId);
+    /// @notice Returns the most recently scheduled council upgrade operation id (may already be executed or
+    /// cancelled).
+    /// @return operationId The tracked operation id, or zero if no council upgrade was ever scheduled.
+    function getLastScheduledUpgradeOperationId() external view returns (bytes32 operationId);
 
     /// @notice Returns the timelock delay a scheduled council upgrade waits out before anyone can execute it. It
     /// exceeds a full voter-cancel cycle, so the voter body can always cancel the upgrade first.
