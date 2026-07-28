@@ -47,7 +47,7 @@ interface IXanV2 {
     /// @return end The vesting end timestamp.
     function vestingEnd() external view returns (uint48 end);
 
-    /// @notice Returns the implementation
-    /// @return impl The implementation.
-    function implementation() external view returns (address impl);
+    /// @notice Returns the current implementation.
+    /// @return currentImplementation The current implementation.
+    function implementation() external view returns (address currentImplementation);
 }
