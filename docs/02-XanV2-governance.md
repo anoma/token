@@ -47,7 +47,7 @@ Because the executor is open, execution is permissionless; authority lives entir
 A stock OpenZeppelin `Governor` composed of `GovernorSettings`, `GovernorCountingSimple`, `GovernorVotes`, `GovernorVotesQuorumFraction`, and `GovernorTimelockControl` — no bespoke powers. It reads voting power from the token's `ERC20Votes` checkpoints on the **timestamp** clock (EIP-6372), so its settings are denominated in seconds. It **pins its own `clock()`/`CLOCK_MODE()` to the timestamp clock** instead of inheriting `GovernorVotes`'s token-tracking fallback: the governor is deployed before the upgrade, while the token is still XanV1 (no EIP-6372 clock), so pinning keeps its quorum-numerator checkpoint timestamp-keyed from construction and matches XanV2 once live.
 
 - **Counting** (`GovernorCountingSimple`): `Against` / `For` / `Abstain`. Quorum is reached when `For + Abstain ≥ quorum`; a proposal succeeds when quorum is reached **and** `For > Against`.
-- **Quorum**: `quorum(t) = getPastTotalSupply(t) · GOVERNOR_QUORUM_NUMERATOR / 100` = **50%** of the voting supply.
+- **Quorum**: `quorum(t) = getPastTotalSupply(t) · GOVERNOR_QUORUM_NUMERATOR / 100` = **10%** of the voting supply.
 - **Settings**: `votingDelay = GOVERNOR_VOTING_DELAY`, `votingPeriod = GOVERNOR_VOTING_PERIOD`, `proposalThreshold = GOVERNOR_PROPOSAL_THRESHOLD` (see section [Parameters](#9-parameters)).
 - **Timelock control**: a succeeded proposal is `queue`d into the timelock and `execute`d after `minDelay`; the governor holds the timelock's `PROPOSER` and `CANCELLER` roles.
 
@@ -184,12 +184,12 @@ The irreducible exception is an **inactive voter body**: when the electorate gen
 
 ## 9. Parameters
 
-| Constant                      | Value          | Used for                                                                         |
-| ----------------------------- | -------------- | -------------------------------------------------------------------------------- |
-| `GOVERNOR_PROPOSAL_THRESHOLD` | `1e18` (1 XAN) | Governor `proposalThreshold`                                                     |
-| `GOVERNOR_VOTING_DELAY`       | `7 days`       | Governor `votingDelay`                                                           |
-| `GOVERNOR_VOTING_PERIOD`      | `14 days`      | Governor `votingPeriod`                                                          |
-| `GOVERNOR_QUORUM_NUMERATOR`   | `50` (50%)     | Governor quorum fraction (denominator `100`)                                     |
-| `TIMELOCK_MIN_DELAY`          | `14 days`      | Timelock `minDelay`                                                              |
-| `COUNCIL_CANCEL_BUFFER`       | `7 days`       | Cancel-window margin (see [XanUpgradeCouncilModule](#4-xanupgradecouncilmodule)) |
-| Cancel window (derived)       | `42 days`      | Council upgrade delay                                                            |
+| Constant                      | Value                 | Used for                                                                         |
+| ----------------------------- | --------------------- | -------------------------------------------------------------------------------- |
+| `GOVERNOR_PROPOSAL_THRESHOLD` | `25_000e18` (25k XAN) | Governor `proposalThreshold`                                                     |
+| `GOVERNOR_VOTING_DELAY`       | `7 days`              | Governor `votingDelay`                                                           |
+| `GOVERNOR_VOTING_PERIOD`      | `14 days`             | Governor `votingPeriod`                                                          |
+| `GOVERNOR_QUORUM_NUMERATOR`   | `10` (10%)            | Governor quorum fraction (denominator `100`)                                     |
+| `TIMELOCK_MIN_DELAY`          | `14 days`             | Timelock `minDelay`                                                              |
+| `COUNCIL_CANCEL_BUFFER`       | `7 days`              | Cancel-window margin (see [XanUpgradeCouncilModule](#4-xanupgradecouncilmodule)) |
+| Cancel window (derived)       | `42 days`             | Council upgrade delay                                                            |
