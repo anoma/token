@@ -212,16 +212,7 @@ contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
         _module.scheduleUpgrade(newImpl, "");
         bytes32 operationId = _module.getLastScheduledUpgradeOperationId();
 
-        address[] memory targets = new address[](1);
-        uint256[] memory values = new uint256[](1);
-        bytes[] memory calldatas = new bytes[](1);
-        targets[0] = address(_governor);
-        bytes memory cancelCall = abi.encodeCall(TimelockController.cancel, (operationId));
-        calldatas[0] = abi.encodeCall(Governor.relay, (address(_timelock), uint256(0), cancelCall));
-
-        _passProposal({
-            targets: targets, values: values, calldatas: calldatas, description: "cancel the council upgrade"
-        });
+        _cancelCouncilUpgradeThroughGovernor(operationId);
 
         // The council upgrade is cancelled; it can no longer be executed even after the upgrade delay.
         assertFalse(_timelock.isOperationPending(operationId));
@@ -238,6 +229,23 @@ contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
             address(_timelock)
         );
         _timelock.execute({target: target, value: 0, payload: payload, predecessor: bytes32(0), salt: salt});
+    }
+
+    /// @notice A governor cancel frees the in-flight slot exactly like `cancelUpgrade` does, so the council isn't
+    /// stuck: it can schedule a fresh upgrade right after the voter body cancels one.
+    function test_scheduleUpgrade_can_be_rescheduled_after_a_governor_cancel() public {
+        address newImpl = _newImplementation();
+        vm.prank(_COUNCIL_MULTISIG);
+        _module.scheduleUpgrade(newImpl, "");
+        bytes32 firstId = _module.getLastScheduledUpgradeOperationId();
+
+        _cancelCouncilUpgradeThroughGovernor(firstId);
+        assertFalse(_timelock.isOperationPending(firstId));
+
+        vm.prank(_COUNCIL_MULTISIG);
+        bytes32 secondId = _module.scheduleUpgrade(newImpl, "");
+        assertEq(secondId, firstId);
+        assertTrue(_timelock.isOperationPending(secondId));
     }
 
     function test_cancelUpgrade_lets_the_council_withdraw_its_own_upgrade() public {
@@ -428,6 +436,17 @@ contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
         assertEq(_module.getLastScheduledUpgradeOperationId(), operationId);
     }
 
+    function test_getLastScheduledUpgradeOperationId_still_returns_the_id_after_a_governor_cancel() public {
+        address newImpl = _newImplementation();
+        vm.prank(_COUNCIL_MULTISIG);
+        _module.scheduleUpgrade(newImpl, "");
+        bytes32 operationId = _module.getLastScheduledUpgradeOperationId();
+
+        _cancelCouncilUpgradeThroughGovernor(operationId);
+
+        assertEq(_module.getLastScheduledUpgradeOperationId(), operationId);
+    }
+
     function test_constructor_sets_the_timelock() public view {
         assertEq(_module.getTimelock(), address(_timelock));
     }
@@ -474,6 +493,19 @@ contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
     function _executeCouncilUpgrade(address newImpl, bytes memory data) internal {
         (address target, bytes memory payload, bytes32 salt) = _councilUpgradeCall(newImpl, data);
         _timelock.execute({target: target, value: 0, payload: payload, predecessor: bytes32(0), salt: salt});
+    }
+
+    function _cancelCouncilUpgradeThroughGovernor(bytes32 operationId) internal {
+        address[] memory targets = new address[](1);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        targets[0] = address(_governor);
+        bytes memory cancelCall = abi.encodeCall(TimelockController.cancel, (operationId));
+        calldatas[0] = abi.encodeCall(Governor.relay, (address(_timelock), uint256(0), cancelCall));
+
+        _passProposal({
+            targets: targets, values: values, calldatas: calldatas, description: "cancel the council upgrade"
+        });
     }
 
     /// @notice Has the voter body propose, pass, and queue (but not execute) an arbitrary proposal.
