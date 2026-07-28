@@ -84,7 +84,7 @@ V1 keeps the authority to perform the upgrade; it can be scheduled through **eit
 - **Council fast-track** — the V1 `governanceCouncil` (a Safe) calls `scheduleCouncilUpgrade(implV2)`, vetoable by the V1 voter body. (_Fast_ in skipping the quorum-accumulation phase — the schedule still waits the same 14-day `DELAY_DURATION` as a voter-body schedule.) `script/PrepareXanV2Upgrade.s.sol` deploys the governance stack and prepares `implV2`; the council Safe then schedules it in a **separate transaction** (a `forge script` cannot broadcast as the Safe).
 - **Voter-body quorum** — token holders lock + `castVote(implV2)` to quorum, then `scheduleVoterBodyUpgrade()`.
 
-Both end the same way: after `DELAY_DURATION` (14 days) the upgrade is **executed permissionlessly** (anyone may call `upgradeToAndCall(implV2, reinitializeFromV1())`; `script/ExecuteXanV2Upgrade.s.sol`). V1's `_authorizeUpgrade` requires `newImpl == scheduledImpl`, so only the exact scheduled implementation can be installed.
+Both end the same way: after `DELAY_DURATION` (14 days) the upgrade is **executed permissionlessly** (anyone may call `upgradeToAndCall(implV2, reinitializeFromV1())`). `script/ExecuteXanV2Upgrade.s.sol` executes a **council-scheduled** upgrade — the expected path. V1's `_authorizeUpgrade` requires `newImpl == scheduledImpl`, so only the exact scheduled implementation can be installed.
 
 End-to-end:
 
