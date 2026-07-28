@@ -47,7 +47,7 @@ contract XanGovernorSecurityTest is XanGovernorFixture {
         _timelock.updateDelay(0);
     }
 
-    /// @notice The quorum — the parameter the council design's capture-cost argument rests on (ADR-0007) — moves
+    /// @notice The quorum — the parameter the council design's capture-cost argument rests on (ADR-07) — moves
     /// only through a passed proposal, and a passed proposal can move it.
     function test_quorum_changes_only_through_a_passed_proposal() public {
         address[] memory targets = new address[](1);
