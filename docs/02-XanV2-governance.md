@@ -58,6 +58,8 @@ The module holds the timelock's `PROPOSER` and `CANCELLER` roles and **never own
 - **`scheduleUpgrade(newImplementation, data)`** (council-gated) — the council's _only_ propose power. It builds a single `upgradeToAndCall` on the token and schedules it in the timelock with `delay = upgradeDelay()` and a deterministic, council-tagged salt. Only **one** council upgrade may be in flight at a time.
 - **`cancelUpgrade()`** (council-gated) — withdraws the module's **own pending upgrade** from the timelock. The module only ever aims its `CANCELLER` role at the operation it scheduled itself; the council has **no cancel power over voter-body operations**.
 
+Everything else the module exposes is a view: `getCouncil()`, `getTimelock()`, `getGovernor()`, `getToken()`, `getExtraDelay()`, and `upgradeDelay()` read the wiring and the sizing, while `getLastScheduledUpgradeOperationId()` returns the id of the **most recently scheduled** council upgrade, which may already have been executed or cancelled.
+
 **Immutable council.** The module has no rotation function. A Safe changes its own signers internally without changing its address, so most membership changes need no on-chain action. Changing the multisig _address_ means deploying a fresh module, granting it the timelock roles, and revoking the old module's — all through voter-body proposals (see section [Ownership & role wiring](#2-ownership--role-wiring)). That same role revocation is how the voter body disarms a captured council.
 
 **Upgrade delay.** The `scheduleUpgrade` delay is computed live so it always outlasts a full voter-cancel cycle even if governor settings change:
@@ -72,7 +74,7 @@ With the parameters in the [Parameters](#9-parameters) section this is `7d + 14d
 
 Both paths land as a timelocked `upgradeToAndCall` executed by the timelock (the owner).
 
-### Voter-body upgrade - the standard OpenZeppelin flow:
+### Voter-body upgrade
 
 ```mermaid
 sequenceDiagram
@@ -89,7 +91,7 @@ sequenceDiagram
     T->>K: upgradeToAndCall
 ```
 
-### Council upgrade — a backup for an inactive voter body:
+### Council upgrade
 
 ```mermaid
 sequenceDiagram
@@ -99,21 +101,21 @@ sequenceDiagram
     participant K as XanV2 proxy
     C->>M: scheduleUpgrade (newImpl, data)
     M->>T: schedule (waits upgradeDelay)
-    Note over T: during the window the voter body may cancel (below)
+    Note over T: during the delay the voter body may cancel (below)
     C->>T: execute (permissionless, anyone)
     T->>K: upgradeToAndCall
 ```
 
 ### Timings
 
-The council upgrade window (42 days, see section [XanUpgradeCouncilModule](#4-xanupgradecouncilmodule)) is longer than a voter-body upgrade (~35 days) and exceeds a full voter-proposal cycle, so the voter body can always cancel it.
+The council upgrade delay (42 days, see section [XanUpgradeCouncilModule](#4-xanupgradecouncilmodule)) is longer than a voter-body upgrade (35 days) and exceeds a full voter-proposal cycle, so the voter body can always cancel it.
 
 <!-- prettier-ignore -->
 ```mermaid
 %%{init: {'gantt': {'useWidth': 800},'themeVariables': {'sectionBkgColor': 'rgba(0,0,0,0)', 'sectionBkgColor2': 'rgba(0,0,0,0)', 'altSectionBkgColor': 'rgba(0,0,0,0)'}}}%%
 
 gantt
-    title Voter-body Proposal
+    title Voter-body upgrade
     dateFormat  YYYY-MM-DD
     tickInterval 3month
     todayMarker off
@@ -122,20 +124,20 @@ gantt
 
     Proposal creation           : vert, v0, 2026-02-08, 0d
     Voting delay (7 d)          : vd, 2026-02-08, 7d
-    
-    Vote start                  : vert, v0, after vd, 0d
+
+    Vote start                  : vert, v1, after vd, 0d
     Voting period (14 d)        : vp, after vd, 14d
-    Proposal scheduled          : vert, v0, after vp, 0d
-    
+    Proposal scheduled          : vert, v2, after vp, 0d
+
     Timelock min delay (14 d)   : tq, after vp, 14d
-    Executable                  : vert, v1, after tq, 0d
+    Execution                   : vert, v3, after tq, 0d
 ```
 
 <!-- prettier-ignore -->
 ```mermaid
 %%{init: {'gantt': {'useWidth': 800},'themeVariables': {'sectionBkgColor': 'rgba(0,0,0,0)', 'sectionBkgColor2': 'rgba(0,0,0,0)', 'altSectionBkgColor': 'rgba(0,0,0,0)'}}}%%
 gantt
-    title Council Upgrade
+    title Council upgrade
     dateFormat  YYYY-MM-DD
     tickInterval 3month
     todayMarker off
@@ -143,9 +145,11 @@ gantt
     ​                           : lead, 2026-02-01, 0d
         
     Upgrade scheduled          : vert, us, 2026-02-01, 0d
-    Upgrade Delay (42 d)       : ed, after us, 42d
-    Executable                 : vert, ex, after ed, 0d
+    Upgrade delay (42 d)       : ed, after us, 42d
+    Execution                  : vert, ex, after ed, 0d
 ```
+
+_Both paths over the same 42 days, aligned so the two `Execution` markers coincide. Top: a voter-body upgrade — voting delay, voting period, timelock delay — executable after 35 days. Bottom: a council upgrade, executable after a single 42-day delay. Both timelines are minimums: `queue` and `execute` are permissionless calls with no deadline, so every step can land later than drawn. The 7-day lead-in on the top chart is the voter body's margin to notice a scheduled council upgrade and to absorb that slack; a cancel cycle begun after it still lands at the council upgrade's execution._
 
 ## 6. Cancellation
 
@@ -172,7 +176,7 @@ The voter body sits above the council structurally, not just per-upgrade:
 - It can **replace** the council by revoking the module's timelock roles (see section [Ownership & role wiring](#2-ownership--role-wiring)) and wiring a fresh module with a new multisig — all through proposals; the council has no cancel power over voter-body operations, so it **cannot** block its own replacement.
 - It can **revoke** the module's timelock roles outright (the timelock self-administers; see section [Ownership & role wiring](#2-ownership--role-wiring)).
 
-The irreducible exception is an **inactive voter body**: when the electorate genuinely cannot reach quorum it also cannot cancel or replace the council, so in exactly the scenario the council exists for, the council is checked only by the delay window and off-chain monitoring — the layer's central trust assumption.
+The irreducible exception is an **inactive voter body**: when the electorate genuinely cannot reach quorum it also cannot cancel or replace the council, so in exactly the scenario the council exists for, the council is checked only by the upgrade delay and off-chain monitoring — the layer's central trust assumption.
 
 ## 8. Trust assumptions
 

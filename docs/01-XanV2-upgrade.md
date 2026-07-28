@@ -88,7 +88,7 @@ Both end the same way: after `DELAY_DURATION` (14 days) the upgrade is **execute
 
 End-to-end:
 
-1. `script/PrepareXanV2Upgrade.s.sol` deploys the governance stack (so the `timelock` owner exists), then deploys the V2 implementation with `constructorData = abi.encode(timelock, VESTING_START, VESTING_DURATION)` (via `prepareUpgrade`), baking the owner and schedule into bytecode; it returns `implV2`.
+1. `script/PrepareXanV2Upgrade.s.sol` deploys the governance stack (so the `timelock` owner exists), then deploys the V2 implementation with `constructorData = abi.encode(timelock, XAN_VESTING_START, XAN_VESTING_DURATION)` (via `prepareUpgrade`), baking the owner and schedule into bytecode; it returns `implV2`.
 2. Schedule **that exact** `implV2` through one of the two V1 paths (the council path is a Safe transaction).
 3. Wait out the delay; anyone executes (`script/ExecuteXanV2Upgrade.s.sol`); `reinitializeFromV1()` runs once.
 
