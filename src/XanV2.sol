@@ -103,7 +103,7 @@ contract XanV2 is
     error UpgradeToXanV1NotAllowed();
 
     /// @notice Thrown when an account tries to move more than its unlocked (transferable) balance.
-    error UnlockedBalanceInsufficient(address sender, uint256 unlockedBalance, uint256 valueToUnlock);
+    error UnlockedBalanceInsufficient(address sender, uint256 unlockedBalance, uint256 value);
 
     /// @notice Thrown when `unlock` is called but no tokens have vested since the last unlock.
     error NothingToUnlock(address account);
@@ -183,15 +183,16 @@ contract XanV2 is
     }
 
     /// @inheritdoc IXanV2
-    function unlockedBalanceOf(address from) public view override returns (uint256 unlockedBalance) {
-        unlockedBalance = balanceOf(from) - lockedBalanceOf(from);
+    function unlockedBalanceOf(address account) public view override returns (uint256 unlockedBalance) {
+        unlockedBalance = balanceOf(account) - lockedBalanceOf(account);
     }
 
     /// @inheritdoc IXanV2
-    function lockedBalanceOf(address from) public view override returns (uint256 lockedBalance) {
+    function lockedBalanceOf(address account) public view override returns (uint256 lockedBalance) {
         // The still-locked balance is the V1 principal minus what the account has already unlocked.
-        // `unlocked[from] <= principal` is maintained by `unlock` (capped at `_vestedAmount(principal) <= principal`).
-        lockedBalance = _principalOf(from) - _getXanV2Storage().unlocked[from];
+        // `unlocked[account] <= principal` is maintained by `unlock` (capped at
+        // `_vestedAmount(principal) <= principal`).
+        lockedBalance = _principalOf(account) - _getXanV2Storage().unlocked[account];
     }
 
     /// @notice Returns the next unused nonce for an address.
@@ -269,7 +270,7 @@ contract XanV2 is
             uint256 unlockedBalance = unlockedBalanceOf(from);
             require(
                 value < unlockedBalance + 1,
-                UnlockedBalanceInsufficient({sender: from, unlockedBalance: unlockedBalance, valueToUnlock: value})
+                UnlockedBalanceInsufficient({sender: from, unlockedBalance: unlockedBalance, value: value})
             );
         }
 
