@@ -17,8 +17,8 @@ import {XanUpgradeCouncilModule} from "../src/XanUpgradeCouncilModule.sol";
 /// governance council is a multisig, so it must execute `scheduleCouncilUpgrade(implV2)` itself using the returned
 /// `implV2`.
 contract PrepareXanV2Upgrade is Script {
-    error InvalidTokenAddress();
-    error InvalidCouncilAddress();
+    error ZeroTokenNotAllowed();
+    error ZeroCouncilNotAllowed();
 
     /// @notice Deploys the governance stack and prepares the XanV1 to V2 upgrade implementation.
     /// @param proxy The XanV1 proxy to upgrade.
@@ -65,8 +65,8 @@ contract PrepareXanV2Upgrade is Script {
         public
         returns (address governor, address timelock, address councilModule)
     {
-        require(token != address(0), InvalidTokenAddress());
-        require(councilMultisig != address(0), InvalidCouncilAddress());
+        require(token != address(0), ZeroTokenNotAllowed());
+        require(councilMultisig != address(0), ZeroCouncilNotAllowed());
 
         // 1. The timelock owns the token and executes accepted proposals.
         // The caller (`msg.sender`) is a temporary admin so the roles below can be wired; the timelock also

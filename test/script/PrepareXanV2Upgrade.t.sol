@@ -45,12 +45,12 @@ contract PrepareXanV2UpgradeTest is Test {
     }
 
     function test_deployGovernance_reverts_if_the_token_is_the_zero_address() public {
-        vm.expectRevert(PrepareXanV2Upgrade.InvalidTokenAddress.selector, address(_script));
+        vm.expectRevert(PrepareXanV2Upgrade.ZeroTokenNotAllowed.selector, address(_script));
         _script.deployGovernance({token: address(0), councilMultisig: _COUNCIL_MULTISIG});
     }
 
     function test_deployGovernance_reverts_if_the_council_is_the_zero_address() public {
-        vm.expectRevert(PrepareXanV2Upgrade.InvalidCouncilAddress.selector, address(_script));
+        vm.expectRevert(PrepareXanV2Upgrade.ZeroCouncilNotAllowed.selector, address(_script));
         _script.deployGovernance({token: _token, councilMultisig: address(0)});
     }
 
