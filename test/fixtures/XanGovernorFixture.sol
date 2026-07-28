@@ -14,26 +14,20 @@ import {XanV2} from "../../src/XanV2.sol";
 import {MockXanV2} from "../mocks/MockXanV2.sol";
 
 /// @notice Shared fixture wiring a `XanGovernor` DAO to the `XanV2` token through a `TimelockController`.
-/// @dev The end state mirrors a real deployment: the supply is split across three self-delegating voters — A
-/// (`_voterA`, 50%), B (`_voterB`, 25%), and C (`_voterC`, 25%) — the token is owned by the timelock, and the governor
-/// is the timelock's sole proposer/canceller while anyone may execute. This makes the governor the only path to
-/// privileged token actions such as upgrades.
+/// @dev Five self-delegating voters: A 40%, B and C 25%, D and E 5%. Against the 10% quorum, D or E alone falls
+/// short and the two together meet it exactly; A, D, and E balance B and C for a tie.
 abstract contract XanGovernorFixture is Test {
     /// @notice Voting delay in seconds (the token clock is timestamp-based).
     uint48 internal constant _VOTING_DELAY = 1;
     /// @notice Voting period in seconds.
     uint32 internal constant _VOTING_PERIOD = 50;
-    /// @notice Voting power required to create a proposal.
-    uint256 internal constant _PROPOSAL_THRESHOLD = 1 ether;
-    /// @notice Quorum as a percentage of the voting supply (50%).
+    uint256 internal constant _PROPOSAL_THRESHOLD = Parameters.GOVERNOR_PROPOSAL_THRESHOLD;
     uint256 internal constant _QUORUM_NUMERATOR = Parameters.GOVERNOR_QUORUM_NUMERATOR;
-    /// @notice The minimum delay enforced by the timelock between queueing and execution.
     uint256 internal constant _TIMELOCK_MIN_DELAY = Parameters.TIMELOCK_MIN_DELAY;
 
-    /// @notice Voter A's weight: half the supply, exactly the governor quorum.
-    uint256 internal constant _HALF = Parameters.SUPPLY / 2;
-    /// @notice Voter B's and voter C's weight: a quarter of the supply each.
-    uint256 internal constant _QUARTER = Parameters.SUPPLY / 4;
+    uint256 internal constant _5_PERCENT = Parameters.SUPPLY * 5 / 100;
+    uint256 internal constant _25_PERCENT = Parameters.SUPPLY * 25 / 100;
+    uint256 internal constant _40_PERCENT = Parameters.SUPPLY * 40 / 100;
 
     address internal immutable _COUNCIL = makeAddr("council");
     address internal immutable _OTHER = makeAddr("other");
@@ -43,12 +37,12 @@ abstract contract XanGovernorFixture is Test {
     TimelockController internal _timelock;
     address internal _v1Implementation;
 
-    /// @notice Voter A: received the initial mint and, after the supply is split in `setUp`, holds 50%.
+    /// @dev A receives the initial mint and keeps the remainder after `setUp` splits the supply.
     address internal _voterA;
-    /// @notice Voter B, holding 25% of the supply.
     address internal _voterB;
-    /// @notice Voter C, holding 25% of the supply.
     address internal _voterC;
+    address internal _voterD;
+    address internal _voterE;
 
     function setUp() public virtual {
         (, _voterA,) = vm.readCallers();
@@ -77,14 +71,17 @@ abstract contract XanGovernorFixture is Test {
             )
         );
 
-        // Seed a three-voter electorate as locked V1 principals: A (`_voterA`) keeps 50%, B and C get 25% each.
-        // `transferAndLock` (mint-recipient-only) hands B and C locked principals, so all three vote with vesting
-        // tokens. All three back the V2 implementation, clearing V1's upgrade quorum; then A schedules the upgrade.
+        // Seed the electorate as locked V1 principals via `transferAndLock` (mint-recipient-only), so everyone votes
+        // with vesting tokens. The three large stakes clear V1's upgrade quorum; then A schedules the upgrade.
         _voterB = makeAddr("voterB");
         _voterC = makeAddr("voterC");
+        _voterD = makeAddr("voterD");
+        _voterE = makeAddr("voterE");
         vm.startPrank(_voterA);
-        xanV1Proxy.transferAndLock(_voterB, _QUARTER);
-        xanV1Proxy.transferAndLock(_voterC, _QUARTER);
+        xanV1Proxy.transferAndLock(_voterB, _25_PERCENT);
+        xanV1Proxy.transferAndLock(_voterC, _25_PERCENT);
+        xanV1Proxy.transferAndLock(_voterD, _5_PERCENT);
+        xanV1Proxy.transferAndLock(_voterE, _5_PERCENT);
         xanV1Proxy.lock(xanV1Proxy.unlockedBalanceOf(_voterA));
         xanV1Proxy.castVote(xanV2Impl);
         vm.stopPrank();
@@ -125,6 +122,10 @@ abstract contract XanGovernorFixture is Test {
         _xanToken.delegate(_voterB);
         vm.prank(_voterC);
         _xanToken.delegate(_voterC);
+        vm.prank(_voterD);
+        _xanToken.delegate(_voterD);
+        vm.prank(_voterE);
+        _xanToken.delegate(_voterE);
 
         // Move past the delegation checkpoints so the voting snapshot taken at proposal time can read them.
         vm.warp(block.timestamp + 1);

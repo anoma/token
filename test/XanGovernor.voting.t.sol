@@ -21,26 +21,27 @@ contract XanGovernorVotingTest is XanGovernorFixture {
         _castVote(proposalId, _voterC, GovernorCountingSimple.VoteType.Abstain);
 
         (uint256 against, uint256 forVotes, uint256 abstain) = _governor.proposalVotes(proposalId);
-        assertEq(forVotes, _HALF);
-        assertEq(against, _QUARTER);
-        assertEq(abstain, _QUARTER);
+        assertEq(forVotes, _40_PERCENT);
+        assertEq(against, _25_PERCENT);
+        assertEq(abstain, _25_PERCENT);
     }
 
     function test_proposal_succeeds_when_quorum_is_exactly_met() public {
-        // A's 50% `For` vote equals the quorum exactly (not a wei more) and faces no opposition, so the proposal passes.
+        // D and E together are exactly the quorum, unopposed.
         uint256 proposalId = _proposeAndOpenVoting("exact quorum");
 
-        _castVote(proposalId, _voterA, GovernorCountingSimple.VoteType.For);
+        _castVote(proposalId, _voterD, GovernorCountingSimple.VoteType.For);
+        _castVote(proposalId, _voterE, GovernorCountingSimple.VoteType.For);
 
         _warpPastVotingPeriod();
         assertEq(uint8(_governor.state(proposalId)), uint8(IGovernor.ProposalState.Succeeded));
     }
 
     function test_proposal_is_defeated_when_quorum_is_not_reached() public {
-        // B's 25% `For` is the only vote cast, short of the 50% quorum.
+        // D alone is half the quorum, so participation falls short however one-sided the tally.
         uint256 proposalId = _proposeAndOpenVoting("below quorum");
 
-        _castVote(proposalId, _voterB, GovernorCountingSimple.VoteType.For);
+        _castVote(proposalId, _voterD, GovernorCountingSimple.VoteType.For);
 
         _warpPastVotingPeriod();
         assertEq(uint8(_governor.state(proposalId)), uint8(IGovernor.ProposalState.Defeated));
@@ -55,19 +56,19 @@ contract XanGovernorVotingTest is XanGovernorFixture {
     }
 
     function test_abstain_counts_toward_quorum() public {
-        // B's 25% `For` alone falls short of quorum, but A's 50% `Abstain` lifts participation over the 50% line while
-        // leaving B's `For` as the only directional vote, so the proposal succeeds.
+        // D's `For` alone falls short, but E's `Abstain` lifts participation to the quorum, leaving D's the only
+        // directional vote.
         uint256 proposalId = _proposeAndOpenVoting("abstain reaches quorum");
 
-        _castVote(proposalId, _voterB, GovernorCountingSimple.VoteType.For);
-        _castVote(proposalId, _voterA, GovernorCountingSimple.VoteType.Abstain);
+        _castVote(proposalId, _voterD, GovernorCountingSimple.VoteType.For);
+        _castVote(proposalId, _voterE, GovernorCountingSimple.VoteType.Abstain);
 
         _warpPastVotingPeriod();
         assertEq(uint8(_governor.state(proposalId)), uint8(IGovernor.ProposalState.Succeeded));
     }
 
     function test_abstain_alone_does_not_pass_a_proposal() public {
-        // A's 50% `Abstain` reaches quorum but casts no `For` support, so the proposal has no majority and is defeated.
+        // A's `Abstain` clears quorum but casts no `For` support, so there is no majority.
         uint256 proposalId = _proposeAndOpenVoting("abstain only");
 
         _castVote(proposalId, _voterA, GovernorCountingSimple.VoteType.Abstain);
@@ -77,11 +78,12 @@ contract XanGovernorVotingTest is XanGovernorFixture {
     }
 
     function test_proposal_is_defeated_when_for_ties_against() public {
-        // A votes `For` (50%) while B and C vote `Against` (25% each). Quorum is reached, but a tie is not a strict
-        // majority: `For` must exceed `Against`.
+        // A, D, and E `For` hold half the supply, matching B and C `Against`. A tie is not a strict majority.
         uint256 proposalId = _proposeAndOpenVoting("tie");
 
         _castVote(proposalId, _voterA, GovernorCountingSimple.VoteType.For);
+        _castVote(proposalId, _voterD, GovernorCountingSimple.VoteType.For);
+        _castVote(proposalId, _voterE, GovernorCountingSimple.VoteType.For);
         _castVote(proposalId, _voterB, GovernorCountingSimple.VoteType.Against);
         _castVote(proposalId, _voterC, GovernorCountingSimple.VoteType.Against);
 
@@ -90,7 +92,7 @@ contract XanGovernorVotingTest is XanGovernorFixture {
     }
 
     function test_proposal_succeeds_when_for_outweighs_against() public {
-        // A and B vote `For` (75%) against C's `Against` (25%): quorum is reached and `For` beats `Against`.
+        // A and B vote `For` against C's `Against` (25%): quorum is reached and `For` beats `Against`.
         uint256 proposalId = _proposeAndOpenVoting("for majority");
 
         _castVote(proposalId, _voterA, GovernorCountingSimple.VoteType.For);
@@ -102,18 +104,17 @@ contract XanGovernorVotingTest is XanGovernorFixture {
     }
 
     function test_passing_proposal_executes_a_treasury_transfer() public {
-        // Spending — unlike voting — needs *unlocked* tokens, so this flow legitimately fast-forwards past vesting and
-        // unlocks before funding the DAO treasury (the timelock) with a quarter of the supply from A, dropping A to
-        // 25%. A and B then both vote `For` (25% + 25% = the 50% quorum, exactly), and the passed proposal pays the
-        // treasury out to `_OTHER`.
+        // Spending — unlike voting — needs *unlocked* tokens, so this fast-forwards past vesting and unlocks before
+        // funding the treasury (the timelock) from A.
         vm.warp(_xanToken.vestingEnd());
         vm.startPrank(_voterA);
         _xanToken.unlock();
-        _xanToken.safeTransfer(address(_timelock), _QUARTER);
+        _xanToken.safeTransfer(address(_timelock), _25_PERCENT);
         vm.stopPrank();
         vm.warp(_xanToken.vestingEnd() + 1); // checkpoint A's reduced weight before proposing
 
-        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _transferCalls(_OTHER, _QUARTER);
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) =
+            _transferCalls(_OTHER, _25_PERCENT);
         string memory description = "spend treasury";
 
         vm.prank(_voterA);
@@ -130,15 +131,18 @@ contract XanGovernorVotingTest is XanGovernorFixture {
         _governor.execute(targets, values, calldatas, descriptionHash);
 
         assertEq(uint8(_governor.state(proposalId)), uint8(IGovernor.ProposalState.Executed));
-        assertEq(_xanToken.balanceOf(_OTHER), _QUARTER);
+        assertEq(_xanToken.balanceOf(_OTHER), _25_PERCENT);
     }
 
     function test_voting_power_reflects_the_distribution() public view {
-        assertEq(_xanToken.getVotes(_voterA), _HALF);
-        assertEq(_xanToken.getVotes(_voterB), _QUARTER);
-        assertEq(_xanToken.getVotes(_voterC), _QUARTER);
+        // A holds the remainder, so pinning A also pins the five stakes to the whole supply.
+        assertEq(_xanToken.getVotes(_voterA), _40_PERCENT);
+        assertEq(_xanToken.getVotes(_voterB), _25_PERCENT);
+        assertEq(_xanToken.getVotes(_voterC), _25_PERCENT);
+        assertEq(_xanToken.getVotes(_voterD), _5_PERCENT);
+        assertEq(_xanToken.getVotes(_voterE), _5_PERCENT);
         // The governor reads voting power straight from the token's delegation checkpoints.
-        assertEq(_governor.getVotes(_voterA, block.timestamp - 1), _HALF);
+        assertEq(_governor.getVotes(_voterA, block.timestamp - 1), _40_PERCENT);
     }
 
     /// @notice Has A (which clears the proposal threshold) submit a harmless proposal, then opens the voting window.

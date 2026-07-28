@@ -61,10 +61,10 @@ contract XanGovernorProposalTest is XanGovernorFixture {
         _governor.cancel(targets, values, calldatas, keccak256(bytes("cancel me")));
     }
 
-    function test_quorum_is_half_of_the_voting_supply() public view {
-        // The fixture reuses the V1 ratio (50%); the whole supply is the voting supply, so quorum is half of it.
-        assertEq(_QUORUM_NUMERATOR, 50);
-        assertEq(_governor.quorum(block.timestamp - 1), Parameters.SUPPLY / 2);
+    function test_quorum_is_a_tenth_of_the_voting_supply() public view {
+        // The whole supply is the voting supply, so the quorum is `GOVERNOR_QUORUM_NUMERATOR` percent of it.
+        assertEq(_QUORUM_NUMERATOR, 10);
+        assertEq(_governor.quorum(block.timestamp - 1), Parameters.SUPPLY / 10);
     }
 
     /// @notice A minimal, harmless single-call proposal used only to drive lifecycle transitions.

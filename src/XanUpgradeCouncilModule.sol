@@ -16,7 +16,7 @@ import {IXanUpgradeCouncilModule} from "./interfaces/IXanUpgradeCouncilModule.so
 /// It holds no power over voter-body operations.
 /// @custom:security-contact security@anoma.foundation
 contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
-    /// @notice The governor whose voting parameters size the cancel window.
+    /// @notice The governor whose voting parameters size the upgrade delay.
     IGovernor private immutable _GOVERNOR;
 
     /// @notice The timelock that owns the token and through which upgrades are scheduled, cancelled, and executed.
@@ -28,8 +28,9 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
     /// @notice The XAN token proxy that upgrades target.
     address private immutable _TOKEN;
 
-    /// @notice Reaction-time margin added on top of the voter cancel cycle when sizing the cancel window.
-    uint256 private immutable _CANCEL_BUFFER;
+    /// @notice Margin added on top of the voter cancel cycle, giving the voter body time to notice a scheduled
+    /// upgrade before its cancel cycle must start.
+    uint256 private immutable _EXTRA_DELAY;
 
     /// @notice The most recently scheduled council upgrade operation id.
     bytes32 private _pendingUpgradeOperationId;
@@ -52,9 +53,9 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
     /// @notice Thrown when the token address supplied to the constructor is zero.
     error ZeroTokenNotAllowed();
 
-    /// @notice Thrown when the cancel buffer supplied to the constructor is zero, which would collapse the cancel
-    /// window down to the bare voter cancel cycle and leave the voter body no reaction time to cancel.
-    error ZeroCancelBufferNotAllowed();
+    /// @notice Thrown when the extra delay supplied to the constructor is zero, which would collapse the upgrade
+    /// delay down to the bare voter cancel cycle and leave the voter body no time to react.
+    error ZeroExtraDelayNotAllowed();
 
     /// @notice Thrown when the implementation address supplied to `scheduleUpgrade` is zero.
     error ZeroImplementationNotAllowed();
@@ -69,27 +70,27 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
     }
 
     /// @notice Deploys the module. It must be granted the timelock's `PROPOSER` and `CANCELLER` roles after deployment.
-    /// @param governor The governor whose `votingDelay`/`votingPeriod` size the cancel window.
+    /// @param governor The governor whose `votingDelay`/`votingPeriod` size the upgrade delay.
     /// @param timelock The timelock that owns the token and through which upgrades are scheduled and cancelled.
     /// @param council The council multisig.
     /// @param token The XAN token proxy.
-    /// @param cancelBuffer The reaction-time margin added to the cancel cycle when sizing the cancel window.
-    constructor(IGovernor governor, TimelockController timelock, address council, address token, uint256 cancelBuffer) {
+    /// @param extraDelay The margin added on top of the voter cancel cycle.
+    constructor(IGovernor governor, TimelockController timelock, address council, address token, uint256 extraDelay) {
         require(address(governor) != address(0), ZeroGovernorNotAllowed());
         require(address(timelock) != address(0), ZeroTimelockNotAllowed());
         require(council != address(0), ZeroCouncilNotAllowed());
         require(token != address(0), ZeroTokenNotAllowed());
-        require(cancelBuffer != 0, ZeroCancelBufferNotAllowed());
+        require(extraDelay != 0, ZeroExtraDelayNotAllowed());
 
         _GOVERNOR = governor;
         _TIMELOCK = timelock;
         _COUNCIL = council;
         _TOKEN = token;
-        _CANCEL_BUFFER = cancelBuffer;
+        _EXTRA_DELAY = extraDelay;
     }
 
     /// @inheritdoc IXanUpgradeCouncilModule
-    /// @dev Callable only by the council. The delay is sized (see `cancelWindow`) to leave a full voter cancel cycle.
+    /// @dev Callable only by the council. The delay is sized (see `upgradeDelay`) to leave a full voter cancel cycle.
     /// Only one council upgrade may be pending at a time.
     function scheduleUpgrade(address newImplementation, bytes calldata data)
         external
@@ -106,7 +107,7 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
 
         bytes memory call = abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (newImplementation, data));
         bytes32 salt = _salt(newImplementation, data);
-        uint256 delay = cancelWindow();
+        uint256 delay = upgradeDelay();
 
         operationId =
             _TIMELOCK.hashOperation({target: _TOKEN, value: 0, data: call, predecessor: bytes32(0), salt: salt});
@@ -150,8 +151,8 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
     }
 
     /// @inheritdoc IXanUpgradeCouncilModule
-    function getCancelBuffer() external view override returns (uint256 cancelBuffer) {
-        cancelBuffer = _CANCEL_BUFFER;
+    function getExtraDelay() external view override returns (uint256 extraDelay) {
+        extraDelay = _EXTRA_DELAY;
     }
 
     /// @inheritdoc IXanUpgradeCouncilModule
@@ -160,10 +161,10 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
     }
 
     /// @inheritdoc IXanUpgradeCouncilModule
-    /// @dev Computed live as `votingDelay + votingPeriod + timelock.getMinDelay() + buffer`, so the window always
+    /// @dev Computed live as `votingDelay + votingPeriod + timelock.getMinDelay() + extraDelay`, so it always
     /// exceeds a full voter cancel cycle.
-    function cancelWindow() public view override returns (uint256 delay) {
-        delay = _GOVERNOR.votingDelay() + _GOVERNOR.votingPeriod() + _TIMELOCK.getMinDelay() + _CANCEL_BUFFER;
+    function upgradeDelay() public view override returns (uint256 delay) {
+        delay = _GOVERNOR.votingDelay() + _GOVERNOR.votingPeriod() + _TIMELOCK.getMinDelay() + _EXTRA_DELAY;
     }
 
     /// @notice Checks that the caller is the council.

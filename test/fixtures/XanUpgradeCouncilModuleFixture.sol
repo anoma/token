@@ -24,7 +24,7 @@ abstract contract XanUpgradeCouncilModuleFixture is XanGovernorFixture {
             timelock: _timelock,
             council: _COUNCIL_MULTISIG,
             token: address(_xanToken),
-            cancelBuffer: Parameters.COUNCIL_CANCEL_BUFFER
+            extraDelay: Parameters.COUNCIL_EXTRA_DELAY
         });
 
         // The base fixture renounced the deployer's timelock admin, so roles are now changed only through the timelock
