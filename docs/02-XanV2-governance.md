@@ -58,7 +58,7 @@ The module holds the timelock's `PROPOSER` and `CANCELLER` roles and **never own
 - **`scheduleUpgrade(newImplementation, data)`** (council-gated) — the council's _only_ propose power. It builds a single `upgradeToAndCall` on the token and schedules it in the timelock with `delay = upgradeDelay()` and a deterministic, council-tagged salt. Only **one** council upgrade may be in flight at a time.
 - **`cancelUpgrade()`** (council-gated) — withdraws the module's **own pending upgrade** from the timelock. The module only ever aims its `CANCELLER` role at the operation it scheduled itself; the council has **no cancel power over voter-body operations**.
 
-**Immutable council.** The module has no rotation function. A Safe changes its own signers internally without changing its address, so most membership changes need no on-chain action. Changing the multisig _address_ means deploying a fresh module, granting it the timelock roles, and revoking the old module's — all through voter-body proposals (see section [Ownership & role wiring](#2-ownership--role-wiring)). That same role-revocation is the disarm path for a captured council, so nothing is lost by dropping on-chain rotation.
+**Immutable council.** The module has no rotation function. A Safe changes its own signers internally without changing its address, so most membership changes need no on-chain action. Changing the multisig _address_ means deploying a fresh module, granting it the timelock roles, and revoking the old module's — all through voter-body proposals (see section [Ownership & role wiring](#2-ownership--role-wiring)). That same role revocation is how the voter body disarms a captured council.
 
 **Upgrade delay.** The `scheduleUpgrade` delay is computed live so it always outlasts a full voter-cancel cycle even if governor settings change:
 
@@ -106,7 +106,7 @@ sequenceDiagram
 
 ### Timings
 
-The council upgrade window (42 days, see section [XanUpgradeCouncilModule](#4-xanupgradecouncilmodule)) is longer than a voter-body upgrade (~35 days) and deliberately exceeds a full voter-proposal cycle, so the voter body can always cancel it. Its value is liveness — it works when the voter body cannot reach quorum — not speed.
+The council upgrade window (42 days, see section [XanUpgradeCouncilModule](#4-xanupgradecouncilmodule)) is longer than a voter-body upgrade (~35 days) and exceeds a full voter-proposal cycle, so the voter body can always cancel it.
 
 <!-- prettier-ignore -->
 ```mermaid
@@ -177,10 +177,10 @@ The irreducible exception is an **inactive voter body**: when the electorate gen
 ## 8. Trust assumptions
 
 - **Inactive-voter honeypot (irreducible).** See section [Voter supremacy](#7-voter-supremacy). Bounded by the delay and by voters later replacing the council.
-- **A passed voter-body proposal is on-chain-unstoppable.** No actor holds a cancel over queued voter-body operations; the residual defense against a captured voter body is off-chain, within the timelock delay. Accepted on capture-cost grounds.
+- **A passed voter-body proposal is on-chain-unstoppable.** No actor holds a cancel over queued voter-body operations; the residual defense against a captured voter body is off-chain, within the timelock delay.
 - **A captured council is nearly powerless.** It can only schedule token upgrades — slower than a voter cycle and cancellable by the voter body — and withdraw its own pending one; it cannot cancel, stall, or veto voter-body operations. The backstop is council replacement / module revocation.
 - **One council upgrade in flight.** The module refuses a new council upgrade while one is pending; competing voter-body upgrades are unaffected, and the token's `reinitializer` version guard prevents a stale op from re-running.
-- **The council delay is deliberately long** (a full voter-cancel cycle + the extra delay), computed live so the timing invariant cannot silently break when governor settings change.
+- **The council delay exceeds a full voter-cancel cycle** (plus the extra delay) and is computed live, so it tracks changes to the governor settings and the timelock minimum.
 
 ## 9. Parameters
 
