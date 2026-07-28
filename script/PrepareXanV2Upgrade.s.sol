@@ -44,7 +44,7 @@ contract PrepareXanV2Upgrade is Script {
         // are baked into the V2 implementation bytecode by the constructor, so they cannot be changed.
         {
             Options memory opts;
-            opts.constructorData = abi.encode(timelock, Parameters.VESTING_START, Parameters.VESTING_DURATION);
+            opts.constructorData = abi.encode(timelock, Parameters.XAN_VESTING_START, Parameters.XAN_VESTING_DURATION);
             implV2 = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});
         }
 
@@ -73,17 +73,17 @@ contract PrepareXanV2Upgrade is Script {
         // self-administers, so governance controls roles afterwards.
         address[] memory none = new address[](0);
         TimelockController timelockController = new TimelockController({
-            minDelay: Parameters.DELAY_DURATION, proposers: none, executors: none, admin: msg.sender
+            minDelay: Parameters.TIMELOCK_MIN_DELAY, proposers: none, executors: none, admin: msg.sender
         });
 
         // 2. Deploy the Xan Governor
         XanGovernor xanGovernor = new XanGovernor({
             xanToken: IVotes(token),
             timelockController: timelockController,
-            initialVotingDelay: Parameters.VOTING_DELAY,
-            initialVotingPeriod: Parameters.VOTING_PERIOD,
-            initialProposalThreshold: Parameters.PROPOSAL_THRESHOLD,
-            initialQuorumNumerator: Parameters.QUORUM_RATIO_NUMERATOR * 100 / Parameters.QUORUM_RATIO_DENOMINATOR
+            initialVotingDelay: Parameters.GOVERNOR_VOTING_DELAY,
+            initialVotingPeriod: Parameters.GOVERNOR_VOTING_PERIOD,
+            initialProposalThreshold: Parameters.GOVERNOR_PROPOSAL_THRESHOLD,
+            initialQuorumNumerator: Parameters.GOVERNOR_QUORUM_NUMERATOR
         });
 
         // 3. Deploy the upgrade council module

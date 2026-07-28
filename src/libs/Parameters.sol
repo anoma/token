@@ -33,22 +33,29 @@ library Parameters {
 
     /// @notice The timestamp at which the linear vesting of the formerly locked balances starts in `XanV2`.
     /// @dev Sat Oct 31 2026 12:00:00 UTC.
-    uint48 internal constant VESTING_START = 1_793_448_000;
+    uint48 internal constant XAN_VESTING_START = 1_793_448_000;
 
     /// @notice The duration over which formerly locked balances vest linearly in `XanV2`.
     /// @dev Three years. Vesting is continuous (every block).
-    uint48 internal constant VESTING_DURATION = 3 * 365 days;
+    uint48 internal constant XAN_VESTING_DURATION = 3 * 365 days;
 
     /* ========== Governance ========== */
 
+    /// @notice The minimum voting power required to create a governor proposal.
+    uint256 internal constant GOVERNOR_PROPOSAL_THRESHOLD = 10 ** 18; // 1 XAN
+
     /// @notice The delay between a governor proposal's creation and the start of voting (timestamp clock).
-    uint48 internal constant VOTING_DELAY = 7 days;
+    uint48 internal constant GOVERNOR_VOTING_DELAY = 7 days;
 
     /// @notice The duration of a governor proposal's voting window.
-    uint32 internal constant VOTING_PERIOD = 14 days;
+    uint32 internal constant GOVERNOR_VOTING_PERIOD = 14 days;
 
-    /// @notice The minimum voting power required to create a governor proposal.
-    uint256 internal constant PROPOSAL_THRESHOLD = 10 ** 18; // 1 XAN
+    /// @notice The governor quorum numerator over `GovernorVotesQuorumFraction`'s denominator of 100 — the quorum as
+    /// a percentage of the total voting supply.
+    uint256 internal constant GOVERNOR_QUORUM_NUMERATOR = 50;
+
+    /// @notice The minimum delay of the governance `TimelockController`, applying to every timelock operation.
+    uint256 internal constant TIMELOCK_MIN_DELAY = 14 days;
 
     /// @notice Reaction-time margin added on top of a full voter cancel cycle when the `XanUpgradeCouncilModule`
     /// sizes its backup upgrade delay, so the voter body has time to notice and cancel.

@@ -121,23 +121,21 @@ contract PrepareXanV2UpgradeTest is Test {
     }
 
     function test_deployGovernance_sets_the_timelock_min_delay() public view {
-        assertEq(_timelock.getMinDelay(), Parameters.DELAY_DURATION);
+        assertEq(_timelock.getMinDelay(), Parameters.TIMELOCK_MIN_DELAY);
     }
 
     function test_deployGovernance_configures_the_governor() public view {
         assertEq(address(_governor.token()), _token);
         assertEq(_governor.timelock(), address(_timelock));
-        assertEq(_governor.votingDelay(), Parameters.VOTING_DELAY);
-        assertEq(_governor.votingPeriod(), Parameters.VOTING_PERIOD);
-        assertEq(_governor.proposalThreshold(), Parameters.PROPOSAL_THRESHOLD);
-        assertEq(
-            _governor.quorumNumerator(), Parameters.QUORUM_RATIO_NUMERATOR * 100 / Parameters.QUORUM_RATIO_DENOMINATOR
-        );
+        assertEq(_governor.votingDelay(), Parameters.GOVERNOR_VOTING_DELAY);
+        assertEq(_governor.votingPeriod(), Parameters.GOVERNOR_VOTING_PERIOD);
+        assertEq(_governor.proposalThreshold(), Parameters.GOVERNOR_PROPOSAL_THRESHOLD);
+        assertEq(_governor.quorumNumerator(), Parameters.GOVERNOR_QUORUM_NUMERATOR);
     }
 
     function test_quorum_numerator_is_checkpointed_at_the_deploy_timestamp() public view {
         uint48 deployTimestamp = Time.timestamp();
-        uint256 expectedNumerator = Parameters.QUORUM_RATIO_NUMERATOR * 100 / Parameters.QUORUM_RATIO_DENOMINATOR;
+        uint256 expectedNumerator = Parameters.GOVERNOR_QUORUM_NUMERATOR;
 
         assertEq(_governor.quorumNumerator(deployTimestamp), expectedNumerator, "numerator not set at deploy timestamp");
         assertEq(_governor.quorumNumerator(deployTimestamp - 1), 0, "checkpoint exists before the deploy timestamp");
@@ -148,8 +146,8 @@ contract PrepareXanV2UpgradeTest is Test {
         assertEq(_module.getCouncil(), _COUNCIL_MULTISIG);
         assertEq(
             _module.cancelWindow(),
-            uint256(Parameters.VOTING_DELAY) + Parameters.VOTING_PERIOD + Parameters.DELAY_DURATION
-                + Parameters.COUNCIL_CANCEL_BUFFER
+            uint256(Parameters.GOVERNOR_VOTING_DELAY) + Parameters.GOVERNOR_VOTING_PERIOD
+                + Parameters.TIMELOCK_MIN_DELAY + Parameters.COUNCIL_CANCEL_BUFFER
         );
     }
 }

@@ -67,7 +67,7 @@ flowchart LR
 
 **Unlock** (`unlock`): The action by which an account moves its currently unlockable (vested-but-not-yet-unlocked) tokens from its locked to its unlocked balance, making them spendable. Does not change `balanceOf` and moves no tokens between accounts.
 
-**Vesting schedule**: The linear schedule over which principals vest, from `VESTING_START` to `VESTING_START + VESTING_DURATION` (the vesting end). Identical for every account and baked into the V2 implementation; there is no cliff.
+**Vesting schedule**: The linear schedule over which principals vest, from `XAN_VESTING_START` to `XAN_VESTING_START + XAN_VESTING_DURATION` (the vesting end). Identical for every account and baked into the V2 implementation; there is no cliff.
 
 ### Upgrade
 

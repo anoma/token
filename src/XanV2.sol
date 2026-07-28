@@ -299,9 +299,9 @@ contract XanV2 is
             return vested = principal;
         }
 
-        // An overflow is not possible. `principal` is bound by the total XanV1 supply (see `Parameters.SUPPLY`) and the
-        // elapsed time by `Parameters.VESTING_DURATION - 1`. Accordingly, the product can be assumed to not overflow.
-        // Still, we use safe math here.
+        // An overflow is not possible. `principal` is bound by the total XanV1 supply (see `Parameters.SUPPLY`) and
+        // the elapsed time by `Parameters.XAN_VESTING_DURATION - 1`. Accordingly, the product can be assumed to not
+        // overflow. Still, we use safe math here.
         vested = (principal * elapsedTime) / _VESTING_DURATION;
     }
 

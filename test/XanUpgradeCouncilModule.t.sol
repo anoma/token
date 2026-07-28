@@ -413,8 +413,8 @@ contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
             new MockXanV2({
                 v1Implementation: _v1Implementation,
                 owner: address(_timelock),
-                vestingStart: Parameters.VESTING_START,
-                vestingDuration: Parameters.VESTING_DURATION
+                vestingStart: Parameters.XAN_VESTING_START,
+                vestingDuration: Parameters.XAN_VESTING_DURATION
             })
         );
     }

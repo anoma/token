@@ -48,15 +48,15 @@ See [`CONTEXT.md`](../CONTEXT.md) for definitions. Key relationships for any acc
 
 **Source of principal.** `_principalOf(account)` reads `lockingData.lockedBalances[account]` from the **V1** ERC-7201 storage namespace, under the single mainnet V1 implementation `_XAN_V1_IMPLEMENTATION = 0x03997b568FE70E91A53c458DC19dc29e0bC2735E`. These are the locked tranches distributed by the Merkle `TokenDistributor` via `transferAndLock` (the unlocked tranche was already liquid). This is correct only because that proxy has only ever run that one implementation — a **hard precondition**.
 
-**Schedule.** Linear between `VESTING_START` and `VESTING_START + VESTING_DURATION`:
+**Schedule.** Linear between `XAN_VESTING_START` and `XAN_VESTING_START + XAN_VESTING_DURATION`:
 
 ```
-vested(principal) = 0                                          if now ≤ VESTING_START
-                  = principal                                  if now ≥ VESTING_START + VESTING_DURATION
-                  = principal · (now − VESTING_START) / VESTING_DURATION   otherwise
+vested(principal) = 0                                          if now ≤ XAN_VESTING_START
+                  = principal                                  if now ≥ XAN_VESTING_START + XAN_VESTING_DURATION
+                  = principal · (now − XAN_VESTING_START) / XAN_VESTING_DURATION   otherwise
 ```
 
-`VESTING_START = 2026-10-31 12:00 UTC` (`1793448000`); `VESTING_DURATION = 3 · 365 days` (1095 days, no leap adjustment). The schedule is baked into the implementation as immutables (`_VESTING_START`, `_VESTING_DURATION`).
+`XAN_VESTING_START = 2026-10-31 12:00 UTC` (`1793448000`); `XAN_VESTING_DURATION = 3 · 365 days` (1095 days, no leap adjustment). The schedule is baked into the implementation as immutables (`_VESTING_START`, `_VESTING_DURATION`).
 
 **`unlock()`.** Moves an account's currently-unlockable amount from locked to unlocked by raising the cumulative `unlocked[account]` to `vested(principal)`. It reverts `NothingToUnlock` if nothing new has vested (`vested` is monotonic and capped at `principal`, so `unlocked` never exceeds `principal`). Emits `Unlocked`.
 
@@ -73,7 +73,7 @@ vested(principal) = 0                                          if now ≤ VESTIN
 ## 6. Ownership & upgradeability
 
 - `_authorizeUpgrade` is `onlyOwner` — the sole upgrade gate.
-- The constructor takes `(initialOwner, vestingStartTimestamp, vestingDuration)`, stores them as **immutables** (in bytecode, not storage), rejects a zero owner (`ZeroOwnerNotAllowed`), and disables initializers.
+- The constructor takes `(initialOwner, vestingStartTimestamp, vestingDuration)`, stores them as **immutables** (in bytecode, not storage), rejects a zero owner, vesting start, and vesting duration (`ZeroOwnerNotAllowed`, `ZeroVestingStartNotAllowed`, `ZeroVestingDurationNotAllowed`), and disables initializers.
 - `reinitializeFromV1()` takes **no arguments** (`reinitializer(2)`); it initializes `ERC20Votes` + `Ownable` (installing `_INITIAL_OWNER`), seeds the voting total-supply checkpoint, and emits `VestingScheduled`. The argument-free design is the mitigation for permissionless execution.
 - `_INITIAL_OWNER` is a **bootstrapping value only**; the live owner lives in `OwnableUpgradeable` storage and may change via `transferOwnership`. Never read the immutable as the current owner.
 
@@ -81,10 +81,10 @@ vested(principal) = 0                                          if now ≤ VESTIN
 
 V1 keeps the authority to perform the upgrade; it can be scheduled through **either** V1 path:
 
-- **Council fast-track** — the V1 `governanceCouncil` (a Safe) calls `scheduleCouncilUpgrade(implV2)`, vetoable by the V1 voter body. `script/PrepareXanV2Upgrade.s.sol` deploys the governance stack and prepares `implV2`; the council Safe then schedules it in a **separate transaction** (a `forge script` cannot broadcast as the Safe).
+- **Council fast-track** — the V1 `governanceCouncil` (a Safe) calls `scheduleCouncilUpgrade(implV2)`, vetoable by the V1 voter body. (_Fast_ in skipping the quorum-accumulation phase — the schedule still waits the same 14-day `DELAY_DURATION` as a voter-body schedule.) `script/PrepareXanV2Upgrade.s.sol` deploys the governance stack and prepares `implV2`; the council Safe then schedules it in a **separate transaction** (a `forge script` cannot broadcast as the Safe).
 - **Voter-body quorum** — token holders lock + `castVote(implV2)` to quorum, then `scheduleVoterBodyUpgrade()`.
 
-Both end the same way: after `DELAY_DURATION` (14 days) the upgrade is **executed permissionlessly** (anyone may call `upgradeToAndCall(implV2, reinitializeFromV1())`; `script/ExecuteXanV2Upgrade.s.sol`). V1's `_authorizeUpgrade` requires `newImpl == scheduledImpl`, so only the exact scheduled implementation can be installed.
+Both end the same way: after `DELAY_DURATION` (14 days) the upgrade is **executed permissionlessly** (anyone may call `upgradeToAndCall(implV2, reinitializeFromV1())`). `script/ExecuteXanV2Upgrade.s.sol` executes a **council-scheduled** upgrade — the expected path. V1's `_authorizeUpgrade` requires `newImpl == scheduledImpl`, so only the exact scheduled implementation can be installed.
 
 End-to-end:
 
@@ -115,8 +115,8 @@ The governance layer that owns the token — `XanGovernor`, its `TimelockControl
 | `MIN_LOCKED_SUPPLY`                     | `SUPPLY / 4`                                                         |
 | `QUORUM_RATIO_NUMERATOR / _DENOMINATOR` | `1 / 2`                                                              |
 | `DELAY_DURATION`                        | `14 days`                                                            |
-| `VESTING_START`                         | `1793448000` (2026-10-31 12:00 UTC)                                  |
-| `VESTING_DURATION`                      | `3 · 365 days`                                                       |
+| `XAN_VESTING_START`                     | `1793448000` (2026-10-31 12:00 UTC)                                  |
+| `XAN_VESTING_DURATION`                  | `3 · 365 days`                                                       |
 | `_XAN_V1_IMPLEMENTATION`                | `0x03997b568FE70E91A53c458DC19dc29e0bC2735E`                         |
 | V1 storage slot                         | `0x52f7d5fb153315ca313a5634db151fa7e0b41cd83fe6719e93ed3cd02b69d200` |
 | V2 storage slot                         | `0x52ac9b9514a24171c0416c0576d612fe5fab9f5a41dcf77ddbf6be60ca9da600` |
