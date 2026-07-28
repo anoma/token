@@ -42,7 +42,7 @@ library Parameters {
     /* ========== Governance ========== */
 
     /// @notice The minimum voting power required to create a governor proposal.
-    uint256 internal constant GOVERNOR_PROPOSAL_THRESHOLD = 10 ** 18; // 1 XAN
+    uint256 internal constant GOVERNOR_PROPOSAL_THRESHOLD = 25_000 * 10 ** 18; // 25k XAN (~ $250)
 
     /// @notice The delay between a governor proposal's creation and the start of voting (timestamp clock).
     uint48 internal constant GOVERNOR_VOTING_DELAY = 7 days;
@@ -52,7 +52,7 @@ library Parameters {
 
     /// @notice The governor quorum numerator over `GovernorVotesQuorumFraction`'s denominator of 100 — the quorum as
     /// a percentage of the total voting supply.
-    uint256 internal constant GOVERNOR_QUORUM_NUMERATOR = 50;
+    uint256 internal constant GOVERNOR_QUORUM_NUMERATOR = 10; // 10% of the checkpointed total supply.
 
     /// @notice The minimum delay of the governance `TimelockController`, applying to every timelock operation.
     uint256 internal constant TIMELOCK_MIN_DELAY = 14 days;
