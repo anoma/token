@@ -14,7 +14,7 @@ import {MockXanV3} from "./mocks/MockXanV3.sol";
 contract XanGovernorUpgradeTest is XanGovernorFixture {
     function test_direct_upgrade_by_a_non_owner_reverts() public {
         address newImpl = address(
-            new MockXanV3(_v1Implementation, address(_timelock), Parameters.VESTING_START, Parameters.VESTING_DURATION)
+            new MockXanV3(_v1Implementation, address(_timelock), Parameters.XAN_VESTING_START, Parameters.XAN_VESTING_DURATION)
         );
 
         vm.prank(_voterA);
@@ -26,7 +26,7 @@ contract XanGovernorUpgradeTest is XanGovernorFixture {
 
     function test_dao_upgrades_the_token_to_v3() public {
         address newImpl = address(
-            new MockXanV3(_v1Implementation, address(_timelock), Parameters.VESTING_START, Parameters.VESTING_DURATION)
+            new MockXanV3(_v1Implementation, address(_timelock), Parameters.XAN_VESTING_START, Parameters.XAN_VESTING_DURATION)
         );
 
         address[] memory targets = new address[](1);

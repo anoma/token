@@ -40,7 +40,7 @@ contract XanV2UpgradeE2ETest is Test {
 
         // 1. Prepare and schedule the XanV2 implementation.
         Options memory opts;
-        opts.constructorData = abi.encode(_INITIAL_OWNER, Parameters.VESTING_START, Parameters.VESTING_DURATION);
+        opts.constructorData = abi.encode(_INITIAL_OWNER, Parameters.XAN_VESTING_START, Parameters.XAN_VESTING_DURATION);
         address implV2 = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});
 
         // 2. Schedule the council upgrade as the governance council.
@@ -62,8 +62,8 @@ contract XanV2UpgradeE2ETest is Test {
         assertEq(tokenV2.implementation(), implV2, "proxy not upgraded to V2");
         assertEq(tokenV2.owner(), _INITIAL_OWNER, "owner not installed from the implementation bytecode");
         assertEq(tokenV2.totalSupply(), supplyBefore, "supply changed by the upgrade");
-        assertEq(tokenV2.vestingStart(), Parameters.VESTING_START, "vesting start mismatch");
-        assertEq(tokenV2.vestingEnd(), Parameters.VESTING_START + Parameters.VESTING_DURATION, "vesting end mismatch");
+        assertEq(tokenV2.vestingStart(), Parameters.XAN_VESTING_START, "vesting start mismatch");
+        assertEq(tokenV2.vestingEnd(), Parameters.XAN_VESTING_START + Parameters.XAN_VESTING_DURATION, "vesting end mismatch");
     }
 
     /// @notice The networks on which XanV1 is deployed.

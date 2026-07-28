@@ -39,7 +39,7 @@ contract XanV1UpgradeTest is Test {
         Options memory opts;
         // `XanV2` binds the owner and vesting schedule as constructor immutables, so the prepared implementations
         // need encoded constructor arguments.
-        opts.constructorData = abi.encode(_defaultSender, Parameters.VESTING_START, Parameters.VESTING_DURATION);
+        opts.constructorData = abi.encode(_defaultSender, Parameters.XAN_VESTING_START, Parameters.XAN_VESTING_DURATION);
         _voterProposedImpl = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});
         _voterProposedImpl2 = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});
         _councilProposedImpl = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});

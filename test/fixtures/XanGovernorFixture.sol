@@ -74,7 +74,7 @@ abstract contract XanGovernorFixture is Test {
 
         // The owner (the timelock) and vesting schedule are bound into the implementation bytecode at deployment.
         address xanV2Impl = address(
-            new MockXanV2(_v1Implementation, address(_timelock), Parameters.VESTING_START, Parameters.VESTING_DURATION)
+            new MockXanV2(_v1Implementation, address(_timelock), Parameters.XAN_VESTING_START, Parameters.XAN_VESTING_DURATION)
         );
 
         // Seed a three-voter electorate as locked V1 principals: A (`_voterA`) keeps 50%, B and C get 25% each.

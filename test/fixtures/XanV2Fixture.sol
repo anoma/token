@@ -80,6 +80,6 @@ abstract contract XanV2Fixture is Test {
     /// the timeline is coherent: vesting begins one hour after the upgrade. Override to customize.
     function _vestingSchedule() internal view virtual returns (uint48 start, uint48 duration) {
         start = _upgradeTimestamp + 1 hours;
-        duration = Parameters.VESTING_DURATION;
+        duration = Parameters.XAN_VESTING_DURATION;
     }
 }

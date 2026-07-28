@@ -41,7 +41,7 @@ contract XanV2ReinitializationTest is Test {
         (XanV1 v1Proxy, address v2Impl) = _deployV1AndPrepareUpgrade();
 
         vm.expectEmit(address(v1Proxy));
-        emit IXanV2.VestingScheduled({start: Parameters.VESTING_START, duration: Parameters.VESTING_DURATION});
+        emit IXanV2.VestingScheduled({start: Parameters.XAN_VESTING_START, duration: Parameters.XAN_VESTING_DURATION});
 
         UnsafeUpgrades.upgradeProxy({
             proxy: address(v1Proxy), newImpl: v2Impl, data: abi.encodeCall(XanV2.reinitializeFromV1, ())
@@ -165,7 +165,7 @@ contract XanV2ReinitializationTest is Test {
 
         // Point the V2 mock at the locally deployed V1 implementation (the vesting principal is stored under it).
         v2Impl = address(
-            new MockXanV2(v1Proxy.implementation(), _OWNER, Parameters.VESTING_START, Parameters.VESTING_DURATION)
+            new MockXanV2(v1Proxy.implementation(), _OWNER, Parameters.XAN_VESTING_START, Parameters.XAN_VESTING_DURATION)
         );
 
         vm.startPrank(_defaultSender);

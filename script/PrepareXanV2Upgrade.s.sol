@@ -44,7 +44,7 @@ contract PrepareXanV2Upgrade is Script {
         // are baked into the V2 implementation bytecode by the constructor, so they cannot be changed.
         {
             Options memory opts;
-            opts.constructorData = abi.encode(timelock, Parameters.VESTING_START, Parameters.VESTING_DURATION);
+            opts.constructorData = abi.encode(timelock, Parameters.XAN_VESTING_START, Parameters.XAN_VESTING_DURATION);
             implV2 = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});
         }
 

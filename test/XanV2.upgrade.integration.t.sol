@@ -55,8 +55,8 @@ contract XanV2UpgradeIntegrationTest is Test {
         assertEq(tokenV2.owner(), timelock, "owner is not the deployed timelock");
         assertEq(tokenV2.initialOwner(), timelock, "baked initial owner is not the deployed timelock");
         assertEq(tokenV2.totalSupply(), supplyBefore, "supply changed by the upgrade");
-        assertEq(tokenV2.vestingStart(), Parameters.VESTING_START, "vesting start mismatch");
-        assertEq(tokenV2.vestingEnd(), Parameters.VESTING_START + Parameters.VESTING_DURATION, "vesting end mismatch");
+        assertEq(tokenV2.vestingStart(), Parameters.XAN_VESTING_START, "vesting start mismatch");
+        assertEq(tokenV2.vestingEnd(), Parameters.XAN_VESTING_START + Parameters.XAN_VESTING_DURATION, "vesting end mismatch");
 
         // 6. Governance is now live on XanV2's timestamp clock. The quorum-numerator checkpoint recorded when the
         // governor was deployed (step 2) is timestamp-keyed, so `quorum(timepoint)` returns the configured fraction of

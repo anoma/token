@@ -12,7 +12,7 @@ contract XanV2UpgradeTest is XanV2Fixture {
     address internal immutable _OTHER = makeAddr("other");
 
     function test_upgradeToAndCall_reverts_if_the_caller_is_not_the_owner() public {
-        address newImpl = address(new XanV2(msg.sender, Parameters.VESTING_START, Parameters.VESTING_DURATION));
+        address newImpl = address(new XanV2(msg.sender, Parameters.XAN_VESTING_START, Parameters.XAN_VESTING_DURATION));
 
         vm.prank(_OTHER);
         vm.expectRevert(
@@ -30,7 +30,7 @@ contract XanV2UpgradeTest is XanV2Fixture {
     function test_upgradeToAndCall_upgrades_if_the_caller_is_the_owner() public {
         address newImpl = address(
             new MockXanV2(
-                _xanV1Proxy.implementation(), msg.sender, Parameters.VESTING_START, Parameters.VESTING_DURATION
+                _xanV1Proxy.implementation(), msg.sender, Parameters.XAN_VESTING_START, Parameters.XAN_VESTING_DURATION
             )
         );
 
