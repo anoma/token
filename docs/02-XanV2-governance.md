@@ -50,6 +50,7 @@ A stock OpenZeppelin `Governor` composed of `GovernorSettings`, `GovernorCountin
 - **Quorum**: `quorum(t) = getPastTotalSupply(t) · GOVERNOR_QUORUM_NUMERATOR / 100` = **10%** of the voting supply.
 - **Settings**: `votingDelay = GOVERNOR_VOTING_DELAY`, `votingPeriod = GOVERNOR_VOTING_PERIOD`, `proposalThreshold = GOVERNOR_PROPOSAL_THRESHOLD` (see section [Parameters](#9-parameters)).
 - **Timelock control**: a succeeded proposal is `queue`d into the timelock and `execute`d after `minDelay`; the governor holds the timelock's `PROPOSER` and `CANCELLER` roles.
+- **Proposing**: end the proposal description with `#proposer=0x<proposer address>`. Without this suffix, anyone holding the proposal threshold can front-run `propose` with the identical payload, become the proposer, and cancel the proposal while it is pending.
 
 ## 4. XanUpgradeCouncilModule
 
