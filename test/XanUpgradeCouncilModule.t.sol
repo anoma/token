@@ -393,6 +393,40 @@ contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
         assertEq(_module.upgradeDelay(), upgradeDelayBefore + periodBefore);
     }
 
+    function test_getPendingUpgradeOperationId_returns_the_operation_id_while_the_upgrade_is_pending() public {
+        address newImpl = _newImplementation();
+        vm.prank(_COUNCIL_MULTISIG);
+        bytes32 operationId = _module.scheduleUpgrade(newImpl, "");
+
+        assertEq(_module.getPendingUpgradeOperationId(), operationId);
+
+        // Still pending right up to execution, even after the cancel window has elapsed.
+        skip(_module.upgradeDelay() + 1);
+        assertEq(_module.getPendingUpgradeOperationId(), operationId);
+    }
+
+    function test_getPendingUpgradeOperationId_returns_zero_after_a_cancel() public {
+        address newImpl = _newImplementation();
+        vm.prank(_COUNCIL_MULTISIG);
+        _module.scheduleUpgrade(newImpl, "");
+
+        vm.prank(_COUNCIL_MULTISIG);
+        _module.cancelUpgrade();
+
+        assertEq(_module.getPendingUpgradeOperationId(), bytes32(0));
+    }
+
+    function test_getPendingUpgradeOperationId_returns_zero_after_execution() public {
+        address newImpl = _newImplementation();
+        vm.prank(_COUNCIL_MULTISIG);
+        _module.scheduleUpgrade(newImpl, "");
+
+        skip(_module.upgradeDelay() + 1);
+        _executeCouncilUpgrade(newImpl, "");
+
+        assertEq(_module.getPendingUpgradeOperationId(), bytes32(0));
+    }
+
     function test_constructor_sets_the_timelock() public view {
         assertEq(_module.getTimelock(), address(_timelock));
     }
@@ -411,6 +445,10 @@ contract XanUpgradeCouncilModuleTest is XanUpgradeCouncilModuleFixture {
 
     function test_constructor_sets_the_extra_delay() public view {
         assertEq(_module.getExtraDelay(), Parameters.COUNCIL_EXTRA_DELAY);
+    }
+
+    function test_getPendingUpgradeOperationId_returns_zero_if_nothing_was_scheduled() public view {
+        assertEq(_module.getPendingUpgradeOperationId(), bytes32(0));
     }
 
     function test_upgradeDelay_exceeds_the_voter_cancel_cycle() public view {

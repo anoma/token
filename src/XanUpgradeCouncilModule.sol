@@ -158,6 +158,12 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
     /// @inheritdoc IXanUpgradeCouncilModule
     function getPendingUpgradeOperationId() external view override returns (bytes32 operationId) {
         operationId = _pendingUpgradeOperationId;
+
+        // The module tracks the most recently scheduled operation; report it only while it is still pending in the
+        // timelock so the getter's name holds (an executed or cancelled upgrade is no longer pending).
+        if (operationId != bytes32(0) && !_TIMELOCK.isOperationPending(operationId)) {
+            operationId = bytes32(0);
+        }
     }
 
     /// @inheritdoc IXanUpgradeCouncilModule
