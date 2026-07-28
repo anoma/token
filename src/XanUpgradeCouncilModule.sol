@@ -140,6 +140,21 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
     }
 
     /// @inheritdoc IXanUpgradeCouncilModule
+    function getGovernor() external view override returns (address governor) {
+        governor = address(_GOVERNOR);
+    }
+
+    /// @inheritdoc IXanUpgradeCouncilModule
+    function getToken() external view override returns (address token) {
+        token = _TOKEN;
+    }
+
+    /// @inheritdoc IXanUpgradeCouncilModule
+    function getCancelBuffer() external view override returns (uint256 cancelBuffer) {
+        cancelBuffer = _CANCEL_BUFFER;
+    }
+
+    /// @inheritdoc IXanUpgradeCouncilModule
     function getPendingUpgradeOperationId() external view override returns (bytes32 operationId) {
         operationId = _pendingUpgradeOperationId;
     }

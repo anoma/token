@@ -37,6 +37,18 @@ interface IXanUpgradeCouncilModule {
     /// @return timelock The timelock address.
     function getTimelock() external view returns (address timelock);
 
+    /// @notice Returns the governor whose voting parameters size the cancel window.
+    /// @return governor The governor address.
+    function getGovernor() external view returns (address governor);
+
+    /// @notice Returns the XAN token proxy that upgrades target.
+    /// @return token The token address.
+    function getToken() external view returns (address token);
+
+    /// @notice Returns the reaction-time margin added on top of the voter cancel cycle when sizing the cancel window.
+    /// @return cancelBuffer The cancel buffer in seconds.
+    function getCancelBuffer() external view returns (uint256 cancelBuffer);
+
     /// @notice Returns the most recently scheduled council upgrade operation id (may already be executed or
     /// cancelled).
     /// @return operationId The tracked operation id.
