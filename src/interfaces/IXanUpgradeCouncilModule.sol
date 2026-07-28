@@ -10,7 +10,7 @@ interface IXanUpgradeCouncilModule {
     /// @param newImplementation The implementation the upgrade installs.
     /// @param operationId The scheduled timelock operation id.
     /// @param data The reinitialization calldata forwarded to `upgradeToAndCall`.
-    /// @param executableAt The timestamp after which the upgrade becomes executable (the end of the cancel window).
+    /// @param executableAt The timestamp after which the upgrade becomes executable.
     event UpgradeScheduled(
         address indexed newImplementation, bytes32 indexed operationId, bytes data, uint256 executableAt
     );
@@ -37,7 +37,7 @@ interface IXanUpgradeCouncilModule {
     /// @return timelock The timelock address.
     function getTimelock() external view returns (address timelock);
 
-    /// @notice Returns the governor whose voting parameters size the cancel window.
+    /// @notice Returns the governor whose voting parameters size the upgrade delay.
     /// @return governor The governor address.
     function getGovernor() external view returns (address governor);
 
@@ -45,17 +45,17 @@ interface IXanUpgradeCouncilModule {
     /// @return token The token address.
     function getToken() external view returns (address token);
 
-    /// @notice Returns the reaction-time margin added on top of the voter cancel cycle when sizing the cancel window.
-    /// @return cancelBuffer The cancel buffer in seconds.
-    function getCancelBuffer() external view returns (uint256 cancelBuffer);
+    /// @notice Returns the margin added on top of the voter cancel cycle when sizing the upgrade delay.
+    /// @return extraDelay The extra delay in seconds.
+    function getExtraDelay() external view returns (uint256 extraDelay);
 
     /// @notice Returns the most recently scheduled council upgrade operation id (may already be executed or
     /// cancelled).
     /// @return operationId The tracked operation id.
     function getPendingUpgradeOperationId() external view returns (bytes32 operationId);
 
-    /// @notice Returns the cancel window: the time a scheduled council upgrade waits in the timelock before it can be
-    /// executed.
-    /// @return delay The cancel window in seconds.
-    function cancelWindow() external view returns (uint256 delay);
+    /// @notice Returns the timelock delay a scheduled council upgrade waits out before anyone can execute it. It
+    /// exceeds a full voter-cancel cycle, so the voter body can always cancel the upgrade first.
+    /// @return delay The upgrade delay in seconds.
+    function upgradeDelay() external view returns (uint256 delay);
 }

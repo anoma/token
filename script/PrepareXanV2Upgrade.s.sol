@@ -92,7 +92,7 @@ contract PrepareXanV2Upgrade is Script {
             timelock: timelockController,
             council: councilMultisig,
             token: token,
-            cancelBuffer: Parameters.COUNCIL_CANCEL_BUFFER
+            extraDelay: Parameters.COUNCIL_EXTRA_DELAY
         });
 
         // 4. Wire roles:

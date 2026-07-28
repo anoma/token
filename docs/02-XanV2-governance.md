@@ -55,15 +55,15 @@ A stock OpenZeppelin `Governor` composed of `GovernorSettings`, `GovernorCountin
 
 The module holds the timelock's `PROPOSER` and `CANCELLER` roles and **never owns the token**. Its single authority is the **council multisig**, set at deployment as an immutable (`_COUNCIL`, read via `getCouncil()`) and guarded by one modifier, `onlyCouncil`. The module exposes a small, deliberately narrow set of powers:
 
-- **`scheduleUpgrade(newImplementation, data)`** (council-gated) — the council's _only_ propose power. It builds a single `upgradeToAndCall` on the token and schedules it in the timelock with `delay = cancelWindow()` and a deterministic, council-tagged salt. Only **one** council upgrade may be in flight at a time.
+- **`scheduleUpgrade(newImplementation, data)`** (council-gated) — the council's _only_ propose power. It builds a single `upgradeToAndCall` on the token and schedules it in the timelock with `delay = upgradeDelay()` and a deterministic, council-tagged salt. Only **one** council upgrade may be in flight at a time.
 - **`cancelUpgrade()`** (council-gated) — withdraws the module's **own pending upgrade** from the timelock. The module only ever aims its `CANCELLER` role at the operation it scheduled itself; the council has **no cancel power over voter-body operations**.
 
 **Immutable council.** The module has no rotation function. A Safe changes its own signers internally without changing its address, so most membership changes need no on-chain action. Changing the multisig _address_ means deploying a fresh module, granting it the timelock roles, and revoking the old module's — all through voter-body proposals (see section [Ownership & role wiring](#2-ownership--role-wiring)). That same role-revocation is the disarm path for a captured council, so nothing is lost by dropping on-chain rotation.
 
-**Cancel window.** The `scheduleUpgrade` delay is computed live so it always outlasts a full voter-cancel cycle even if governor settings change:
+**Upgrade delay.** The `scheduleUpgrade` delay is computed live so it always outlasts a full voter-cancel cycle even if governor settings change:
 
 ```
-cancelWindow = votingDelay + votingPeriod + timelock.getMinDelay() + COUNCIL_CANCEL_BUFFER
+upgradeDelay = votingDelay + votingPeriod + timelock.getMinDelay() + COUNCIL_EXTRA_DELAY
 ```
 
 With the parameters in the [Parameters](#9-parameters) section this is `7d + 14d + 14d + 7d = 42 days`.
@@ -98,7 +98,7 @@ sequenceDiagram
     participant T as TimelockController
     participant K as XanV2 proxy
     C->>M: scheduleUpgrade (newImpl, data)
-    M->>T: schedule (waits cancelWindow)
+    M->>T: schedule (waits upgradeDelay)
     Note over T: during the window the voter body may cancel (below)
     C->>T: execute (permissionless, anyone)
     T->>K: upgradeToAndCall
@@ -128,7 +128,7 @@ gantt
     Proposal scheduled          : vert, v0, after vp, 0d
     
     Timelock min delay (14 d)   : tq, after vp, 14d
-    Executable: vert, v1, after tq, 0d
+    Executable                  : vert, v1, after tq, 0d
 ```
 
 <!-- prettier-ignore -->
@@ -143,7 +143,7 @@ gantt
     ​                           : lead, 2026-02-01, 0d
         
     Upgrade scheduled          : vert, us, 2026-02-01, 0d
-    Execution Delay (42 d)     : ed, after us, 42d
+    Upgrade Delay (42 d)       : ed, after us, 42d
     Executable                 : vert, ex, after ed, 0d
 ```
 
@@ -168,7 +168,7 @@ sequenceDiagram
 
 The voter body sits above the council structurally, not just per-upgrade:
 
-- It can **cancel** any council upgrade within the cancel window (see section [Cancellation](#6-cancellation)).
+- It can **cancel** any council upgrade within its upgrade delay (see section [Cancellation](#6-cancellation)).
 - It can **replace** the council by revoking the module's timelock roles (see section [Ownership & role wiring](#2-ownership--role-wiring)) and wiring a fresh module with a new multisig — all through proposals; the council has no cancel power over voter-body operations, so it **cannot** block its own replacement.
 - It can **revoke** the module's timelock roles outright (the timelock self-administers; see section [Ownership & role wiring](#2-ownership--role-wiring)).
 
@@ -180,16 +180,16 @@ The irreducible exception is an **inactive voter body**: when the electorate gen
 - **A passed voter-body proposal is on-chain-unstoppable.** No actor holds a cancel over queued voter-body operations; the residual defense against a captured voter body is off-chain, within the timelock delay. Accepted on capture-cost grounds.
 - **A captured council is nearly powerless.** It can only schedule token upgrades — slower than a voter cycle and cancellable by the voter body — and withdraw its own pending one; it cannot cancel, stall, or veto voter-body operations. The backstop is council replacement / module revocation.
 - **One council upgrade in flight.** The module refuses a new council upgrade while one is pending; competing voter-body upgrades are unaffected, and the token's `reinitializer` version guard prevents a stale op from re-running.
-- **The council delay is deliberately long** (a full voter-cancel cycle + buffer), computed live so the timing invariant cannot silently break when governor settings change.
+- **The council delay is deliberately long** (a full voter-cancel cycle + the extra delay), computed live so the timing invariant cannot silently break when governor settings change.
 
 ## 9. Parameters
 
-| Constant                      | Value                 | Used for                                                                         |
-| ----------------------------- | --------------------- | -------------------------------------------------------------------------------- |
-| `GOVERNOR_PROPOSAL_THRESHOLD` | `25_000e18` (25k XAN) | Governor `proposalThreshold`                                                     |
-| `GOVERNOR_VOTING_DELAY`       | `7 days`              | Governor `votingDelay`                                                           |
-| `GOVERNOR_VOTING_PERIOD`      | `14 days`             | Governor `votingPeriod`                                                          |
-| `GOVERNOR_QUORUM_NUMERATOR`   | `10` (10%)            | Governor quorum fraction (denominator `100`)                                     |
-| `TIMELOCK_MIN_DELAY`          | `14 days`             | Timelock `minDelay`                                                              |
-| `COUNCIL_CANCEL_BUFFER`       | `7 days`              | Cancel-window margin (see [XanUpgradeCouncilModule](#4-xanupgradecouncilmodule)) |
-| Cancel window (derived)       | `42 days`             | Council upgrade delay                                                            |
+| Constant                      | Value                 | Used for                                                                          |
+| ----------------------------- | --------------------- | --------------------------------------------------------------------------------- |
+| `GOVERNOR_PROPOSAL_THRESHOLD` | `25_000e18` (25k XAN) | Governor `proposalThreshold`                                                      |
+| `GOVERNOR_VOTING_DELAY`       | `7 days`              | Governor `votingDelay`                                                            |
+| `GOVERNOR_VOTING_PERIOD`      | `14 days`             | Governor `votingPeriod`                                                           |
+| `GOVERNOR_QUORUM_NUMERATOR`   | `10` (10%)            | Governor quorum fraction (denominator `100`)                                      |
+| `TIMELOCK_MIN_DELAY`          | `14 days`             | Timelock `minDelay`                                                               |
+| `COUNCIL_EXTRA_DELAY`         | `7 days`              | Voter reaction margin (see [XanUpgradeCouncilModule](#4-xanupgradecouncilmodule)) |
+| Upgrade delay (derived)       | `42 days`             | Timelock delay on a council upgrade                                               |

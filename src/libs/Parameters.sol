@@ -42,7 +42,7 @@ library Parameters {
     /* ========== Governance ========== */
 
     /// @notice The minimum voting power required to create a governor proposal.
-    uint256 internal constant GOVERNOR_PROPOSAL_THRESHOLD = 25_000 * 10 ** 18; // 25k XAN (~ $250)
+    uint256 internal constant GOVERNOR_PROPOSAL_THRESHOLD = 25_000 * 10 ** 18; // 25k XAN
 
     /// @notice The delay between a governor proposal's creation and the start of voting (timestamp clock).
     uint48 internal constant GOVERNOR_VOTING_DELAY = 7 days;
@@ -57,7 +57,7 @@ library Parameters {
     /// @notice The minimum delay of the governance `TimelockController`, applying to every timelock operation.
     uint256 internal constant TIMELOCK_MIN_DELAY = 14 days;
 
-    /// @notice Reaction-time margin added on top of a full voter cancel cycle when the `XanUpgradeCouncilModule`
-    /// sizes its backup upgrade delay, so the voter body has time to notice and cancel.
-    uint256 internal constant COUNCIL_CANCEL_BUFFER = 7 days;
+    /// @notice Margin the `XanUpgradeCouncilModule` adds on top of a full voter cancel cycle when sizing its
+    /// upgrade delay, giving the voter body time to notice a scheduled upgrade and start cancelling it.
+    uint256 internal constant COUNCIL_EXTRA_DELAY = 7 days;
 }

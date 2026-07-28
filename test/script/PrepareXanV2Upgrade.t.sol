@@ -145,9 +145,9 @@ contract PrepareXanV2UpgradeTest is Test {
         assertEq(_module.getTimelock(), address(_timelock));
         assertEq(_module.getCouncil(), _COUNCIL_MULTISIG);
         assertEq(
-            _module.cancelWindow(),
+            _module.upgradeDelay(),
             uint256(Parameters.GOVERNOR_VOTING_DELAY) + Parameters.GOVERNOR_VOTING_PERIOD
-                + Parameters.TIMELOCK_MIN_DELAY + Parameters.COUNCIL_CANCEL_BUFFER
+                + Parameters.TIMELOCK_MIN_DELAY + Parameters.COUNCIL_EXTRA_DELAY
         );
     }
 }
