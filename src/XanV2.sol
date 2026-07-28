@@ -93,7 +93,7 @@ contract XanV2 is
     /// @notice Thrown if the zero address is provided as the owner in the constructor.
     error ZeroOwnerNotAllowed();
 
-    /// @notice Thrown if the timestamp is provided as the vesting start in the constructor.
+    /// @notice Thrown if the zero timestamp is provided as the vesting start in the constructor.
     error ZeroVestingStartNotAllowed();
 
     /// @notice Thrown if the zero duration is provided as the vesting duration in the constructor.
@@ -254,7 +254,7 @@ contract XanV2 is
     /// @notice Updates the balances, allowing only an account's unlocked tokens to be moved.
     /// @param from The address to take the tokens from.
     /// @param to The address to give the tokens to.
-    /// @param value The amount of tokens to update that must be unlocked.
+    /// @param value The amount of tokens to move, which must not exceed the unlocked balance of `from`.
     function _update(address from, address to, uint256 value)
         internal
         override(ERC20Upgradeable, ERC20VotesUpgradeable)
@@ -276,8 +276,7 @@ contract XanV2 is
         super._update({from: from, to: to, value: value});
     }
 
-    /// @notice Authorizes an upgrade. Restricted to the owner (e.g. a multisig or DAO) and to an implementation other
-    /// than XAN V1.
+    /// @notice Authorizes an upgrade. Restricted to the owner and to an implementation other than XAN V1.
     /// @param newImpl The new implementation to authorize the upgrade to.
     function _authorizeUpgrade(address newImpl) internal view override onlyOwner {
         require(newImpl != _implementationV1(), UpgradeToXanV1NotAllowed());
