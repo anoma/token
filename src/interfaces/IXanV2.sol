@@ -48,6 +48,6 @@ interface IXanV2 {
     function vestingEnd() external view returns (uint48 end);
 
     /// @notice Returns the current implementation.
-    /// @return thisImplementation The current implementation.
-    function implementation() external view returns (address thisImplementation);
+    /// @return currentImplementation The current implementation.
+    function implementation() external view returns (address currentImplementation);
 }

@@ -178,8 +178,8 @@ contract XanV2 is
     }
 
     /// @inheritdoc IXanV2
-    function implementation() external view override returns (address thisImplementation) {
-        thisImplementation = ERC1967Utils.getImplementation();
+    function implementation() external view override returns (address currentImplementation) {
+        currentImplementation = ERC1967Utils.getImplementation();
     }
 
     /// @inheritdoc IXanV2
