@@ -38,15 +38,16 @@ The owner is intended to be the `TimelockController` of an OpenZeppelin `Governo
 See [`CONTEXT.md`](../CONTEXT.md) for definitions. Key relationships for any account:
 
 - `balanceOf = lockedBalance + unlockedBalance`
+- `principalOf = principal` — the V1 locked balance subject to vesting (see section [Vesting](#4-vesting))
 - `lockedBalanceOf = principal − unlocked[account]` — the still-locked, non-transferable part of the principal
 - `unlockedBalanceOf = balanceOf − lockedBalanceOf` — the spendable part
 - `unlockableBalanceOf = max(0, vested(principal) − unlocked[account])` — what `unlock()` would release now
 
-`principal` is fixed per account (the V1 locked balance; see section [Vesting](#4-vesting)) and never increases — V2 has **no** `lock`, `transferAndLock`, mint, or burn, so the total supply is fixed at the V1 amount. Transfers are gated to the unlocked balance in `_update`; V2 never mints or burns, so — unlike V1 — `_update` keeps no `from == 0` exemption, and the mint/burn legs are simply unreachable.
+`principal` is fixed per account and never increases — V2 has **no** `lock`, `transferAndLock`, mint, or burn, so the total supply is fixed at the V1 amount. Transfers are gated to the unlocked balance in `_update`; V2 never mints or burns, so — unlike V1 — `_update` keeps no `from == 0` exemption, and the mint/burn legs are simply unreachable.
 
 ## 4. Vesting
 
-**Source of principal.** `_principalOf(account)` reads `lockingData.lockedBalances[account]` from the **V1** ERC-7201 storage namespace, under the single mainnet V1 implementation `_XAN_V1_IMPLEMENTATION = 0x03997b568FE70E91A53c458DC19dc29e0bC2735E`. These are the locked tranches distributed by the Merkle `TokenDistributor` via `transferAndLock` (the unlocked tranche was already liquid). This is correct only because that proxy has only ever run that one implementation — a **hard precondition**.
+**Source of principal.** `principalOf(account)` reads `lockingData.lockedBalances[account]` from the **V1** ERC-7201 storage namespace, under the single mainnet V1 implementation `_XAN_V1_IMPLEMENTATION = 0x03997b568FE70E91A53c458DC19dc29e0bC2735E`. These are the locked tranches distributed by the Merkle `TokenDistributor` via `transferAndLock` (the unlocked tranche was already liquid). This is correct only because that proxy has only ever run that one implementation — a **hard precondition**.
 
 **Schedule.** Linear between `XAN_VESTING_START` and `XAN_VESTING_START + XAN_VESTING_DURATION`:
 

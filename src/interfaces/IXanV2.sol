@@ -35,6 +35,11 @@ interface IXanV2 {
     /// @return lockedBalance The locked balance.
     function lockedBalanceOf(address account) external view returns (uint256 lockedBalance);
 
+    /// @notice Returns the vesting principal of an account — its formerly locked V1 balance, fixed per account.
+    /// @param account The account to query.
+    /// @return principal The vesting principal.
+    function principalOf(address account) external view returns (uint256 principal);
+
     /// @notice Returns the initial owner baked into the implementation bytecode at construction.
     /// @return initialProxyOwner The initial owner installed at reinitialization.
     function initialOwner() external view returns (address initialProxyOwner);
