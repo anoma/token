@@ -106,6 +106,23 @@ contract XanV2UnlockingTest is XanV2Fixture {
         _xanV2Proxy.transfer(_OTHER, moreThanUnlocked);
     }
 
+    function testFuzz_principalOf_is_unchanged_by_unlocking_and_transfers(uint48 time) public {
+        vm.warp(bound(time, _vestingStart + 1, _vestingEnd));
+
+        vm.prank(_defaultSender);
+        uint256 unlocked = _xanV2Proxy.unlock();
+        vm.prank(_defaultSender);
+        _xanV2Proxy.safeTransfer(_OTHER, unlocked);
+
+        assertEq(_xanV2Proxy.principalOf(_defaultSender), Parameters.SUPPLY);
+        assertEq(_xanV2Proxy.principalOf(_OTHER), 0);
+    }
+
+    function test_principalOf_returns_the_formerly_locked_v1_balance() public view {
+        assertEq(_xanV2Proxy.principalOf(_defaultSender), Parameters.SUPPLY);
+        assertEq(_xanV2Proxy.principalOf(_OTHER), 0);
+    }
+
     function test_vestingStart_returns_expected_parameter() public view {
         assertEq(_xanV2Proxy.vestingStart(), _vestingStart);
     }

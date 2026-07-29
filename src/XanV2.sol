@@ -159,7 +159,7 @@ contract XanV2 is
     function unlock() external override returns (uint256 value) {
         XanV2Storage storage xanV2Storage = _getXanV2Storage();
 
-        uint256 principal = _principalOf(msg.sender);
+        uint256 principal = principalOf(msg.sender);
         uint256 vested = _vestedAmount(principal);
         uint256 alreadyUnlocked = xanV2Storage.unlocked[msg.sender];
 
@@ -192,7 +192,14 @@ contract XanV2 is
         // The still-locked balance is the V1 principal minus what the account has already unlocked.
         // `unlocked[account] <= principal` is maintained by `unlock` (capped at
         // `_vestedAmount(principal) <= principal`).
-        lockedBalance = _principalOf(account) - _getXanV2Storage().unlocked[account];
+        lockedBalance = principalOf(account) - _getXanV2Storage().unlocked[account];
+    }
+
+    /// @inheritdoc IXanV2
+    /// @dev Reads the locked balance from the V1 storage namespace under the single mainnet V1 implementation.
+    function principalOf(address account) public view override returns (uint256 principal) {
+        principal =
+            _getXanV1Storage().implementationSpecificData[_implementationV1()].lockingData.lockedBalances[account];
     }
 
     /// @notice Returns the next unused nonce for an address.
@@ -211,7 +218,7 @@ contract XanV2 is
 
     /// @inheritdoc IXanV2
     function unlockableBalanceOf(address account) public view override returns (uint256 value) {
-        uint256 principal = _principalOf(account);
+        uint256 principal = principalOf(account);
         uint256 vested = _vestedAmount(principal);
         uint256 alreadyUnlocked = _getXanV2Storage().unlocked[account];
 
@@ -303,14 +310,6 @@ contract XanV2 is
         // the elapsed time by `Parameters.XAN_VESTING_DURATION - 1`. Accordingly, the product can be assumed to not
         // overflow. Still, we use safe math here.
         vested = (principal * elapsedTime) / _VESTING_DURATION;
-    }
-
-    /// @notice Returns the formerly locked V1 balance of an account that is the principal subject to vesting.
-    /// @param account The account to query.
-    /// @return principal The V1 locked balance of the account.
-    function _principalOf(address account) internal view returns (uint256 principal) {
-        principal =
-            _getXanV1Storage().implementationSpecificData[_implementationV1()].lockingData.lockedBalances[account];
     }
 
     /// @notice Returns the V1 implementation address under which the vesting principal is stored.

@@ -55,7 +55,7 @@ flowchart LR
 
 ### Token & vesting
 
-**Principal**: The amount an account had locked under XAN V1 — its locked tranche from the distribution, received via `transferAndLock`. In V2 the principal vests linearly; it is fixed per account and never increases.
+**Principal** (`principalOf`): The amount an account had locked under XAN V1 — its locked tranche from the distribution, received via `transferAndLock`. In V2 the principal vests linearly; it is fixed per account and never increases.
 
 **Locked balance** (`lockedBalanceOf`): The still-locked, non-transferable part of an account's principal: `principal − unlocked`. Reaches zero once the principal has fully vested and been unlocked.
 
