@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
 import {Parameters} from "../src/libs/Parameters.sol";
 import {XanGovernorFixture} from "./fixtures/XanGovernorFixture.sol";
@@ -64,7 +65,7 @@ contract XanGovernorProposalTest is XanGovernorFixture {
     function test_quorum_is_a_tenth_of_the_voting_supply() public view {
         // The whole supply is the voting supply, so the quorum is `GOVERNOR_QUORUM_NUMERATOR` percent of it.
         assertEq(_QUORUM_NUMERATOR, 10);
-        assertEq(_governor.quorum(block.timestamp - 1), Parameters.SUPPLY / 10);
+        assertEq(_governor.quorum(Time.timestamp() - 1 seconds), Parameters.SUPPLY / 10);
     }
 
     /// @notice A minimal, harmless single-call proposal used only to drive lifecycle transitions.

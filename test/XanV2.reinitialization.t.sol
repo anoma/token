@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {Upgrades, UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
@@ -133,8 +134,8 @@ contract XanV2ReinitializationTest is Test {
 
         proxy.reinitializeFromV1();
 
-        vm.warp(block.timestamp + 1);
-        assertEq(proxy.getPastTotalSupply(block.timestamp - 1), Parameters.SUPPLY);
+        vm.warp(Time.timestamp() + 1 seconds);
+        assertEq(proxy.getPastTotalSupply(Time.timestamp() - 1 seconds), Parameters.SUPPLY);
     }
 
     function test_reinitializeFromV1_sets_the_owner() public view {

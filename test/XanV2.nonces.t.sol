@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {NoncesUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/NoncesUpgradeable.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
 import {XanV2Fixture} from "./fixtures/XanV2Fixture.sol";
 
@@ -14,7 +15,7 @@ contract XanV2NoncesTest is XanV2Fixture {
     address internal immutable _DELEGATEE = makeAddr("delegatee");
 
     function test_nonces_of_permit_do_not_conflict_with_nonces_of_delegateBySig() public {
-        uint256 deadline = block.timestamp + 1 hours;
+        uint256 deadline = Time.timestamp() + 1 hours;
 
         assertEq(_xanV2Proxy.nonces(_ALICE), 0);
 
@@ -35,7 +36,7 @@ contract XanV2NoncesTest is XanV2Fixture {
     }
 
     function test_nonces_of_delegateBySig_do_not_conflict_with_nonces_of_permit() public {
-        uint256 deadline = block.timestamp + 1 hours;
+        uint256 deadline = Time.timestamp() + 1 hours;
 
         // `delegateBySig` consumes nonce 0.
         (uint8 dv, bytes32 dr, bytes32 ds) = _signDelegation(_DELEGATEE, 0, deadline);
@@ -56,7 +57,7 @@ contract XanV2NoncesTest is XanV2Fixture {
     /// @notice A nonce already consumed by `permit` cannot be reused by `delegateBySig`, proving the counter is shared
     /// rather than per-extension.
     function test_nonces_cannot_be_reused_across_signature_types() public {
-        uint256 deadline = block.timestamp + 1 hours;
+        uint256 deadline = Time.timestamp() + 1 hours;
 
         (uint8 pv, bytes32 pr, bytes32 ps) =
             _signPermit({owner: _ALICE, spender: _SPENDER, value: 500, nonce: 0, deadline: deadline});
