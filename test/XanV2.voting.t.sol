@@ -189,7 +189,7 @@ contract XanV2VotingTest is XanV2Fixture {
     }
 
     function test_clock_tracks_the_block_timestamp() public view {
-        assertEq(_xanV2Proxy.clock(), uint48(block.timestamp));
+        assertEq(_xanV2Proxy.clock(), Time.timestamp());
     }
 
     function test_CLOCK_MODE_returns_the_timestamp_mode() public view {

@@ -5,6 +5,7 @@ import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensi
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
 import {XanV2} from "../src/XanV2.sol";
 import {XanGovernorFixture} from "./fixtures/XanGovernorFixture.sol";
@@ -142,7 +143,7 @@ contract XanGovernorVotingTest is XanGovernorFixture {
         assertEq(_xanToken.getVotes(_voterD), _5_PERCENT);
         assertEq(_xanToken.getVotes(_voterE), _5_PERCENT);
         // The governor reads voting power straight from the token's delegation checkpoints.
-        assertEq(_governor.getVotes(_voterA, block.timestamp - 1), _40_PERCENT);
+        assertEq(_governor.getVotes(_voterA, Time.timestamp() - 1 seconds), _40_PERCENT);
     }
 
     /// @notice Has A (which clears the proposal threshold) submit a harmless proposal, then opens the voting window.
