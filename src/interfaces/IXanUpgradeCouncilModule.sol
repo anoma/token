@@ -8,17 +8,16 @@ pragma solidity ^0.8.30;
 interface IXanUpgradeCouncilModule {
     /// @notice Emitted when a token upgrade is scheduled in the timelock.
     /// @param newImplementation The implementation the upgrade installs.
-    /// @param operationId The scheduled timelock operation id.
-    /// @param scheduledAt The timestamp the upgrade was scheduled at, which `checkUpgradeDelayElapsed` measures its
-    /// delay from.
     /// @param data The reinitialization calldata forwarded to `upgradeToAndCall`.
+    /// @param operationId The scheduled timelock operation id.
+    /// @param scheduledAt The timestamp the upgrade was scheduled at, which the execution gate measures its delay from.
     /// @param earliestExecutableAt The earliest timestamp the upgrade can execute; a later settings raise pushes the
     /// actual moment out, nothing moves it in.
     event UpgradeScheduled(
         address indexed newImplementation,
+        bytes data,
         bytes32 indexed operationId,
         uint48 scheduledAt,
-        bytes data,
         uint256 earliestExecutableAt
     );
 
@@ -40,6 +39,15 @@ interface IXanUpgradeCouncilModule {
     /// @param scheduledAt The timestamp the upgrade was scheduled at.
     function checkUpgradeDelayElapsed(uint48 scheduledAt) external view;
 
+    /// @notice Returns the delay a scheduled council upgrade waits out before anyone can execute it. It exceeds a
+    /// full voter-cancel cycle, so the voter body can always cancel the upgrade first.
+    /// @return delay The upgrade delay in seconds.
+    function upgradeDelay() external view returns (uint256 delay);
+
+    /// @notice Returns the margin added on top of the voter cancel cycle when sizing the upgrade delay.
+    /// @return extraDelay The extra delay in seconds.
+    function getExtraDelay() external view returns (uint256 extraDelay);
+
     /// @notice Returns the council multisig.
     /// @return council The council address.
     function getCouncil() external view returns (address council);
@@ -56,17 +64,8 @@ interface IXanUpgradeCouncilModule {
     /// @return token The token address.
     function getToken() external view returns (address token);
 
-    /// @notice Returns the margin added on top of the voter cancel cycle when sizing the upgrade delay.
-    /// @return extraDelay The extra delay in seconds.
-    function getExtraDelay() external view returns (uint256 extraDelay);
-
     /// @notice Returns the most recently scheduled council upgrade operation id (may already be executed or
     /// cancelled).
     /// @return operationId The last scheduled upgrade operation id, or zero if no council upgrade was ever scheduled.
     function getLastScheduledUpgradeOperationId() external view returns (bytes32 operationId);
-
-    /// @notice Returns the delay a scheduled council upgrade waits out before anyone can execute it. It exceeds a
-    /// full voter cancel cycle, so the voter body can always cancel the upgrade first.
-    /// @return delay The upgrade delay in seconds.
-    function upgradeDelay() external view returns (uint256 delay);
 }

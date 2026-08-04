@@ -123,9 +123,9 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
 
         emit UpgradeScheduled({
             newImplementation: newImplementation,
+            data: data,
             operationId: operationId,
             scheduledAt: scheduledAt,
-            data: data,
             earliestExecutableAt: scheduledAt + delay
         });
 
