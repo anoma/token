@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
 import {IXanUpgradeCouncilModule} from "./interfaces/IXanUpgradeCouncilModule.sol";
 
@@ -63,6 +64,10 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
     /// @notice Thrown when `cancelUpgrade` is called but no council upgrade is pending in the timelock.
     error NoUpgradePending();
 
+    /// @notice Thrown by `checkUpgradeDelayElapsed` when the upgrade delay, recomputed from the current settings, has
+    /// not yet elapsed since the upgrade was scheduled.
+    error UpgradeDelayNotElapsed(uint48 scheduledAt, uint256 executableAt);
+
     /// @notice Restricts a function to the council multisig.
     modifier onlyCouncil() {
         _checkCouncil();
@@ -106,17 +111,27 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
             UpgradeAlreadyPending(_lastScheduledUpgradeOperationId)
         );
 
-        bytes memory call = abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (newImplementation, data));
-        bytes32 salt = _salt(newImplementation, data);
         uint256 delay = upgradeDelay();
+        bytes32 salt = _salt(newImplementation, data);
+        (address[] memory targets, uint256[] memory values, bytes[] memory payloads, uint48 scheduledAt) =
+            _upgradeBatch(newImplementation, data);
 
-        operationId =
-            _TIMELOCK.hashOperation({target: _TOKEN, value: 0, data: call, predecessor: bytes32(0), salt: salt});
+        operationId = _TIMELOCK.hashOperationBatch({
+            targets: targets, values: values, payloads: payloads, predecessor: bytes32(0), salt: salt
+        });
         _lastScheduledUpgradeOperationId = operationId;
 
-        emit UpgradeScheduled(newImplementation, operationId, data, block.timestamp + delay);
+        emit UpgradeScheduled({
+            newImplementation: newImplementation,
+            operationId: operationId,
+            scheduledAt: scheduledAt,
+            data: data,
+            earliestExecutableAt: scheduledAt + delay
+        });
 
-        _TIMELOCK.schedule({target: _TOKEN, value: 0, data: call, predecessor: bytes32(0), salt: salt, delay: delay});
+        _TIMELOCK.scheduleBatch({
+            targets: targets, values: values, payloads: payloads, predecessor: bytes32(0), salt: salt, delay: delay
+        });
     }
 
     /// @inheritdoc IXanUpgradeCouncilModule
@@ -129,6 +144,18 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
         emit UpgradeCancelled(operationId);
 
         _TIMELOCK.cancel(operationId);
+    }
+
+    /// @inheritdoc IXanUpgradeCouncilModule
+    /// @dev Runs as the first call of every council upgrade batch, so the timelock re-checks it on each execution
+    /// attempt. The timelock freezes its deadline at scheduling while a cancel cycle is computed live, so a later
+    /// settings raise would otherwise let the upgrade outrun any cancellation.
+    function checkUpgradeDelayElapsed(uint48 scheduledAt) external view override {
+        uint256 executableAt = scheduledAt + upgradeDelay();
+        require(
+            Time.timestamp() + 1 > executableAt,
+            UpgradeDelayNotElapsed({scheduledAt: scheduledAt, executableAt: executableAt})
+        );
     }
 
     /// @inheritdoc IXanUpgradeCouncilModule
@@ -173,8 +200,33 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
         require(_COUNCIL == msg.sender, UnauthorizedCouncil({caller: msg.sender}));
     }
 
-    /// @notice Deterministic, council-tagged salt so a council upgrade never collides with a voter-body operation and
-    /// can be re-scheduled after a cancel.
+    /// @notice Builds the council upgrade batch: `checkUpgradeDelayElapsed` first, then the token upgrade.
+    /// `executeBatch` runs them in order and reverts the whole execution if `checkUpgradeDelayElapsed` does.
+    /// @param newImplementation The implementation to upgrade the token to.
+    /// @param data The reinitialization calldata forwarded to `upgradeToAndCall`.
+    /// @return targets The batch call targets.
+    /// @return values The batch call values (all zero).
+    /// @return payloads The batch call payloads.
+    /// @return scheduledAt The current timestamp, which `checkUpgradeDelayElapsed` measures its delay from.
+    function _upgradeBatch(address newImplementation, bytes calldata data)
+        private
+        view
+        returns (address[] memory targets, uint256[] memory values, bytes[] memory payloads, uint48 scheduledAt)
+    {
+        targets = new address[](2);
+        values = new uint256[](2);
+        payloads = new bytes[](2);
+
+        scheduledAt = Time.timestamp();
+
+        targets[0] = address(this);
+        payloads[0] = abi.encodeCall(IXanUpgradeCouncilModule.checkUpgradeDelayElapsed, (scheduledAt));
+
+        targets[1] = _TOKEN;
+        payloads[1] = abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (newImplementation, data));
+    }
+
+    /// @notice Deterministic, council-tagged salt so a council upgrade never collides with a voter-body operation.
     /// @param newImplementation The implementation to upgrade the token to.
     /// @param data The reinitialization calldata forwarded to `upgradeToAndCall`.
     /// @return salt The operation salt.

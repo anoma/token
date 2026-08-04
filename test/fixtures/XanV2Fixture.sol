@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {Upgrades, UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -44,7 +45,7 @@ abstract contract XanV2Fixture is Test {
         // The upgrade is executed once the voter-body scheduling delay elapses; the clock is not advanced before the
         // `vm.warp` below, so the upgrade lands at `now + DELAY_DURATION`. Fix that timestamp up front so the vesting
         // schedule can be chosen relative to it and the `vm.warp` can target it directly.
-        _upgradeTimestamp = uint48(block.timestamp + Parameters.DELAY_DURATION);
+        _upgradeTimestamp = Time.timestamp() + Parameters.DELAY_DURATION;
 
         uint48 vestingDuration;
         (_vestingStart, vestingDuration) = _vestingSchedule();

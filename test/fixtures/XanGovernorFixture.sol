@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {Upgrades, UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -17,10 +18,6 @@ import {MockXanV2} from "../mocks/MockXanV2.sol";
 /// @dev Five self-delegating voters: A 40%, B and C 25%, D and E 5%. Against the 10% quorum, D or E alone falls
 /// short and the two together meet it exactly; A, D, and E balance B and C for a tie.
 abstract contract XanGovernorFixture is Test {
-    /// @notice Voting delay in seconds (the token clock is timestamp-based).
-    uint48 internal constant _VOTING_DELAY = 1;
-    /// @notice Voting period in seconds.
-    uint32 internal constant _VOTING_PERIOD = 50;
     uint256 internal constant _PROPOSAL_THRESHOLD = Parameters.GOVERNOR_PROPOSAL_THRESHOLD;
     uint256 internal constant _QUORUM_NUMERATOR = Parameters.GOVERNOR_QUORUM_NUMERATOR;
     uint256 internal constant _TIMELOCK_MIN_DELAY = Parameters.TIMELOCK_MIN_DELAY;
@@ -103,8 +100,8 @@ abstract contract XanGovernorFixture is Test {
         _governor = new XanGovernor({
             xanToken: IVotes(address(_xanToken)),
             timelockController: _timelock,
-            initialVotingDelay: _VOTING_DELAY,
-            initialVotingPeriod: _VOTING_PERIOD,
+            initialVotingDelay: _votingDelay(),
+            initialVotingPeriod: _votingPeriod(),
             initialProposalThreshold: _PROPOSAL_THRESHOLD,
             initialQuorumNumerator: _QUORUM_NUMERATOR
         });
@@ -128,7 +125,7 @@ abstract contract XanGovernorFixture is Test {
         _xanToken.delegate(_voterE);
 
         // Move past the delegation checkpoints so the voting snapshot taken at proposal time can read them.
-        vm.warp(block.timestamp + 1);
+        vm.warp(Time.timestamp() + 1 seconds);
     }
 
     /// @notice Runs a proposal through its full lifecycle: propose, vote `For`, queue, and execute.
@@ -151,19 +148,52 @@ abstract contract XanGovernorFixture is Test {
         bytes32 descriptionHash = keccak256(bytes(description));
         _governor.queue(targets, values, calldatas, descriptionHash);
 
-        // Wait out the timelock delay, then execute.
-        skip(_TIMELOCK_MIN_DELAY + 1);
+        // Wait out the (live) timelock delay, then execute.
+        skip(_timelock.getMinDelay() + 1);
         _governor.execute(targets, values, calldatas, descriptionHash);
+    }
+
+    /// @notice Has the voter body propose, pass, and queue (but not execute) an arbitrary proposal.
+    /// @return descriptionHash The hash of the proposal description, needed to rebuild its timelock operation id.
+    function _queueVoterBodyProposal(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) internal returns (bytes32 descriptionHash) {
+        descriptionHash = keccak256(bytes(description));
+
+        vm.prank(_voterA);
+        uint256 proposalId =
+            _governor.propose({targets: targets, values: values, calldatas: calldatas, description: description});
+
+        _warpIntoVotingPeriod();
+        vm.prank(_voterA);
+        _governor.castVote(proposalId, uint8(1));
+
+        _warpPastVotingPeriod();
+        _governor.queue({targets: targets, values: values, calldatas: calldatas, descriptionHash: descriptionHash});
     }
 
     /// @notice Warps to just inside the voting period (one second past the voting delay), so the proposal is `Active`
     /// and votes can be cast.
     function _warpIntoVotingPeriod() internal {
-        vm.warp(block.timestamp + _governor.votingDelay() + 1);
+        vm.warp(Time.timestamp() + _governor.votingDelay() + 1 seconds);
     }
 
     /// @notice Warps to just past the voting period, so voting has closed and a passing proposal can be queued.
     function _warpPastVotingPeriod() internal {
-        vm.warp(block.timestamp + _governor.votingPeriod() + 1);
+        vm.warp(Time.timestamp() + _governor.votingPeriod() + 1 seconds);
+    }
+
+    /// @notice The governor's initial voting delay (the token clock is timestamp-based). Compressed by default to
+    /// keep proposals cheap; a suite whose behaviour depends on the real timings overrides it.
+    function _votingDelay() internal view virtual returns (uint48 votingDelay) {
+        votingDelay = 1 seconds;
+    }
+
+    /// @notice The governor's initial voting period. Compressed by default, see `_votingDelay`.
+    function _votingPeriod() internal view virtual returns (uint32 votingPeriod) {
+        votingPeriod = 50 seconds;
     }
 }

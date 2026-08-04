@@ -54,22 +54,35 @@ A stock OpenZeppelin `Governor` composed of `GovernorSettings`, `GovernorCountin
 
 ## 4. XanUpgradeCouncilModule
 
-The module holds the timelock's `PROPOSER` and `CANCELLER` roles and **never owns the token**. Its single authority is the **council multisig**, set at deployment as an immutable (`_COUNCIL`, read via `getCouncil()`) and guarded by one modifier, `onlyCouncil`. The module exposes a small, deliberately narrow set of powers:
+The module holds the timelock's `PROPOSER` and `CANCELLER` roles and **never owns the token**. Its single authority is the **council multisig**, set at deployment as an immutable (`_COUNCIL`, read via `getCouncil()`) and guarded by one modifier, `onlyCouncil`. The module exposes exactly **two powers**, both council-gated:
 
-- **`scheduleUpgrade(newImplementation, data)`** (council-gated) — the council's _only_ propose power. It builds a single `upgradeToAndCall` on the token and schedules it in the timelock with `delay = upgradeDelay()` and a deterministic, council-tagged salt. Only **one** council upgrade may be in flight at a time.
-- **`cancelUpgrade()`** (council-gated) — withdraws the module's **own pending upgrade** from the timelock. The module only ever aims its `CANCELLER` role at the operation it scheduled itself; the council has **no cancel power over voter-body operations**.
+- **`scheduleUpgrade(newImplementation, data)`** — the council's _only_ propose power. It schedules the two-call upgrade batch in the timelock with `delay = upgradeDelay()` and a deterministic, council-tagged salt. Only **one** council upgrade may be in flight at a time.
+- **`cancelUpgrade()`** — withdraws the module's **own pending upgrade** from the timelock. The module only ever aims its `CANCELLER` role at the operation it scheduled itself; the council has **no cancel power over voter-body operations**.
+
+**`checkUpgradeDelayElapsed(scheduledAt)`** is a permissionless `view` and the only module function the _timelock itself_ calls. It leads every council upgrade batch, so the delay is re-evaluated on each execution attempt instead of being frozen at scheduling — see **Recomputation at execution** below.
 
 Everything else the module exposes is a view: `getCouncil()`, `getTimelock()`, `getGovernor()`, `getToken()`, `getExtraDelay()`, and `upgradeDelay()` read the wiring and the sizing, while `getLastScheduledUpgradeOperationId()` returns the id of the **most recently scheduled** council upgrade, which may already have been executed or cancelled.
 
 **Immutable council.** The module has no rotation function. A Safe changes its own signers internally without changing its address, so most membership changes need no on-chain action. Changing the multisig _address_ means deploying a fresh module, granting it the timelock roles, and revoking the old module's — all through voter-body proposals (see section [Ownership & role wiring](#2-ownership--role-wiring)). That same role revocation is how the voter body disarms a captured council.
 
-**Upgrade delay.** The `scheduleUpgrade` delay is computed live so it always outlasts a full voter-cancel cycle even if governor settings change:
+**Upgrade delay.** The `scheduleUpgrade` delay is computed live so it always outlasts a full voter cancel cycle even if governor settings change:
 
 ```
 upgradeDelay = votingDelay + votingPeriod + timelock.getMinDelay() + COUNCIL_EXTRA_DELAY
 ```
 
 With the parameters in the [Parameters](#9-parameters) section this is `7d + 14d + 14d + 7d = 42 days`.
+
+**Recomputation at execution.** The timelock stores a scheduled operation as a fixed timestamp and never consults the governor again, while a cancellation computes its cycle live, when the cancelling proposal is created. A settings raise landing _after_ an upgrade was scheduled would therefore stretch every later cancel cycle past a deadline that no longer moves — and the council can arrange exactly that, because `Governor.execute` is permissionless, so it can schedule an upgrade and execute an already-passed, ripe raise in the same transaction.
+
+The module closes this by scheduling each upgrade as a **two-call batch**:
+
+| #   | Call                                           | Effect                                                                                        |
+| --- | ---------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| 1   | `module.checkUpgradeDelayElapsed(scheduledAt)` | Reverts unless `now ≥ scheduledAt + upgradeDelay()`, **recomputed from the current settings** |
+| 2   | `token.upgradeToAndCall(newImpl, data)`        | The upgrade itself                                                                            |
+
+`TimelockController.executeBatch` runs the calls in order and reverts the whole execution if one fails, so a reverting `checkUpgradeDelayElapsed` blocks the upgrade; because the operation is only marked done after every call succeeds, it stays `Ready` and a later attempt still works. The effective deadline is therefore the **later** of the timelock's frozen timestamp and the recomputed `scheduledAt + upgradeDelay()`: a raise pushes it out, a cut cannot pull it in. Since `checkUpgradeDelayElapsed` tests the recomputed cycle _plus_ `COUNCIL_EXTRA_DELAY`, and a cancellation takes the recomputed cycle, the voter body keeps its full margin whatever the settings do — no bound on how far they may move is required.
 
 ## 5. Upgrade paths
 
@@ -101,15 +114,16 @@ sequenceDiagram
     participant T as TimelockController
     participant K as XanV2 proxy
     C->>M: scheduleUpgrade (newImpl, data)
-    M->>T: schedule (waits upgradeDelay)
+    M->>T: scheduleBatch [checkUpgradeDelayElapsed, upgradeToAndCall] (waits upgradeDelay)
     Note over T: during the delay the voter body may cancel (below)
-    C->>T: execute (permissionless, anyone)
+    C->>T: executeBatch (permissionless, anyone)
+    T->>M: checkUpgradeDelayElapsed (reverts unless the delay, recomputed now, has elapsed)
     T->>K: upgradeToAndCall
 ```
 
 ### Timings
 
-The council upgrade delay (42 days, see section [XanUpgradeCouncilModule](#4-xanupgradecouncilmodule)) is longer than a voter-body upgrade (35 days) and exceeds a full voter-proposal cycle, so the voter body can always cancel it.
+The council upgrade delay (42 days, see section [XanUpgradeCouncilModule](#4-xanupgradecouncilmodule)) is longer than a voter-body upgrade (35 days) and exceeds a full voter-proposal cycle, so the voter body can always cancel it. If a settings change lengthens that cycle after the upgrade is scheduled, `checkUpgradeDelayElapsed` lengthens the upgrade's wait to match.
 
 <!-- prettier-ignore -->
 ```mermaid
@@ -185,7 +199,7 @@ The irreducible exception is an **inactive voter body**: when the electorate gen
 - **A passed voter-body proposal is on-chain-unstoppable.** No actor holds a cancel over queued voter-body operations; the residual defense against a captured voter body is off-chain, within the timelock delay.
 - **A captured council is nearly powerless.** It can only schedule token upgrades — slower than a voter cycle and cancellable by the voter body — and withdraw its own pending one; it cannot cancel, stall, or veto voter-body operations. The backstop is council replacement / module revocation.
 - **One council upgrade in flight.** The module refuses a new council upgrade while one is pending; competing voter-body upgrades are unaffected, and the token's `reinitializer` version guard prevents a stale op from re-running.
-- **The council delay exceeds a full voter-cancel cycle** (plus the extra delay) and is computed live, so it tracks changes to the governor settings and the timelock minimum.
+- **The council delay exceeds a full voter cancel cycle** (plus the extra delay) and is computed live, so it tracks changes to the governor settings and the timelock minimum — including changes that land _after_ the upgrade was scheduled, which the batch's leading `checkUpgradeDelayElapsed` call recomputes against (see [XanUpgradeCouncilModule](#4-xanupgradecouncilmodule)).
 
 ## 9. Parameters
 
