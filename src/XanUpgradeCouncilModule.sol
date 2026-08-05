@@ -149,7 +149,7 @@ contract XanUpgradeCouncilModule is IXanUpgradeCouncilModule {
     /// @inheritdoc IXanUpgradeCouncilModule
     /// @dev Runs as the first call of every council upgrade batch, so the timelock re-checks it on each execution
     /// attempt. The timelock freezes its deadline at scheduling while a cancel cycle is computed live, so a later
-    /// settings raise would otherwise let the upgrade outrun any cancellation.
+    /// delay increase would otherwise let the upgrade outrun any cancellation.
     function checkUpgradeDelayElapsed(uint48 scheduledAt) external view override {
         uint256 executableAt = scheduledAt + upgradeDelay();
         require(

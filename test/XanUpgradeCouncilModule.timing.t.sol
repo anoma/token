@@ -9,9 +9,9 @@ import {Parameters} from "../src/libs/Parameters.sol";
 import {XanUpgradeCouncilModule} from "../src/XanUpgradeCouncilModule.sol";
 import {XanUpgradeCouncilModuleFixture} from "./fixtures/XanUpgradeCouncilModuleFixture.sol";
 
-/// @notice Regression tests for the schedule-then-raise attack: the council schedules an upgrade and, in the same
-/// transaction, executes an already-passed voter-body proposal raising the timing settings, so every later cancel
-/// cycle would outrun a deadline frozen at scheduling.
+/// @notice Tests for timing settings that change while a council upgrade is pending: an increase after scheduling
+/// pushes the deadline out, a decrease cannot pull it in, and an increase undone by a later decrease lets the upgrade
+/// outrun a cancel already in flight.
 /// @dev Runs at the production governor settings. The base fixture's compressed ones hide the race, moving the cancel
 /// cycle by seconds against a days-scale margin.
 contract XanUpgradeCouncilModuleTimingTest is XanUpgradeCouncilModuleFixture {
@@ -30,7 +30,10 @@ contract XanUpgradeCouncilModuleTimingTest is XanUpgradeCouncilModuleFixture {
     /// start the margin is meant to cover.
     uint256 private constant _MARGIN_LEFT_AT_CANCEL = 1 hours;
 
-    /// @notice A raise whose voting period alone outlasts the whole delay the upgrade was scheduled with, so no
+    /// @notice Shared by every voting-period proposal below, so queueing and executing one derive the same salt.
+    string private constant _VOTING_PERIOD_CHANGE_DESCRIPTION = "change the voting period";
+
+    /// @notice An increase whose voting period alone outlasts the whole delay the upgrade was scheduled with, so no
     /// bound sized against that delay could have covered it.
     /// @dev `immutable`, not `constant`, so the narrowing to the `uint32` a voting period is stays checked — a
     /// `constant` initializer cannot call `SafeCast`.
@@ -39,10 +42,10 @@ contract XanUpgradeCouncilModuleTimingTest is XanUpgradeCouncilModuleFixture {
     uint256 private immutable _UPGRADE_DELAY_AT_EXCEEDING_PERIOD =
         _UPGRADE_DELAY - Parameters.GOVERNOR_VOTING_PERIOD + _VOTING_PERIOD_EXCEEDING_UPGRADE_DELAY;
 
-    /// @notice A passed voting-period raise waits in the timelock; the council schedules an upgrade and executes the
-    /// raise in one batch, so the timelock's frozen deadline is computed from the old settings while every
+    /// @notice A passed voting-period increase waits in the timelock; the council schedules an upgrade and executes
+    /// the increase in one batch, so the timelock's frozen deadline is computed from the old settings while every
     /// cancellation runs at the new ones.
-    function test_voter_body_can_cancel_after_a_queued_settings_raise_executes_post_scheduling() public {
+    function test_voter_body_can_cancel_after_a_queued_delay_increase_executes_post_scheduling() public {
         assertGt(
             _VOTING_PERIOD_EXCEEDING_UPGRADE_DELAY,
             _UPGRADE_DELAY,
@@ -51,21 +54,20 @@ contract XanUpgradeCouncilModuleTimingTest is XanUpgradeCouncilModuleFixture {
         assertGt(
             _UPGRADE_DELAY_AT_EXCEEDING_PERIOD - Parameters.COUNCIL_EXTRA_DELAY,
             _UPGRADE_DELAY,
-            "the raised cancel cycle must outrun the frozen deadline, or there is no race to close"
+            "the increased cancel cycle must outrun the frozen deadline, or there is no race to close"
         );
 
-        // A passed proposal raising the voting period, queued and past its timelock delay but not executed — an
+        // A passed proposal increasing the voting period, queued and past its timelock delay but not executed — an
         // ordinary state, since nobody is obliged to execute promptly.
-        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash) =
-            _queueVotingPeriodChange(_VOTING_PERIOD_EXCEEDING_UPGRADE_DELAY);
+        _queueVotingPeriodChange(_VOTING_PERIOD_EXCEEDING_UPGRADE_DELAY);
         skip(_timelock.getMinDelay() + 1 seconds);
 
-        // The council's move: schedule the upgrade, then execute the raise, leaving no block in between for a
+        // The council's move: schedule the upgrade, then execute the increase, leaving no block in between for a
         // cancellation to be filed under the old settings.
         address newImpl = _newImplementation();
         (bytes32 operationId, uint48 scheduledAt) = _scheduleCouncilUpgrade(newImpl, "");
         uint256 frozenExecutableAt = scheduledAt + _module.upgradeDelay();
-        _governor.execute(targets, values, calldatas, descriptionHash);
+        _executeVotingPeriodChange(_VOTING_PERIOD_EXCEEDING_UPGRADE_DELAY);
         assertEq(_governor.votingPeriod(), _VOTING_PERIOD_EXCEEDING_UPGRADE_DELAY);
         assertEq(_module.upgradeDelay(), _UPGRADE_DELAY_AT_EXCEEDING_PERIOD);
 
@@ -73,7 +75,7 @@ contract XanUpgradeCouncilModuleTimingTest is XanUpgradeCouncilModuleFixture {
         assertGt(
             recomputedExecutableAt,
             frozenExecutableAt,
-            "the raise must push the recomputed deadline past the one the timelock froze"
+            "the increase must push the recomputed deadline past the one the timelock froze"
         );
 
         // At the now-stale frozen deadline `checkUpgradeDelayElapsed` reverts, and the timelock keeps the operation
@@ -104,9 +106,9 @@ contract XanUpgradeCouncilModuleTimingTest is XanUpgradeCouncilModuleFixture {
         _executeCouncilUpgrade(newImpl, "", scheduledAt);
     }
 
-    /// @notice Settings lowered after scheduling cannot pull the deadline in, because the timelock's frozen
+    /// @notice A delay decrease after scheduling cannot pull the deadline in, because the timelock's frozen
     /// timestamp still applies. The effective deadline is the later of the two.
-    function test_a_settings_cut_after_scheduling_does_not_shorten_the_upgrade_delay() public {
+    function test_a_delay_decrease_after_scheduling_does_not_shorten_the_upgrade_delay() public {
         address newImpl = _newImplementation();
         (bytes32 operationId, uint48 scheduledAt) = _scheduleCouncilUpgrade(newImpl, "");
         uint256 frozenExecutableAt = scheduledAt + _module.upgradeDelay();
@@ -116,7 +118,7 @@ contract XanUpgradeCouncilModuleTimingTest is XanUpgradeCouncilModuleFixture {
         assertLt(
             scheduledAt + _module.upgradeDelay(),
             frozenExecutableAt,
-            "the cut must pull the recomputed deadline in, leaving only the frozen one binding"
+            "the decrease must pull the recomputed deadline in, leaving only the frozen one binding"
         );
 
         // The timelock still holds the operation until its own frozen deadline.
@@ -127,6 +129,42 @@ contract XanUpgradeCouncilModuleTimingTest is XanUpgradeCouncilModuleFixture {
         vm.warp(frozenExecutableAt);
         _executeCouncilUpgrade(newImpl, "", scheduledAt);
         assertEq(_xanToken.implementation(), newImpl);
+    }
+
+    /// @notice An increase executing after scheduling pushes the deadline out, and a later decrease restores the
+    /// frozen one. A cancel cycle started in between keeps the increased voting period — `XanGovernor` snapshots it at
+    /// proposal creation — so it no longer finishes in time. The voter body prevents this by never leaving contrary
+    /// settings proposals queued at once, there being no on-chain recourse once the decrease is queued.
+    function test_a_delay_decrease_undoing_an_increase_lets_the_upgrade_outrun_an_in_flight_cancel() public {
+        // Contrary settings proposals, both passed and queued past their timelock delay, neither executed.
+        _queueVotingPeriodChange(_VOTING_PERIOD_EXCEEDING_UPGRADE_DELAY);
+        _queueVotingPeriodChange(Parameters.GOVERNOR_VOTING_PERIOD);
+        skip(_timelock.getMinDelay() + 1 seconds);
+
+        address newImpl = _newImplementation();
+        (bytes32 operationId, uint48 scheduledAt) = _scheduleCouncilUpgrade(newImpl, "");
+        uint256 frozenExecutableAt = scheduledAt + _module.upgradeDelay();
+
+        _executeVotingPeriodChange(_VOTING_PERIOD_EXCEEDING_UPGRADE_DELAY);
+        assertEq(_module.upgradeDelay(), _UPGRADE_DELAY_AT_EXCEEDING_PERIOD);
+        uint256 increasedExecutableAt = scheduledAt + _module.upgradeDelay();
+        assertGt(increasedExecutableAt, frozenExecutableAt, "the increase must push the deadline past the frozen one");
+
+        // The voter body starts its cancel cycle at the edge of its margin, sized against the increased deadline.
+        vm.warp(scheduledAt + Parameters.COUNCIL_EXTRA_DELAY - _MARGIN_LEFT_AT_CANCEL);
+        uint256 cancelCompletesAt = _proposeCancelCouncilUpgrade(operationId) + _timelock.getMinDelay();
+        assertLt(cancelCompletesAt, increasedExecutableAt, "the cancel must fit inside the increased deadline");
+
+        // Undoing the increase restores the frozen deadline, which the cycle already under way cannot meet.
+        _executeVotingPeriodChange(Parameters.GOVERNOR_VOTING_PERIOD);
+        assertEq(
+            scheduledAt + _module.upgradeDelay(), frozenExecutableAt, "the decrease must restore the frozen deadline"
+        );
+        assertGt(cancelCompletesAt, frozenExecutableAt, "the cancel under way must now miss the deadline");
+
+        vm.warp(frozenExecutableAt);
+        _executeCouncilUpgrade(newImpl, "", scheduledAt);
+        assertEq(_xanToken.implementation(), newImpl, "the upgrade lands before the cancel can complete");
     }
 
     /// @notice `checkUpgradeDelayElapsed` is callable by anyone, for off-chain monitoring, and passes exactly at
@@ -160,18 +198,36 @@ contract XanUpgradeCouncilModuleTimingTest is XanUpgradeCouncilModuleFixture {
     function _passVotingPeriodChange(uint32 newVotingPeriod) private {
         (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) =
             _setVotingPeriodCall(newVotingPeriod);
-        _passProposal({targets: targets, values: values, calldatas: calldatas, description: "change the voting period"});
+        _passProposal({
+            targets: targets, values: values, calldatas: calldatas, description: _VOTING_PERIOD_CHANGE_DESCRIPTION
+        });
     }
 
     /// @notice Queues (but does not execute) a proposal setting the governor's voting period.
-    function _queueVotingPeriodChange(uint32 newVotingPeriod)
-        private
-        returns (address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash)
-    {
-        (targets, values, calldatas) = _setVotingPeriodCall(newVotingPeriod);
-        descriptionHash = _queueVoterBodyProposal({
-            targets: targets, values: values, calldatas: calldatas, description: "change the voting period"
+    function _queueVotingPeriodChange(uint32 newVotingPeriod) private {
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) =
+            _setVotingPeriodCall(newVotingPeriod);
+        _queueVoterBodyProposal({
+            targets: targets, values: values, calldatas: calldatas, description: _VOTING_PERIOD_CHANGE_DESCRIPTION
         });
+    }
+
+    /// @notice Executes a voting-period change already queued by `_queueVotingPeriodChange`.
+    function _executeVotingPeriodChange(uint32 newVotingPeriod) private {
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) =
+            _setVotingPeriodCall(newVotingPeriod);
+        _governor.execute(targets, values, calldatas, keccak256(bytes(_VOTING_PERIOD_CHANGE_DESCRIPTION)));
+    }
+
+    /// @notice Files the voter body's cancel proposal without running it to completion.
+    /// @return voteEnd The timestamp the cancel proposal's voting closes at, fixed by the settings in force now.
+    function _proposeCancelCouncilUpgrade(bytes32 operationId) private returns (uint256 voteEnd) {
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) =
+            _cancelCouncilUpgradeCall(operationId);
+
+        vm.prank(_voterA);
+        uint256 proposalId = _governor.propose(targets, values, calldatas, "cancel the council upgrade");
+        voteEnd = _governor.proposalDeadline(proposalId);
     }
 
     function _setVotingPeriodCall(uint32 newVotingPeriod)
