@@ -39,7 +39,7 @@ flowchart LR
 
 - **Two upgrade paths**, both ending as a timelocked upgrade: a **voter-body proposal**, or a **council-initiated upgrade**. The council path is _slower_, not faster — it waits out a longer delay than a voter proposal, so the voter body always has time to cancel it.
 - **One-way cancel**: the voter body can cancel the council's upgrade through a governor proposal, and the council can withdraw its own pending upgrade — but the council cannot cancel voter-body operations. Cancelling only blocks — no funds can move this way.
-- **Voter supremacy**: the voter body can cancel the council's upgrades, replace the council, and revoke the module's powers; the council holds no reciprocal check over the voter body. The one gap is an **inactive voter body** — the scenario the council exists for — where the council's long delay and off-chain monitoring are the only checks.
+- **Voter supremacy**: the voter body can cancel the council's upgrades, replace the council, and revoke the module's powers; the council holds no reciprocal check over the voter body. The irreducible gap is an **inactive voter body** — the scenario the council exists for — where the council's long delay and off-chain monitoring are the only checks. A second, operational one: leaving two contrary timing-settings proposals queued in the timelock lets a pending council upgrade's deadline be pushed out and pulled back, stranding a cancel filed in between — see [Settings changes while an upgrade is pending](docs/02-XanV2-governance.md#settings-changes-while-an-upgrade-is-pending).
 
 ## Glossary
 

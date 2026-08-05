@@ -12,7 +12,7 @@ interface IXanUpgradeCouncilModule {
     /// @param data The reinitialization calldata forwarded to `upgradeToAndCall`.
     /// @param scheduledAt The timestamp the upgrade was scheduled at, which `checkUpgradeDelayElapsed` measures its
     /// delay from.
-    /// @param earliestExecutableAt The earliest timestamp the upgrade can execute; a later settings raise pushes the
+    /// @param earliestExecutableAt The earliest timestamp the upgrade can execute; a later delay increase pushes the
     /// actual moment out, nothing moves it in.
     event UpgradeScheduled(
         address indexed newImplementation,

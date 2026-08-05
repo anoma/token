@@ -73,7 +73,7 @@ upgradeDelay = votingDelay + votingPeriod + timelock.getMinDelay() + COUNCIL_EXT
 
 With the parameters in the [Parameters](#9-parameters) section this is `7d + 14d + 14d + 7d = 42 days`.
 
-**Recomputation at execution.** The timelock stores a scheduled operation as a fixed timestamp and never consults the governor again, while a cancellation computes its cycle live, when the cancelling proposal is created. A settings raise landing _after_ an upgrade was scheduled would therefore stretch every later cancel cycle past a deadline that no longer moves — and the council can arrange exactly that, because `Governor.execute` is permissionless, so it can schedule an upgrade and execute an already-passed, ripe raise in the same transaction.
+**Recomputation at execution.** The timelock stores a scheduled operation as a fixed timestamp and never consults the governor again, while a cancellation computes its cycle live, when the cancelling proposal is created. A delay increase landing _after_ an upgrade was scheduled would therefore stretch every later cancel cycle past a deadline that no longer moves — and the council can arrange exactly that, because `Governor.execute` is permissionless, so it can schedule an upgrade and execute an already-passed, ready delay increase in the same transaction.
 
 The module closes this by scheduling each upgrade as a **two-call batch**:
 
@@ -82,7 +82,7 @@ The module closes this by scheduling each upgrade as a **two-call batch**:
 | 1   | `module.checkUpgradeDelayElapsed(scheduledAt)` | Reverts unless `now ≥ scheduledAt + upgradeDelay()`, **recomputed from the current settings** |
 | 2   | `token.upgradeToAndCall(newImpl, data)`        | The upgrade itself                                                                            |
 
-`TimelockController.executeBatch` runs the calls in order and reverts the whole execution if one fails, so a reverting `checkUpgradeDelayElapsed` blocks the upgrade; because the operation is only marked done after every call succeeds, it stays `Ready` and a later attempt still works. The effective deadline is therefore the **later** of the timelock's frozen timestamp and the recomputed `scheduledAt + upgradeDelay()`: a raise pushes it out, a cut cannot pull it in. Since `checkUpgradeDelayElapsed` tests the recomputed cycle _plus_ `COUNCIL_EXTRA_DELAY`, and a cancellation takes the recomputed cycle, the voter body keeps its full margin whatever the settings do — no bound on how far they may move is required.
+`TimelockController.executeBatch` runs the calls in order and reverts the whole execution if one fails, so a reverting `checkUpgradeDelayElapsed` blocks the upgrade; because the operation is only marked done after every call succeeds, it stays `Ready` and a later attempt still works. The effective deadline is therefore the **later** of the timelock's frozen timestamp and the recomputed `scheduledAt + upgradeDelay()`: an increase pushes it out, a decrease cannot pull it in. Since `checkUpgradeDelayElapsed` tests the recomputed cycle _plus_ `COUNCIL_EXTRA_DELAY`, and a cancellation takes the recomputed cycle, the voter body keeps its full margin whatever the settings do — no bound on how far they may move is required.
 
 ## 5. Upgrade paths
 
@@ -166,6 +166,26 @@ gantt
 
 _Both paths over the same 42 days, aligned so the two `Execution` markers coincide. Top: a voter-body upgrade — voting delay, voting period, timelock delay — executable after 35 days. Bottom: a council upgrade, executable after a single 42-day delay. Both timelines are minimums: `queue` and `execute` are permissionless calls with no deadline, so every step can land later than drawn. The 7-day lead-in on the top chart is the voter body's margin to notice a scheduled council upgrade and to absorb that slack; a cancel cycle begun after it still lands at the council upgrade's execution._
 
+### Settings changes while an upgrade is pending
+
+A pending council upgrade carries two independent deadlines and executes only once both have passed:
+
+- **Frozen** — `TimelockController` stores `scheduledAt + upgradeDelay()` at scheduling and never revisits it.
+- **Recomputed** — `checkUpgradeDelayElapsed`, the batch's first call, recomputes `scheduledAt + upgradeDelay()` on every execution attempt.
+
+The effective deadline is the later of the two. A delay increase after scheduling pushes the recomputed deadline past the frozen one and delays the upgrade; a decrease leaves the frozen one binding and cannot pull the deadline in.
+
+The recomputed deadline is not monotonic, and that is the residual risk. An increase executing after scheduling moves the deadline out; a later decrease moves it back to the frozen one. A cancel proposal filed in between keeps the increased voting period, which `XanGovernor` snapshots at proposal creation — so the council's requirement shrinks instantly while the voter body's cancel cycle does not. Once the increase exceeds `COUNCIL_EXTRA_DELAY`, every cancel filed after it misses the restored deadline.
+
+Anyone can execute a queued timelock operation, so the voter body cannot choose when a settings change lands — only whether it is queued at all. It must therefore:
+
+1. Execute settings changes one at a time, never leaving contrary ones queued together.
+2. Check `getLastScheduledUpgradeOperationId` and `isOperationPending` before proposing a delay decrease, and hold it back while a council upgrade is pending.
+3. Size every cancel against `earliestExecutableAt` from `UpgradeScheduled` — the frozen deadline, the only one that cannot be revoked.
+4. File the cancel within `COUNCIL_EXTRA_DELAY` of scheduling and before any delay increase executes, so its cycle is snapshotted at the settings the frozen deadline was computed from.
+
+Rules 1 and 2 prevent the loss and are jointly sufficient; 3 and 4 are the margin if prevention fails. Rule 4 is unavailable when the increase executes in the same transaction as the scheduling, leaving 1 and 2 as the only defence. Once a decrease is queued there is no on-chain recourse, since cancelling it needs a voter-body proposal, which takes a full cycle itself.
+
 ## 6. Cancellation
 
 Cancellation is **one-way**: the voter body can cancel the council's pending upgrade, while the council can withdraw only its own.
@@ -197,6 +217,7 @@ The irreducible exception is an **inactive voter body**: when the electorate gen
 
 - **Inactive-voter honeypot (irreducible).** See section [Voter supremacy](#7-voter-supremacy). Bounded by the delay and by voters later replacing the council.
 - **A passed voter-body proposal is on-chain-unstoppable.** No actor holds a cancel over queued voter-body operations; the residual defense against a captured voter body is off-chain, within the timelock delay.
+- **Contrary settings proposals left queued.** An increase and a decrease of the timing settings, both queued and ready, let a pending council upgrade's deadline be pushed out and then pulled back, stranding a cancel filed in between. Execution is permissionless, so this is constrained by what the voter body queues; see section [Settings changes while an upgrade is pending](#settings-changes-while-an-upgrade-is-pending).
 - **A captured council is nearly powerless.** It can only schedule token upgrades — slower than a voter cycle and cancellable by the voter body — and withdraw its own pending one; it cannot cancel, stall, or veto voter-body operations. The backstop is council replacement / module revocation.
 - **One council upgrade in flight.** The module refuses a new council upgrade while one is pending; competing voter-body upgrades are unaffected, and the token's `reinitializer` version guard prevents a stale op from re-running.
 - **The council delay exceeds a full voter cancel cycle** (plus the extra delay) and is computed live, so it tracks changes to the governor settings and the timelock minimum — including changes that land _after_ the upgrade was scheduled, which the batch's leading `checkUpgradeDelayElapsed` call recomputes against (see [XanUpgradeCouncilModule](#4-xanupgradecouncilmodule)).
