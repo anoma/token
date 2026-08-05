@@ -10,6 +10,8 @@ Conceptual orientation lives in [`CONTEXT.md`](./CONTEXT.md). The audit-facing s
 
 Anoma smart contracts undergo regular audits:
 
+### XanV1
+
 1. Zellic Audit
 
    - Company Website: https://www.zellic.io
@@ -29,6 +31,17 @@ Anoma smart contracts undergo regular audits:
 
    [📄 Initial Audit Report (pdf)](./audits/2025-09-03_Informal_Systems_Anoma_Token_&_TokenDistributor.pdf)
    [📄 Updated Audit Report (pdf)](./audits/2025-09-18_Informal_Systems_Anoma_Token_&_TokenDistributor.pdf)
+
+### XanV2 & Governance
+
+1. Nethermind Audit
+
+   - Company Website: https://www.nethermind.io
+   - Commit ID: [a580fdb7ec2fd26a480bd0d22982b8aebd503df8](https://github.com/anoma/token/tree/a580fdb7ec2fd26a480bd0d22982b8aebd503df8)
+   - Started: 2026-07-29
+   - Finished: 2026-08-06
+
+   [📄 Audit Report (pdf)](./audits/2026-08-06_Nethermind_XAN_Token_Upgrade.pdf)
 
 ## Security
 
