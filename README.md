@@ -1,8 +1,8 @@
 # Anoma (XAN) Token
 
-The Anoma token (XAN) is the foundation of the Anoma Economic System. It is an upgradeable ERC-20 token.
+The Anoma token (XAN) is an upgradeable ERC-20 token.
 
-The currently deployed **V1** implementation gates upgrades with an in-token meta-governance mechanism based on quorum approval voting and a fast-track council. This repository also contains the **V2** implementation and the V1→V2 upgrade: V2 removes the in-token governance in favor of a single owner, vests the formerly locked balances linearly, and adds `ERC20Votes` vote delegation on a timestamp clock. The V2 owner is an external governance stack — the `XanGovernor` DAO, its `TimelockController`, and the `XanUpgradeCouncilModule` backup upgrade path.
+This repository contains both implementations and the upgrade from V1 to V2. **V1** gates upgrades with an in-token meta-governance mechanism based on quorum approval voting and a fast-track council. **V2** removes the in-token governance in favor of a single owner, vests the formerly locked balances linearly, and adds `ERC20Votes` vote delegation on a timestamp clock. The V2 owner is an external governance stack — the `XanGovernor` DAO, its `TimelockController`, and the `XanUpgradeCouncilModule` backup upgrade path.
 
 Conceptual orientation lives in [`CONTEXT.md`](./CONTEXT.md). The audit-facing specifications are [`docs/01-XanV2-upgrade.md`](./docs/01-XanV2-upgrade.md) (token) and [`docs/02-XanV2-governance.md`](./docs/02-XanV2-governance.md) (governance layer); design decisions are recorded in [`docs/adr/`](./docs/adr/).
 
@@ -66,22 +66,17 @@ If you believe you've found a security issue, we encourage you to notify us via 
 
 ### Tests
 
-Run
-
 ```sh
-forge test --force --gas-report
+forge test --force
 ```
 
 > [!NOTE]  
 > The `--force` flag is required for the [openzeppelin-foundry-upgrades](https://github.com/OpenZeppelin/openzeppelin-foundry-upgrades) package to work.
-> The `--gas-report` flag prints selected gas reports.
 
 ### Coverage
 
-Run
-
 ```sh
-forge coverage --ir-minimum
+forge coverage
 ```
 
 ### Linting & Static Analysis
@@ -91,18 +86,8 @@ As a prerequisite, install the
 - `solhint` linter (see https://github.com/protofire/solhint)
 - `slither` static analyzer (see https://github.com/crytic/slither)
 
-Run the linter and analysis with
-
 ```sh
-npx solhint --config .solhint.json 'src/**/*.sol' && \
-npx solhint --config .solhint.other.json 'script/**/*.sol' 'test/**/*.sol' && \
+bunx --bun solhint --config .solhint.json 'src/**/*.sol' && \
+bunx --bun solhint --config .solhint.other.json 'script/**/*.sol' 'test/**/*.sol' && \
 slither .
-```
-
-### Documentation
-
-Run
-
-```sh
-forge doc
 ```
