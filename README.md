@@ -6,6 +6,16 @@ This repository contains both implementations and the upgrade from V1 to V2. **V
 
 Conceptual orientation lives in [`CONTEXT.md`](./CONTEXT.md). The audit-facing specifications are [`docs/01-XanV2-upgrade.md`](./docs/01-XanV2-upgrade.md) (token) and [`docs/02-XanV2-governance.md`](./docs/02-XanV2-governance.md) (governance layer); design decisions are recorded in [`docs/adr/`](./docs/adr/).
 
+## Deployments
+
+The proxy is the token address and stays fixed across upgrades; the implementation behind it is what an upgrade replaces. The council multisig is V1's `governanceCouncil`, which schedules V1 upgrades and will also front the `XanUpgradeCouncilModule` after the upgrade. Both networks share the same addresses.
+
+| Contract          | Ethereum mainnet                                                                                                        | Sepolia                                                                                                                         |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Proxy (XAN token) | [`0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7`](https://etherscan.io/token/0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7)   | [`0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7`](https://sepolia.etherscan.io/token/0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7)   |
+| Implementation V1 | [`0x03997b568FE70E91A53c458DC19dc29e0bC2735E`](https://etherscan.io/address/0x03997b568FE70E91A53c458DC19dc29e0bC2735E) | [`0x03997b568FE70E91A53c458DC19dc29e0bC2735E`](https://sepolia.etherscan.io/address/0x03997b568FE70E91A53c458DC19dc29e0bC2735E) |
+| Council multisig  | [`0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116`](https://etherscan.io/address/0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116) | [`0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116`](https://sepolia.etherscan.io/address/0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116) |
+
 ## Audits
 
 Anoma smart contracts undergo regular audits:
