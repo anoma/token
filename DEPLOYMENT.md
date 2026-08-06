@@ -67,11 +67,11 @@ Run the block below for `sepolia`, then for `mainnet`.
   just verify-governance <timelock> <governor> <council-module> <implementation-v2> <chain>
   ```
 
-- [ ] **Record all four addresses** (timelock, governor, council module, implementation V2).
+- [ ] **Record all four addresses** (timelock, governor, council module, V2 implementation).
 
 Once both chains are done:
 
-- [ ] **Confirm the two implementation V2 deployments are byte-identical.** Both commands must print the same hash. Its
+- [ ] **Confirm the two V2 implementation deployments are byte-identical.** Both commands must print the same hash. Its
       constructor arguments are the nonce-0 timelock and two constants, all identical across the chains, so the runtime
       code must match too — a mismatch means something diverged.
 
@@ -121,7 +121,7 @@ The council path is the expected one.
   This calls `upgradeToAndCall(implementationV2, reinitializeFromV1())`. `reinitializeFromV1` takes no arguments, so executing the
   upgrade cannot influence the owner or the vesting schedule; both were fixed in step 1.
 
-- [ ] **Confirm the proxy runs implementation V2.**
+- [ ] **Confirm the proxy runs the V2 implementation.**
 
   ```bash
   cast call <proxy> "implementation()(address)" --rpc-url <chain>
