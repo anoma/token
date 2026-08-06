@@ -90,13 +90,14 @@ mainnet once the rehearsal has completed.
 
 - [ ] **Execute `scheduleCouncilUpgrade(implementationV2)` on the V1 proxy** from V1's `governanceCouncil` multisig.
 
-- [ ] **Confirm it landed.** The address must equal `implementationV2`; the `uint48` is when step 3 unlocks.
+- [ ] **Confirm it landed.** The address must equal `implementationV2`; the `uint48` (`endTime`) is the timestamp step 3
+      becomes executable at.
 
   ```bash
   cast call <proxy> "scheduledCouncilUpgrade()(address,uint48)" --rpc-url <chain>
   ```
 
-- [ ] **Record the unlock timestamp.** `DELAY_DURATION` is 14 days.
+- [ ] **Record the executable-at timestamp.** It is the scheduling time plus `DELAY_DURATION`, which is 14 days.
 
 The alternative V1 path is the voter-body quorum — hold `castVote(implementationV2)` to quorum, then `scheduleVoterBodyUpgrade()`.
 The council path is the expected one.
