@@ -90,8 +90,7 @@ mainnet once the rehearsal has completed.
 
 - [ ] **Execute `scheduleCouncilUpgrade(implementationV2)` on the V1 proxy** from V1's `governanceCouncil` multisig.
 
-- [ ] **Confirm it landed.** The address must equal `implementationV2`; the `uint48` (`endTime`) is the timestamp step 3
-      becomes executable at.
+- [ ] **Confirm it landed.** The address must equal `implementationV2`; the `uint48` (`endTime`) is the timestamp step 3 becomes executable at.
 
   ```bash
   cast call <proxy> "scheduledCouncilUpgrade()(address,uint48)" --rpc-url <chain>
