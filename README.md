@@ -42,7 +42,7 @@ Anoma smart contracts undergo regular audits:
    [📄 Initial Audit Report (pdf)](./audits/2025-09-03_Informal_Systems_Anoma_Token_&_TokenDistributor.pdf)
    [📄 Updated Audit Report (pdf)](./audits/2025-09-18_Informal_Systems_Anoma_Token_&_TokenDistributor.pdf)
 
-### XanV2 & Governance
+### XanV2
 
 1. Nethermind Audit
 
