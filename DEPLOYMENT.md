@@ -19,7 +19,7 @@ completed. The token spec is [`docs/01-XanV2-upgrade.md`](docs/01-XanV2-upgrade.
 
 - [ ] **Fund the wallet on both chains.** Inbound transfers do not consume its nonce.
 
-> **Optional.** `implV2` is computable before it is deployed — one prediction covers both chains, same deployer and
+> **Optional.** `implementationV2` is computable before it is deployed — one prediction covers both chains, same deployer and
 > same nonce. Step 1 takes minutes, so this is not about saving time: it lets the council draft and review the step 2
 > Safe transaction ahead of the deploy, and gives an independent check that the deployment landed where expected.
 >
@@ -29,7 +29,7 @@ completed. The token spec is [`docs/01-XanV2-upgrade.md`](docs/01-XanV2-upgrade.
 
 ## 2. Step 1 — Prepare (both networks)
 
-Deploys the governance stack and the V2 implementation, baking the timelock into `implV2` as the token owner. Do this on
+Deploys the governance stack and the V2 implementation, baking the timelock into `implementationV2` as the token owner. Do this on
 **both** chains before moving on: the stack is inert until step 2 schedules an upgrade, so a mainnet deployment sitting
 unscheduled carries no risk to the token, and deploying both here pins them to the same nonces before the wallet is used
 for anything else.
@@ -45,7 +45,7 @@ Run the block below for `sepolia`, then for `mainnet`.
   just prepare-upgrade-simulate <sender> <proxy> <council> <chain>
   ```
 
-- [ ] **Check the printed transaction list against the [address map](#6-address-map).** Ten transactions, `implV2` last.
+- [ ] **Check the printed transaction list against the [address map](#6-address-map).** Ten transactions, `implementationV2` last.
       **Stop if it differs** — the nonce assignments have moved, so the contracts will not land where the map says.
 
 - [ ] **Broadcast.**
@@ -64,20 +64,20 @@ Run the block below for `sepolia`, then for `mainnet`.
 - [ ] **Verify the contracts on the explorers.**
 
   ```bash
-  just verify-governance <timelock> <governor> <council-module> <impl-v2> <chain>
+  just verify-governance <timelock> <governor> <council-module> <implementation-v2> <chain>
   ```
 
-- [ ] **Record all four addresses** (timelock, governor, council module, `implV2`).
+- [ ] **Record all four addresses** (timelock, governor, council module, implementation V2).
 
 Once both chains are done:
 
-- [ ] **Confirm the two `implV2` deployments are byte-identical.** Both commands must print the same hash. Its
+- [ ] **Confirm the two implementation V2 deployments are byte-identical.** Both commands must print the same hash. Its
       constructor arguments are the nonce-0 timelock and two constants, all identical across the chains, so the runtime
       code must match too — a mismatch means something diverged.
 
   ```bash
-  cast keccak $(cast code <impl-v2> --rpc-url sepolia)
-  cast keccak $(cast code <impl-v2> --rpc-url mainnet)
+  cast keccak $(cast code <implementationV2> --rpc-url sepolia)
+  cast keccak $(cast code <implementationV2> --rpc-url mainnet)
   ```
 
   The council module is expected **not** to match if the two chains use different council multisigs; that address is an
@@ -88,9 +88,9 @@ Once both chains are done:
 A Safe transaction, not a `forge script` step — `forge` cannot broadcast as the Safe. Run on Sepolia first; repeat on
 mainnet once the rehearsal has completed.
 
-- [ ] **Execute `scheduleCouncilUpgrade(implV2)` on the V1 proxy** from V1's `governanceCouncil` multisig.
+- [ ] **Execute `scheduleCouncilUpgrade(implementationV2)` on the V1 proxy** from V1's `governanceCouncil` multisig.
 
-- [ ] **Confirm it landed.** The address must equal `implV2`; the `uint48` is when step 3 unlocks.
+- [ ] **Confirm it landed.** The address must equal `implementationV2`; the `uint48` is when step 3 unlocks.
 
   ```bash
   cast call <proxy> "scheduledCouncilUpgrade()(address,uint48)" --rpc-url <chain>
@@ -98,7 +98,7 @@ mainnet once the rehearsal has completed.
 
 - [ ] **Record the unlock timestamp.** `DELAY_DURATION` is 14 days.
 
-The alternative V1 path is the voter-body quorum — hold `castVote(implV2)` to quorum, then `scheduleVoterBodyUpgrade()`.
+The alternative V1 path is the voter-body quorum — hold `castVote(implementationV2)` to quorum, then `scheduleVoterBodyUpgrade()`.
 The council path is the expected one.
 
 ## 4. Step 3 — Upgrade (after 14 days)
@@ -117,10 +117,10 @@ The council path is the expected one.
   just upgrade <deployer> <proxy> <chain>
   ```
 
-  This calls `upgradeToAndCall(implV2, reinitializeFromV1())`. `reinitializeFromV1` takes no arguments, so executing the
+  This calls `upgradeToAndCall(implementationV2, reinitializeFromV1())`. `reinitializeFromV1` takes no arguments, so executing the
   upgrade cannot influence the owner or the vesting schedule; both were fixed in step 1.
 
-- [ ] **Confirm the proxy runs `implV2`.**
+- [ ] **Confirm the proxy runs implementation V2.**
 
   ```bash
   cast call <proxy> "implementation()(address)" --rpc-url <chain>
