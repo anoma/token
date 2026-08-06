@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 
 import {Test} from "forge-std/Test.sol";
@@ -27,7 +28,7 @@ contract XanV1PermitTest is Test {
     }
 
     function test_permits_reverts_for_invalid_signature() public {
-        uint256 deadline = block.timestamp + 1 hours;
+        uint256 deadline = Time.timestamp() + 1 hours;
         uint256 value = 500;
 
         (uint8 v, bytes32 r, bytes32 s) = (0, 0, 0);
@@ -38,7 +39,7 @@ contract XanV1PermitTest is Test {
     function test_permits_spending_given_an_EIP712_signature() public {
         // Sign message
         uint256 nonce = _xanProxy.nonces(_ALICE);
-        uint256 deadline = block.timestamp + 1 hours;
+        uint256 deadline = Time.timestamp() + 1 hours;
         uint256 value = 500;
 
         bytes32 structHash = keccak256(

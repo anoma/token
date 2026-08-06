@@ -46,6 +46,5 @@ verbosity = 3
 [rpc_endpoints]
 mainnet = "https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
 sepolia = "https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
-localhost = "http://localhost:8545"
 
 # Full reference https://github.com/foundry-rs/foundry/tree/master/crates/config

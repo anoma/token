@@ -249,7 +249,7 @@ contract XanV1CouncilTest is Test {
     function test_scheduledCouncilImplementation_returns_the_scheduled_upgrade_if_an_upgrade_has_been_scheduled()
         public
     {
-        uint256 expectedEndTime = block.timestamp + Parameters.DELAY_DURATION;
+        uint256 expectedEndTime = Time.timestamp() + Parameters.DELAY_DURATION;
         vm.prank(_COUNCIL);
         _xanProxy.scheduleCouncilUpgrade(_NEW_IMPL);
 

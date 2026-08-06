@@ -27,7 +27,7 @@ contract ExecuteXanV2UpgradeTest is Test {
 
     function test_run_reverts_before_the_delay_has_elapsed() public {
         vm.prank(_COUNCIL);
-        XanV1(_proxy).scheduleCouncilUpgrade({impl: makeAddr("implV2")});
+        XanV1(_proxy).scheduleCouncilUpgrade({impl: makeAddr("implementationV2")});
         (, uint48 endTime) = XanV1(_proxy).scheduledCouncilUpgrade();
 
         vm.expectRevert(abi.encodeWithSelector(XanV1.DelayPeriodNotEnded.selector, endTime), address(_script));
