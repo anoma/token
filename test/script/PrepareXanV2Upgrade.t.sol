@@ -69,16 +69,16 @@ contract PrepareXanV2UpgradeTest is Test {
     }
 
     function test_run_deploys_governance_and_prepares_the_upgrade() public {
-        (address implV2, address governor, address timelock, address councilModule) =
+        (address implementationV2, address governor, address timelock, address councilModule) =
             _script.run({proxy: _token, councilMultisig: _COUNCIL_MULTISIG});
 
         // The governance stack is deployed and wired; the V2 implementation is prepared.
-        assertTrue(implV2 != address(0), "implV2 not prepared");
+        assertTrue(implementationV2 != address(0), "implementationV2 not prepared");
         assertEq(address(XanGovernor(payable(governor)).token()), _token, "governor not driven by the proxy");
         assertEq(XanGovernor(payable(governor)).timelock(), timelock, "governor not wired to the timelock");
         assertEq(XanUpgradeCouncilModule(councilModule).getCouncil(), _COUNCIL_MULTISIG, "upgrade council not wired");
 
-        // `run` does not schedule — the V1 council Safe schedules the returned `implV2` in a separate transaction.
+        // `run` does not schedule — the V1 council Safe schedules the returned `implementationV2` in a separate transaction.
         (address scheduledImpl,) = XanV1(_token).scheduledCouncilUpgrade();
         assertEq(scheduledImpl, address(0), "run must not schedule the upgrade");
     }

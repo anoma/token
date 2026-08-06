@@ -14,8 +14,8 @@ import {XanUpgradeCouncilModule} from "../src/XanUpgradeCouncilModule.sol";
 
 /// @notice Deploys the XAN governance stack (timelock, `XanGovernor`, `XanUpgradeCouncilModule`) and prepares the XanV1->V2
 /// implementation with the deployed timelock baked in as the token owner. The upgrade is *not* scheduled here: the V1
-/// governance council is a multisig, so it must execute `scheduleCouncilUpgrade(implV2)` itself using the returned
-/// `implV2`.
+/// governance council is a multisig, so it must execute `scheduleCouncilUpgrade(implementationV2)` itself using the returned
+/// `implementationV2`.
 contract PrepareXanV2Upgrade is Script {
     error ZeroTokenNotAllowed();
     error ZeroCouncilNotAllowed();
@@ -23,13 +23,13 @@ contract PrepareXanV2Upgrade is Script {
     /// @notice Deploys the governance stack and prepares the XanV1 to V2 upgrade implementation.
     /// @param proxy The XanV1 proxy to upgrade.
     /// @param councilMultisig The initial upgrade-council multisig.
-    /// @return implV2 The XanV2 implementation the V1 council must schedule via `scheduleCouncilUpgrade`.
+    /// @return implementationV2 The XanV2 implementation the V1 council must schedule via `scheduleCouncilUpgrade`.
     /// @return governor The deployed `XanGovernor`.
-    /// @return timelock The deployed `TimelockController` — the token owner baked into `implV2`.
+    /// @return timelock The deployed `TimelockController` — the token owner baked into `implementationV2`.
     /// @return upgradeCouncilModule The deployed `XanUpgradeCouncilModule`.
     function run(address proxy, address councilMultisig)
         public
-        returns (address implV2, address governor, address timelock, address upgradeCouncilModule)
+        returns (address implementationV2, address governor, address timelock, address upgradeCouncilModule)
     {
         vm.startBroadcast(msg.sender);
 
@@ -45,7 +45,7 @@ contract PrepareXanV2Upgrade is Script {
         {
             Options memory opts;
             opts.constructorData = abi.encode(timelock, Parameters.XAN_VESTING_START, Parameters.XAN_VESTING_DURATION);
-            implV2 = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});
+            implementationV2 = Upgrades.prepareUpgrade({contractName: "XanV2.sol:XanV2", opts: opts});
         }
 
         vm.stopBroadcast();

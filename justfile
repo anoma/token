@@ -93,8 +93,8 @@ prepare-upgrade-simulate sender proxy council chain *args:
         --rpc-url {{ chain }} --sender {{ sender }} {{ args }}
 
 # Deploy governance + prepare the XanV1→V2 upgrade implementation. `sender` (the address behind `deployer`) becomes the
-# transient timelock admin. The returned `implV2` must then be scheduled by the V1 council multisig via
-# `scheduleCouncilUpgrade(implV2)` before running `upgrade`. Verifies every deployed contract on etherscan with the
+# transient timelock admin. The returned `implementationV2` must then be scheduled by the V1 council multisig via
+# `scheduleCouncilUpgrade(implementationV2)` before running `upgrade`. Verifies every deployed contract on etherscan with the
 # exact constructor args from the broadcast.
 prepare-upgrade deployer sender proxy council chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
@@ -166,8 +166,8 @@ verify-proxy-custom proxy implementation initial-mint-recipient council chain ve
 verify-proxy proxy implementation initial-mint-recipient council chain: (verify-proxy-sourcify proxy implementation initial-mint-recipient council chain) (verify-proxy-etherscan proxy implementation initial-mint-recipient council chain)
 
 # Verify the governance stack deployed by `prepare-upgrade` on both sourcify and etherscan
-verify-governance timelock governor council-module impl-v2 chain: \
+verify-governance timelock governor council-module implementation-v2 chain: \
     (verify-impl timelock "lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/governance/TimelockController.sol:TimelockController" chain) \
     (verify-impl governor "src/XanGovernor.sol:XanGovernor" chain) \
     (verify-impl council-module "src/XanUpgradeCouncilModule.sol:XanUpgradeCouncilModule" chain) \
-    (verify-impl impl-v2 "src/XanV2.sol:XanV2" chain)
+    (verify-impl implementation-v2 "src/XanV2.sol:XanV2" chain)

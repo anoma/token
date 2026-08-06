@@ -23,35 +23,35 @@ contract XanV2UpgradeIntegrationTest is Test {
 
     function test_scripts_drive_the_full_v1_to_v2_upgrade() public {
         // 1. Deploy the XanV1 proxy governed by the council multisig.
-        (address proxy, address implV1) =
+        (address proxy, address implementationV1) =
             new DeployXanV1().run({initialMintRecipient: _MINT_RECIPIENT, council: _COUNCIL_MULTISIG});
         uint256 supplyBefore = XanV1(proxy).totalSupply();
-        assertEq(XanV1(proxy).implementation(), implV1, "proxy does not run V1");
+        assertEq(XanV1(proxy).implementation(), implementationV1, "proxy does not run V1");
         assertEq(XanV1(proxy).governanceCouncil(), _COUNCIL_MULTISIG, "V1 council mismatch");
 
         // 2. Deploy governance and prepare the V2 implementation (permissionless). The timelock deployed here is baked
-        // into the V2 implementation bytecode as the token owner. `run` does not schedule — it returns `implV2`.
-        (address implV2, address governor, address timelock,) =
+        // into the V2 implementation bytecode as the token owner. `run` does not schedule — it returns `implementationV2`.
+        (address implementationV2, address governor, address timelock,) =
             new PrepareXanV2Upgrade().run({proxy: proxy, councilMultisig: _COUNCIL_MULTISIG});
 
-        // 3. The council Safe schedules the prepared implementation (the transaction the script surfaces via `implV2`).
+        // 3. The council Safe schedules the prepared implementation (the transaction the script surfaces via `implementationV2`).
         vm.prank(_COUNCIL_MULTISIG);
-        XanV1(proxy).scheduleCouncilUpgrade({impl: implV2});
+        XanV1(proxy).scheduleCouncilUpgrade({impl: implementationV2});
 
         (address scheduledImpl, uint48 endTime) = XanV1(proxy).scheduledCouncilUpgrade();
-        assertEq(scheduledImpl, implV2, "council did not schedule the V2 implementation");
+        assertEq(scheduledImpl, implementationV2, "council did not schedule the V2 implementation");
         assertEq(endTime, Time.timestamp() + Parameters.DELAY_DURATION, "unexpected upgrade delay");
 
         // 4. Wait out the council delay, then execute the (permissionless) upgrade.
         vm.warp(endTime);
         address executed = new ExecuteXanV2Upgrade().run({proxy: proxy});
-        assertEq(executed, implV2, "executed a different implementation than scheduled");
+        assertEq(executed, implementationV2, "executed a different implementation than scheduled");
 
         // 5. The proxy now runs XanV2 with the state baked into the implementation bytecode by `PrepareXanV2Upgrade`:
         // the deployed timelock owns the token, the supply is conserved, and the vesting schedule matches the audited
         // `Parameters`.
         XanV2 tokenV2 = XanV2(proxy);
-        assertEq(tokenV2.implementation(), implV2, "proxy not upgraded to V2");
+        assertEq(tokenV2.implementation(), implementationV2, "proxy not upgraded to V2");
         assertEq(tokenV2.owner(), timelock, "owner is not the deployed timelock");
         assertEq(tokenV2.initialOwner(), timelock, "baked initial owner is not the deployed timelock");
         assertEq(tokenV2.totalSupply(), supplyBefore, "supply changed by the upgrade");

@@ -25,7 +25,7 @@ contract ExecuteXanV2Upgrade is Script {
 
         vm.startBroadcast();
 
-        // The owner and vesting start are baked into `implV2` at deployment (see `PrepareXanV2Upgrade`),
+        // The owner and vesting start are baked into `implementationV2` at deployment (see `PrepareXanV2Upgrade`),
         // so `reinitializeFromV1` takes no arguments and executing this upgrade cannot influence them.
         UnsafeUpgrades.upgradeProxy({
             proxy: proxy, newImpl: implementationV2, data: abi.encodeCall(XanV2.reinitializeFromV1, ())
