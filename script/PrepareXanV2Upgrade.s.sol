@@ -22,7 +22,7 @@ contract PrepareXanV2Upgrade is Script {
 
     /// @notice Deploys the governance stack and prepares the XanV1 to V2 upgrade implementation.
     /// @param proxy The XanV1 proxy to upgrade.
-    /// @param councilMultisig The initial upgrade-council multisig.
+    /// @param councilMultisig The upgrade-council multisig.
     /// @return implementationV2 The XanV2 implementation the V1 council must schedule via `scheduleCouncilUpgrade`.
     /// @return governor The deployed `XanGovernor`.
     /// @return timelock The deployed `TimelockController` — the token owner baked into `implementationV2`.
