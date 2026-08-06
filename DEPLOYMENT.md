@@ -36,8 +36,8 @@ for anything else.
 
 Run the block below for `sepolia`, then for `mainnet`.
 
-- [ ] **Confirm `<council>` is the multisig for the new `XanUpgradeCouncilModule`** — _not_ V1's `governanceCouncil`,
-      which is the Safe that performs step 2. It is baked into the module and cannot be changed afterwards.
+- [ ] **Confirm `<council>` is the multisig for the new `XanUpgradeCouncilModule`.** It is baked into the module and
+      cannot be changed afterwards. It is the same Safe as V1's `governanceCouncil`, which performs step 2.
 
 - [ ] **Dry-run.**
 
