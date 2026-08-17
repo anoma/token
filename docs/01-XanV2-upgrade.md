@@ -57,7 +57,7 @@ vested(principal) = 0                                          if now ≤ XAN_VE
                   = principal · (now − XAN_VESTING_START) / XAN_VESTING_DURATION   otherwise
 ```
 
-`XAN_VESTING_START = 2026-10-31 12:00 UTC` (`1793448000`); `XAN_VESTING_DURATION = 3 · 365 days` (1095 days, no leap adjustment). The schedule is baked into the implementation as immutables (`_VESTING_START`, `_VESTING_DURATION`).
+`XAN_VESTING_START = 2026-09-29 12:00 UTC` (`1790683200`); `XAN_VESTING_DURATION = 3 · 365 days` (1095 days, no leap adjustment). The schedule is baked into the implementation as immutables (`_VESTING_START`, `_VESTING_DURATION`).
 
 **`unlock()`.** Moves an account's currently-unlockable amount from locked to unlocked by raising the cumulative `unlocked[account]` to `vested(principal)`. It reverts `NothingToUnlock` if nothing new has vested (`vested` is monotonic and capped at `principal`, so `unlocked` never exceeds `principal`). Emits `Unlocked`.
 
@@ -116,7 +116,7 @@ The governance layer that owns the token — `XanGovernor`, its `TimelockControl
 | `MIN_LOCKED_SUPPLY`                     | `SUPPLY / 4`                                                         |
 | `QUORUM_RATIO_NUMERATOR / _DENOMINATOR` | `1 / 2`                                                              |
 | `DELAY_DURATION`                        | `14 days`                                                            |
-| `XAN_VESTING_START`                     | `1793448000` (2026-10-31 12:00 UTC)                                  |
+| `XAN_VESTING_START`                     | `1790683200` (2026-09-29 12:00 UTC)                                  |
 | `XAN_VESTING_DURATION`                  | `3 · 365 days`                                                       |
 | `_XAN_V1_IMPLEMENTATION`                | `0x03997b568FE70E91A53c458DC19dc29e0bC2735E`                         |
 | V1 storage slot                         | `0x52f7d5fb153315ca313a5634db151fa7e0b41cd83fe6719e93ed3cd02b69d200` |

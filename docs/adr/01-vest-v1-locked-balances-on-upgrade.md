@@ -1,6 +1,6 @@
 # Vest the V1 locked balances on the upgrade instead of releasing them
 
-V1 records locked balances per-implementation, so upgrading the proxy would read a fresh, empty locking namespace and **instantly free every `transferAndLock`-locked balance** (mostly team / investor / foundation allocations) at the V1→V2 upgrade. To avoid that liquidity shock, V2 instead re-reads the V1 implementation's locked balances as a fixed per-account *principal* and releases it **linearly over three years** (`VESTING_START` = 2026-10-31 12:00 UTC, `VESTING_DURATION` = 3·365 days), unlockable via `unlock()`. Until unlocked, principal stays non-transferable but still counts toward `balanceOf` and voting power.
+V1 records locked balances per-implementation, so upgrading the proxy would read a fresh, empty locking namespace and **instantly free every `transferAndLock`-locked balance** (mostly team / investor / foundation allocations) at the V1→V2 upgrade. To avoid that liquidity shock, V2 instead re-reads the V1 implementation's locked balances as a fixed per-account *principal* and releases it **linearly over three years** (`VESTING_START` = 2026-09-29 12:00 UTC, `VESTING_DURATION` = 3·365 days), unlockable via `unlock()`. Until unlocked, principal stays non-transferable but still counts toward `balanceOf` and voting power.
 
 ## Considered options
 

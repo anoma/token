@@ -6,7 +6,7 @@ Step 1 deploys both networks; steps 2 and 3 are then run on Sepolia first and on
 
 - [x] **Create a fresh deployer wallet.** It must never have sent a transaction on any chain, and must be used for nothing else afterwards.
 
-  Deployer wallet: `0xffbA90faD46ee7881EaEc8FAaf54C990EC6D8F19` ([mainnet](https://etherscan.io/address/0xffbA90faD46ee7881EaEc8FAaf54C990EC6D8F19), [sepolia](https://sepolia.etherscan.io/address/0xffbA90faD46ee7881EaEc8FAaf54C990EC6D8F19))
+  Deployer wallet: `0xc461247a7375cF7c70a576d636aA3dd38ff3bb2f` ([mainnet](https://etherscan.io/address/0xc461247a7375cF7c70a576d636aA3dd38ff3bb2f), [sepolia](https://sepolia.etherscan.io/address/0xc461247a7375cF7c70a576d636aA3dd38ff3bb2f))
 
 - [x] **Confirm it is at nonce 0 on both chains.** Both commands must print `0`; if either does not, discard the wallet and create another.
 
@@ -31,42 +31,40 @@ Run the block below for `sepolia`, then for `mainnet`.
   just prepare-upgrade-simulate <sender> <proxy> <council> <chain>
   ```
 
-- [x] **Check the printed transaction list against the [address map](#6-address-map).** Ten transactions, `implementationV2` last. **Stop if it differs** — the nonce assignments have moved, so the contracts will not land where the map says.
-
-- [x] **Broadcast.**
+- [ ] **Broadcast.**
 
   ```bash
   just prepare-upgrade <deployer> <sender> <proxy> <council> <chain>
   ```
 
-  - [x] Sepolia: [broadcast/PrepareXanV2Upgrade.s.sol/11155111/run-1786029049708.json](broadcast/PrepareXanV2Upgrade.s.sol/11155111/run-1786029049708.json)
-  - [x] Mainnet: [broadcast/PrepareXanV2Upgrade.s.sol/1/run-1786029347059.json](broadcast/PrepareXanV2Upgrade.s.sol/1/run-1786029347059.json)
+  - [ ] Sepolia: [broadcast/PrepareXanV2Upgrade.s.sol/11155111/run-1786972071911.json](broadcast/PrepareXanV2Upgrade.s.sol/11155111/run-1786972071911.json)
+  - [ ] Mainnet: [broadcast/PrepareXanV2Upgrade.s.sol/1/run-1786972324372.json](broadcast/PrepareXanV2Upgrade.s.sol/1/run-1786972324372.json)
 
-- [x] **Confirm the deployer no longer holds the timelock admin** (nonce 8 renounced it). Must print `false`.
+- [ ] **Confirm the deployer no longer holds the timelock admin** (nonce 8 renounced it). Must print `false`.
 
   ```bash
   cast call <timelock> "hasRole(bytes32,address)(bool)" \
     $(cast call <timelock> "DEFAULT_ADMIN_ROLE()(bytes32)" --rpc-url <chain>) <sender> --rpc-url <chain>
   ```
 
-- [x] **Verify the contracts on the explorers.**
+- [ ] **Verify the contracts on the explorers.**
 
   ```bash
   just verify-governance <timelock> <governor> <council-module> <implementation-v2> <chain>
   ```
 
-- [x] **Record all four addresses** (timelock, governor, council module, V2 implementation) in [README.md](README.md#deployed-contracts)
+- [ ] **Record all four addresses** (timelock, governor, council module, V2 implementation) in [README.md](README.md#deployed-contracts)
 
 Once both chains are done:
 
-- [x] **Confirm the two V2 implementation deployments are byte-identical.** Both commands must print the same hash. Its constructor arguments are the nonce-0 timelock and two constants, all identical across the chains.
+- [ ] **Confirm the two V2 implementation deployments are byte-identical.** Both commands must print the same hash. Its constructor arguments are the nonce-0 timelock and two constants, all identical across the chains.
 
   ```bash
   cast keccak $(cast code <implementationV2> --rpc-url sepolia)
   cast keccak $(cast code <implementationV2> --rpc-url mainnet)
   ```
 
-  Result: `0xf5776c910a51e9cd4422f28c88fea4d8c75d2d73d9d833809e67835211f86354`
+  Result: `0xc67381bca50028ed121ebb36280275cb22efbb26aa09c51815010ffc08940da6`
 
 ## 3. Step 2 — Schedule
 
