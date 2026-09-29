@@ -29,6 +29,7 @@ contract XanV2UpgradeE2ETest is Test {
     function tableNetworksTest_XanV2_council_scheduling_and_upgrade_succeeds_on_all_supported_networks(TestCase memory network)
         public
     {
+        vm.skip(true, "The live XAN proxies on mainnet and Sepolia already run XanV2.");
         vm.createSelectFork(network.name);
 
         XanV1 proxy = XanV1(_XAN_PROXY);
