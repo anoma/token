@@ -120,6 +120,24 @@ upgrade deployer proxy chain *args:
         --sig "run(address)" {{ proxy }} \
         --broadcast --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
 
+# Simulate deploying `XanVesting` with the recipients of a JSON file in `script/input/` (dry-run). No recipient may have
+# a principal in the token.
+deploy-vesting-simulate token owner recipients chain *args:
+    @echo "Cleaning contracts to ensure reproducible build..."
+    @just clean
+    forge script script/DeployXanVesting.s.sol:DeployXanVesting \
+        --sig "run(address,address,string)" {{ token }} {{ owner }} {{ recipients }} \
+        --rpc-url {{ chain }} {{ args }}
+
+# Deploy `XanVesting` with the recipients of a JSON file in `script/input/`. Verifies it on etherscan with the exact
+# constructor args from the broadcast.
+deploy-vesting deployer token owner recipients chain *args:
+    @echo "Cleaning contracts to ensure reproducible build..."
+    @just clean
+    forge script script/DeployXanVesting.s.sol:DeployXanVesting \
+        --sig "run(address,address,string)" {{ token }} {{ owner }} {{ recipients }} \
+        --broadcast --verify --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
+
 # --- Verification ---
 
 # Verify an implementation contract on sourcify (e.g. contract=src/XanV1.sol:XanV1)

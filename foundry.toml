@@ -7,6 +7,11 @@ ffi = true
 ast = true
 build_info = true
 extra_output = ["storageLayout"]
+fs_permissions = [
+    { access = "read", path = "./out" },
+    { access = "read", path = "./script/input" },
+    { access = "read", path = "./test/fixtures" },
+]
 
 remappings = [
     "forge-std/=lib/forge-std/src/",
