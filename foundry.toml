@@ -33,6 +33,17 @@ gas_reports = ["XanV1", "XanV2", "XanGovernor"]
 
 allow_internal_expect_revert = true
 
+[lint]
+exclude_lints = [
+    "inline-assembly",             # Solhint and Slither check this instead.
+    "internal-function-used-once", # Counts the call sites of `src` alone, because `ignore` hides those of the tests.
+    "missing-events-arithmetic",   # Slither checks this instead (`events-maths`).
+    "mixed-case-function",         # Reports `CLOCK_MODE`, whose name EIP-6372 fixes; Solhint checks the names instead.
+    "reentrancy-events",           # Reports events that no external call precedes; Slither checks this instead.
+    "require-revert-in-loop",      # The loops revert on purpose: one invalid recipient must abort the whole batch.
+]
+ignore = ["test/**/*.sol"] # Relaxed the way `.solhint.other.json` relaxes them.
+
 [invariant]
 runs = 500
 depth = 64

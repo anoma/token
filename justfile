@@ -29,8 +29,9 @@ fmt *args:
 fmt-check:
     forge fmt --check
 
-# Lint contracts (solhint)
+# Lint contracts (forge lint + solhint)
 lint:
+    forge lint --deny notes
     bunx --bun solhint --config .solhint.json 'src/**/*.sol'
     bunx --bun solhint --config .solhint.other.json 'test/**/*.sol'
     bunx --bun solhint --config .solhint.other.json 'script/**/*.sol'
