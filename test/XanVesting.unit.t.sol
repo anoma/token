@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {IXanV2} from "../src/interfaces/IXanV2.sol";
 import {IXanVesting} from "../src/interfaces/IXanVesting.sol";
@@ -218,6 +219,51 @@ contract XanVestingUnitTest is XanV2Fixture {
         vm.expectRevert(abi.encodeWithSelector(XanVesting.TokenBalanceInsufficient.selector, 0, _PRINCIPAL));
         vm.prank(_BOB);
         _vesting.unlock();
+    }
+
+    function test_topUp_covers_unlock_when_excluding_a_recipient_near_the_vesting_end() public {
+        _vesting = _deployVesting(_recipients(_ALICE, 100e18));
+        vm.prank(_OWNER);
+        _vesting.addRecipients(_recipients(_BOB, 100e18));
+
+        uint256 duration = _vestingEnd - _vestingStart;
+        uint256 horizon = duration / 5;
+        vm.warp(_vestingStart + 9 * duration / 10);
+
+        uint256 principal = _vesting.totalPrincipal() - _vesting.principalOf(_BOB);
+        uint256 unlockable = _vesting.totalUnlockableBalance() - _vesting.unlockableBalanceOf(_BOB);
+        uint256 locked = _vesting.totalLockedBalance() - _vesting.lockedBalanceOf(_BOB);
+        uint256 target = Math.min(locked, unlockable + Math.mulDiv(principal, horizon, duration, Math.Rounding.Ceil));
+        uint256 balance = _xan.balanceOf(address(_vesting));
+        uint256 topUp = Math.saturatingSub(target, balance);
+        deal(address(_xan), address(_vesting), balance + topUp);
+
+        vm.warp(_vestingEnd);
+        vm.prank(_ALICE);
+        assertEq(_vesting.unlock(), 100e18);
+        assertEq(_xan.balanceOf(_ALICE), 100e18);
+    }
+
+    function test_topUp_covers_unlock_when_the_vesting_increment_has_a_remainder() public {
+        deal(address(_xan), address(_vesting), 0);
+        uint256 duration = _vestingEnd - _vestingStart;
+        uint256 horizon = 30 days;
+        vm.warp(_vestingStart + 101);
+
+        uint256 target = Math.min(
+            _vesting.totalLockedBalance(),
+            _vesting.totalUnlockableBalance()
+                + Math.mulDiv(_vesting.totalPrincipal(), horizon, duration, Math.Rounding.Ceil)
+        );
+        uint256 balance = _xan.balanceOf(address(_vesting));
+        uint256 topUp = Math.saturatingSub(target, balance);
+        deal(address(_xan), address(_vesting), balance + topUp);
+
+        vm.warp(_vestingStart + 101 + horizon);
+        uint256 claim = _vesting.unlockableBalanceOf(_ALICE);
+        vm.prank(_ALICE);
+        assertEq(_vesting.unlock(), claim);
+        assertEq(_xan.balanceOf(_ALICE), claim);
     }
 
     function testFuzz_unlock_transfers_exactly_the_principal_in_total(uint256 firstUnlockTime) public {

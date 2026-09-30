@@ -85,23 +85,23 @@ The Anoma Foundation funds the contract with ordinary XAN transfers; the contrac
 
 ### Top-up amount
 
-Two formulas give the XAN to send, with `balance` the XAN balance of the contract. A negative result means that the contract needs no XAN.
+Two formulas give the XAN to send. Let `P = totalPrincipal()`, `U = totalUnlockableBalance()`, `L = totalLockedBalance()`, `D = vestingEnd() − vestingStart()`, and `balance` be the XAN balance of the contract.
+
+For each dead principal that the foundation leaves unfunded (see section [Trust assumptions](#10-trust-assumptions)), subtract its `principalOf`, `unlockableBalanceOf`, and `lockedBalanceOf` from `P`, `U`, and `L`, respectively, before applying either formula.
 
 **Top up for Δt.** Covers the unlocks until the next top-up, which is `Δt` away:
 
 ```
-topUp = min(totalLockedBalance(), totalUnlockableBalance() + totalPrincipal() · Δt / (vestingEnd() − vestingStart())) − balance
+topUp = max(0, min(L, U + ceil(P · Δt / D)) − balance)
 ```
 
-`totalUnlockableBalance()` is what recipients can unlock now. All principals vest on one schedule, so together they vest `totalPrincipal() · Δt / (vestingEnd() − vestingStart())` in `Δt`. The `min` stops at the amount for full funding. For example, 3,650,000 XAN of principals vest about 3,333 XAN per day, so a 30-day `Δt` adds 100,000 XAN to what recipients can unlock now.
+`U` bounds what the included recipients can unlock now. All principals vest on one schedule, so `ceil(P · Δt / D)` covers the additional vesting in `Δt`. Amounts use the smallest token unit (18 decimals), and `ceil` rounds the division up to a whole unit so that truncation cannot leave the balance one unit short. The `min` stops at the amount for full funding; the `max` makes the top-up zero when the balance is sufficient. For example, 3,650,000 XAN of principals vest about 3,333 XAN per day, so a 30-day `Δt` adds 100,000 XAN to what recipients can unlock now.
 
 **Top up once.** Covers every present and future unlock, until the owner adds more recipients:
 
 ```
-topUp = totalLockedBalance() − balance
+topUp = max(0, L − balance)
 ```
-
-A principal that the foundation leaves unfunded (see section [Trust assumptions](#10-trust-assumptions)) lowers both amounts: subtract its `unlockableBalanceOf` plus `principalOf · Δt / (vestingEnd() − vestingStart())` from the first, and its `lockedBalanceOf` from the second.
 
 ## 7. Voting
 
