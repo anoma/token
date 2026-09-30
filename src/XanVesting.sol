@@ -54,9 +54,6 @@ contract XanVesting is IXanVesting, Ownable {
     /// @notice Thrown when a principal is added for an account that already has a principal in this contract.
     error PrincipalAlreadySet(address account, uint256 principal);
 
-    /// @notice Thrown when a principal is added for an account that already has a principal in the XAN token.
-    error PrincipalSetInToken(address account, uint256 principal);
-
     /// @notice Thrown when the XAN balance of this contract is below the amount that the caller unlocks.
     error TokenBalanceInsufficient(uint256 tokenBalance, uint256 value);
 
@@ -65,8 +62,7 @@ contract XanVesting is IXanVesting, Ownable {
     error SurplusInsufficient(uint256 surplus, uint256 value);
 
     /// @notice Binds the XAN token, copies its vesting schedule into the bytecode, and adds the initial principals.
-    /// @param xanToken The XAN token proxy, which this contract transfers on unlock and reads existing principals and
-    /// the vesting schedule from.
+    /// @param xanToken The XAN token proxy, whose XAN this contract transfers on unlock and whose schedule it copies.
     /// @param initialOwner The account that can add more principals and withdraw the surplus.
     /// @param recipients The initial accounts and the principals vesting for them.
     constructor(IERC20 xanToken, address initialOwner, Recipient[] memory recipients) Ownable(initialOwner) {
@@ -202,7 +198,7 @@ contract XanVesting is IXanVesting, Ownable {
         end = _VESTING_START + _VESTING_DURATION;
     }
 
-    /// @notice Adds the principal of an account that has no principal yet, neither here nor in the XAN token.
+    /// @notice Adds the principal of an account that has no principal here yet.
     /// @param account The account the principal vests for.
     /// @param principal The amount of XAN vesting for the account.
     /// @dev The caller must add `principal` to `_totalPrincipal`.
@@ -212,11 +208,6 @@ contract XanVesting is IXanVesting, Ownable {
 
         uint256 existingPrincipal = _principals[account];
         require(existingPrincipal == 0, PrincipalAlreadySet({account: account, principal: existingPrincipal}));
-
-        // NOTE: The XAN token has no batch getter for principals, so the read belongs in the loop.
-        // forge-lint: disable-next-line(calls-loop)
-        uint256 tokenPrincipal = IXanV2(address(XAN_TOKEN)).principalOf(account);
-        require(tokenPrincipal == 0, PrincipalSetInToken({account: account, principal: tokenPrincipal}));
 
         _principals[account] = principal;
         _accounts.push(account);

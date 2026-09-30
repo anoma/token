@@ -33,7 +33,7 @@ interface IXanVesting {
     /// @return value The amount of tokens transferred to the caller.
     function unlock() external returns (uint256 value);
 
-    /// @notice Adds principals for accounts that have none yet, neither here nor in the XAN token.
+    /// @notice Adds principals for accounts that have none here yet.
     /// @dev All principals draw on one XAN balance, so an unfunded principal takes XAN that backs the others.
     /// @param recipients The accounts and the principals vesting for them.
     function addRecipients(Recipient[] calldata recipients) external;

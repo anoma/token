@@ -23,10 +23,10 @@ flowchart LR
     foundation -->|addRecipients / withdrawSurplus| vesting
     recipient -->|unlock| vesting
     vesting -->|transfer vested XAN| recipient
-    vesting -.->|read schedule and principals| token
+    vesting -.->|read schedule| token
 ```
 
-`XanVesting` is not upgradeable and inherits OpenZeppelin `Ownable`. It holds its XAN like any other account, and `unlock()` pays recipients with ordinary token transfers. Besides its own balance, it reads two things from the XAN token: the vesting schedule, once, at construction, and `principalOf`, for every principal that is added.
+`XanVesting` is not upgradeable and inherits OpenZeppelin `Ownable`. It holds its XAN like any other account, and `unlock()` pays recipients with ordinary token transfers. Besides its own balance, it reads only the vesting schedule from the XAN token, once, at construction.
 
 It exposes the vesting interface of `IXanV2` except `implementation()` and `initialOwner()`, and it reuses the `VestingScheduled` and `Unlocked` events of `IXanV2` and the `NothingToUnlock` error of `XanV2`.
 
@@ -40,7 +40,7 @@ The relationships mirror those of `XanV2` (see section [Domain model & balances]
 - `unlockableBalanceOf = max(0, vested(principal) − unlocked[account])` — what `unlock()` would transfer now
 - `principalOf = lockedBalanceOf + unlockedBalanceOf`
 
-**`unlockedBalanceOf` differs from `XanV2`.** In `XanV2`, it is the spendable balance, `balanceOf − lockedBalanceOf`. `XanVesting` holds no balance per account, because unlocked XAN leaves the contract, so it returns the amount transferred so far. The transferred XAN is freely transferable in the token, because no recipient has a principal there (see section [Recipients](#5-recipients)).
+**`unlockedBalanceOf` differs from `XanV2`.** In `XanV2`, it is the spendable balance, `balanceOf − lockedBalanceOf`. `XanVesting` holds no balance per account, because unlocked XAN leaves the contract, so it returns the amount transferred so far. The transferred XAN is freely transferable in the token, like any XAN that an account receives.
 
 Three totals cover all recipients:
 
@@ -69,10 +69,11 @@ A recipient added after `vestingStart` can unlock the part that has already vest
 The constructor adds the initial recipients, and the owner adds more in batches with `addRecipients(Recipient[])`. A `Recipient` is an `account` and its `principal`. The list is append-only: a principal cannot change and cannot be removed. An entry reverts the whole batch if:
 
 - the account is the zero address (`ZeroAccountNotAllowed`), or the principal is zero (`ZeroPrincipalNotAllowed`);
-- the account already has a principal here (`PrincipalAlreadySet`);
-- the account has a principal in the XAN token (`PrincipalSetInToken`), so no account vests twice.
+- the account already has a principal here (`PrincipalAlreadySet`).
 
 Each added principal emits `PrincipalAdded`. `getRecipients()` returns all recipients with their principals, in the order of addition.
+
+An account can also have a principal in the XAN token. The two principals vest independently, and `XanVesting` does not read the one in the token.
 
 ## 6. Funding
 
@@ -108,7 +109,7 @@ A principal that the foundation leaves unfunded (see section [Trust assumptions]
 
 ## 8. Integration
 
-A client picks the contract by account. If `principalOf(account)` on `XanVesting` is non-zero, it calls `unlock()` and the views on `XanVesting`; otherwise, it calls them on the XAN token proxy. No account has a principal in both (see section [Recipients](#5-recipients)). Only `unlockedBalanceOf` means something different on the two contracts (see section [Domain model & balances](#3-domain-model--balances)).
+A client checks both contracts for an account, because an account can have a principal in each (see section [Recipients](#5-recipients)). If `principalOf(account)` on `XanVesting` is non-zero, it calls `unlock()` and the views on `XanVesting`; if `principalOf(account)` on the XAN token proxy is non-zero, it calls them on the proxy. Only `unlockedBalanceOf` means something different on the two contracts (see section [Domain model & balances](#3-domain-model--balances)).
 
 ## 9. Ownership
 
@@ -116,7 +117,7 @@ The owner is the Anoma Foundation wallet, which funds the contract (see [ADR-10]
 
 ## 10. Trust assumptions
 
-- **The owner adds only eligible recipients with their correct principals.** All principals draw on one XAN balance. A principal that the foundation does not fund, such as an oversized one, takes XAN that backs the other recipients when it unlocks, and it cannot be removed. The owner, the Anoma Foundation wallet, is trusted to add only principals that it funds (see [ADR-10](./adr/10-the-anoma-foundation-wallet-owns-xanvesting.md)); `withdrawSurplus` alone cannot take XAN that a locked balance needs.
+- **The owner adds only eligible recipients with their correct principals.** All principals draw on one XAN balance. A principal that the foundation does not fund, such as an oversized one, takes XAN that backs the other recipients when it unlocks, and it cannot be removed. The owner, the Anoma Foundation wallet, is trusted to add only principals that it funds (see [ADR-10](./adr/10-the-anoma-foundation-wallet-owns-xanvesting.md)); `withdrawSurplus` alone cannot take XAN that a locked balance needs. The contract does not read the principals in the XAN token, so the owner must also make sure that a principal does not repeat a tranche that the account already vests there.
 - **The foundation keeps the contract funded.** Unlocks depend on its top-ups. An underfunded contract delays unlocks but loses no vesting.
 - **A principal leaves the contract only through `unlock()` by its account.** `withdrawSurplus` cannot take it. A principal for an address that can never call `unlock()`, such as a wrong address or a lost key, stays in the contract. So each recipient proves control of its address before it is added (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanvesting)). If a dead principal is found later, the foundation does not fund it: unlocks check only the balance, so the other recipients can still unlock in full, and `totalLockedBalance()` and `totalUnlockableBalance()` then overstate what is owed by that principal.
 - **The schedule is fixed at deployment.** A later token upgrade that changes the schedule of the token does not change the schedule of `XanVesting`.
@@ -131,7 +132,7 @@ The owner is the Anoma Foundation wallet, which funds the contract (see [ADR-10]
 { "recipients": [{ "account": "0x…", "principal": "1000000000000000000" }] }
 ```
 
-Principals are decimal strings in the smallest unit (18 decimals). Every recipient has proved control of its address beforehand (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanvesting)). Before it deploys, the script checks that no recipient has a principal in the XAN token. After the deployment, the foundation transfers the XAN.
+Principals are decimal strings in the smallest unit (18 decimals). Every recipient has proved control of its address beforehand (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanvesting)). After the deployment, the foundation transfers the XAN.
 
 ## 12. Parameters
 

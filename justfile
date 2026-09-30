@@ -120,8 +120,7 @@ upgrade deployer proxy chain *args:
         --sig "run(address)" {{ proxy }} \
         --broadcast --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
 
-# Simulate deploying `XanVesting` with the recipients of a JSON file in `script/input/` (dry-run). No recipient may have
-# a principal in the token.
+# Simulate deploying `XanVesting` with the recipients of a JSON file in `script/input/` (dry-run).
 deploy-vesting-simulate token owner recipients chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean

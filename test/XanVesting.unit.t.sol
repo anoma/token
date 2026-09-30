@@ -54,14 +54,6 @@ contract XanVestingUnitTest is XanV2Fixture {
         _deployVesting(recipients);
     }
 
-    function test_constructor_reverts_on_an_account_with_a_principal_in_the_token() public {
-        uint256 tokenPrincipal = _xanV2Proxy.principalOf(_defaultSender);
-        assertGt(tokenPrincipal, 0, "the default sender must have a principal in the token");
-
-        vm.expectRevert(abi.encodeWithSelector(XanVesting.PrincipalSetInToken.selector, _defaultSender, tokenPrincipal));
-        _deployVesting(_recipients(_defaultSender, _PRINCIPAL));
-    }
-
     function test_addRecipients_adds_the_principals() public {
         vm.prank(_OWNER);
         _vesting.addRecipients(_recipients(_BOB, _PRINCIPAL));
@@ -99,13 +91,13 @@ contract XanVestingUnitTest is XanV2Fixture {
         _vesting.addRecipients(_recipients(_ALICE, _PRINCIPAL));
     }
 
-    function test_addRecipients_reverts_on_an_account_with_a_principal_in_the_token() public {
-        uint256 tokenPrincipal = _xanV2Proxy.principalOf(_defaultSender);
-        assertGt(tokenPrincipal, 0, "the default sender must have a principal in the token");
+    function test_addRecipients_adds_an_account_with_a_principal_in_the_token() public {
+        assertGt(_xanV2Proxy.principalOf(_defaultSender), 0, "the default sender must have a principal in the token");
 
-        vm.expectRevert(abi.encodeWithSelector(XanVesting.PrincipalSetInToken.selector, _defaultSender, tokenPrincipal));
         vm.prank(_OWNER);
         _vesting.addRecipients(_recipients(_defaultSender, _PRINCIPAL));
+
+        assertEq(_vesting.principalOf(_defaultSender), _PRINCIPAL);
     }
 
     function test_addRecipients_reverts_on_the_zero_account() public {

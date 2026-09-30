@@ -75,7 +75,7 @@ flowchart LR
 
 **Vesting schedule**: The linear schedule over which principals vest, from `XAN_VESTING_START` to `XAN_VESTING_START + XAN_VESTING_DURATION` (the vesting end). Identical for every account and baked into the V2 implementation; there is no cliff. `XanVesting` copies it from the token at deployment.
 
-**Recipient**: An account with a principal in `XanVesting`. It has no principal in the token, so the XAN it unlocks is freely transferable.
+**Recipient**: An account with a principal in `XanVesting`. It can also have a principal in the token; the two vest independently. The XAN it unlocks from `XanVesting` is freely transferable.
 
 **Surplus**: The XAN that `XanVesting` holds above its total locked balance. Only the owner can withdraw it. Below the total locked balance, an unlock that needs more XAN than the contract holds reverts until the Anoma Foundation tops the contract up.
 
