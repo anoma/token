@@ -216,6 +216,27 @@ contract XanVestingUnitTest is XanV2Fixture {
         _vesting.unlock();
     }
 
+    function test_unlock_preserves_the_reserves_of_existing_recipients_after_an_unfunded_addition() public {
+        vm.warp(_vestingMid);
+        assertEq(_xan.balanceOf(address(_vesting)), _vesting.lockedBalanceOf(_ALICE));
+
+        vm.expectRevert(abi.encodeWithSelector(XanVesting.SurplusInsufficient.selector, 0, 1));
+        vm.prank(_OWNER);
+        _vesting.withdraw({receiver: _BOB, value: 1});
+
+        vm.prank(_OWNER);
+        _vesting.addRecipients(_recipients(_BOB, 2 * _PRINCIPAL));
+
+        vm.prank(_BOB);
+        _vesting.unlock();
+
+        assertGe(
+            _xan.balanceOf(address(_vesting)),
+            _vesting.lockedBalanceOf(_ALICE),
+            "Alice's outstanding allocation must remain backed"
+        );
+    }
+
     function testFuzz_unlock_transfers_exactly_the_principal_in_total(uint256 firstUnlockTime) public {
         firstUnlockTime = bound(firstUnlockTime, _vestingStart + 1, _vestingEnd - 1);
 
