@@ -1,6 +1,6 @@
-# XanV2 Upgrade — Deployment Checklist
+# Deployment Checklist
 
-Step 1 deploys both networks; steps 2 and 3 are then run on Sepolia first and on mainnet once the rehearsal has completed. The token spec is [`docs/01-XanV2-upgrade.md`](docs/01-XanV2-upgrade.md) and the governance spec is [`docs/02-XanV2-governance.md`](docs/02-XanV2-governance.md).
+Step 1 deploys both networks; steps 2 and 3 are then run on Sepolia first and on mainnet once the rehearsal has completed. The token spec is [`docs/01-XanV2-upgrade.md`](docs/01-XanV2-upgrade.md) and the governance spec is [`docs/02-XanV2-governance.md`](docs/02-XanV2-governance.md). Section 5 deploys `XanVesting` (see [`docs/03-XanVesting.md`](docs/03-XanVesting.md)).
 
 ## 1. Before you start
 
@@ -113,4 +113,40 @@ The alternative V1 path is the voter-body quorum — hold `castVote(implementati
 
   ```bash
   cast call <proxy> "owner()(address)" --rpc-url <chain>
+  ```
+
+## 5. XanVesting
+
+Deploys `XanVesting` for the eligible recipients that the V1 genesis distribution did not contain. Run on Sepolia first; repeat on mainnet once the rehearsal has completed.
+
+- [ ] **Pick a deployer other than the wallet of section 1**, which must be used for nothing else.
+
+- [ ] **Write the recipient list** into a JSON file in `script/input/`, with the principals as decimal strings in the smallest unit (see section [Deployment](docs/03-XanVesting.md#11-deployment)).
+
+- [ ] **Confirm `<council>` is the council multisig.** It becomes the owner (see [ADR-10](docs/adr/10-the-council-multisig-owns-xanvesting.md)).
+
+- [ ] **Dry-run.** It reverts if a recipient has a principal in the token.
+
+  ```bash
+  just deploy-vesting-simulate <proxy> <council> <recipients-json> <chain>
+  ```
+
+- [ ] **Broadcast.**
+
+  ```bash
+  just deploy-vesting <deployer> <proxy> <council> <recipients-json> <chain>
+  ```
+
+- [ ] **Verify the contract on the explorers.**
+
+  ```bash
+  just verify-impl <xan-vesting> src/XanVesting.sol:XanVesting <chain>
+  ```
+
+- [ ] **Record the address** in [README.md](README.md#deployed-contracts).
+
+- [ ] **Fund it.** The Anoma Foundation transfers XAN to the contract and tops it up periodically. This prints the XAN that the contract must hold to pay every remaining unlock:
+
+  ```bash
+  cast call <xan-vesting> "totalLockedBalance()(uint256)" --rpc-url <chain>
   ```

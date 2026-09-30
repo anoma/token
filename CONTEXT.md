@@ -1,6 +1,6 @@
 # CONTEXT
 
-> Domain glossary and architecture overview for the Anoma (XAN) token and its governance: the V1→V2 upgrade, linear vesting of formerly-locked balances, `ERC20Votes` governance, and the upgrade council. This is conceptual orientation only — the audit-grade token spec is [docs/01-XanV2-upgrade.md](docs/01-XanV2-upgrade.md), the governance reference is [docs/02-XanV2-governance.md](docs/02-XanV2-governance.md), and the design decisions are the ADRs in [docs/adr/](docs/adr/).
+> Domain glossary and architecture overview for the Anoma (XAN) token and its governance: the V1→V2 upgrade, linear vesting of formerly-locked balances, `ERC20Votes` governance, the upgrade council, and `XanVesting` for the recipients that the genesis distribution did not contain. This is conceptual orientation only — the audit-grade token spec is [docs/01-XanV2-upgrade.md](docs/01-XanV2-upgrade.md), the governance reference is [docs/02-XanV2-governance.md](docs/02-XanV2-governance.md), the `XanVesting` spec is [docs/03-XanVesting.md](docs/03-XanVesting.md), and the design decisions are the ADRs in [docs/adr/](docs/adr/).
 
 ## Architecture
 
@@ -16,6 +16,7 @@ flowchart LR
     proxy[ERC1967Proxy]
     tokenV1[(XanV1)]
     token[(XanV2)]
+    vesting[XanVesting]
 
     voters -->|delegate + vote| gov
     gov -->|proposals| timelock
@@ -26,6 +27,7 @@ flowchart LR
     proxy -->|delegates to| token
 
     voters -->|cancel + replace| module
+    multisig -->|owns| vesting
 ```
 
 ### Actors
@@ -34,6 +36,7 @@ flowchart LR
 - **Timelock** — owns the token and is the only account that can upgrade it. Every privileged action waits out a delay before anyone may execute it.
 - **XanGovernor** — the voter body's instrument: holders delegate and vote, and an accepted proposal is queued through the timelock and then executed.
 - **XanUpgradeCouncilModule** — a module fronting a fixed council multisig that can initiate a token upgrade as a backup when the voter body is inactive. It can withdraw its own pending upgrade but holds no power over voter-body operations.
+- **XanVesting** — vests XAN for the eligible recipients that the V1 genesis distribution did not contain, on the V2 schedule. It pays unlocks from the XAN that the Anoma Foundation moves into it. The council multisig owns it, outside the voter body's control.
 
 ### Interplay
 
@@ -53,21 +56,27 @@ flowchart LR
 
 **Timelock** (`TimelockController`): The OpenZeppelin timelock that owns the token and executes accepted operations after a delay. Anyone may execute once the delay elapses; it self-administers, so its roles change only through governance.
 
+**XanVesting**: The non-upgradeable contract that vests XAN for the eligible recipients that the V1 genesis distribution did not contain. It copies the V2 vesting schedule and `unlock()`, and it pays each unlock from the XAN that the Anoma Foundation moves into it. Owned by the council multisig; its locked principals carry no voting power.
+
 ### Token & vesting
 
-**Principal** (`principalOf`): The amount an account had locked under XAN V1 — its locked tranche from the distribution, received via `transferAndLock`. In V2 the principal vests linearly; it is fixed per account and never increases.
+**Principal** (`principalOf`): The amount an account had locked under XAN V1 — its locked tranche from the distribution, received via `transferAndLock`. In V2 the principal vests linearly; it is fixed per account and never increases. In `XanVesting`, the principal is the amount that the owner added for a recipient that the distribution did not contain.
 
 **Locked balance** (`lockedBalanceOf`): The still-locked, non-transferable part of an account's principal: `principal − unlocked`. Reaches zero once the principal has fully vested and been unlocked.
 
-**Unlocked balance** (`unlockedBalanceOf`): The spendable part of an account's balance: `balanceOf − lockedBalance`. Only this part may be transferred.
+**Unlocked balance** (`unlockedBalanceOf`): The spendable part of an account's balance: `balanceOf − lockedBalance`. Only this part may be transferred. In `XanVesting`, it is the amount that the contract has transferred to the account so far.
 
 **Vested amount**: The portion of an account's principal that has vested by a given time — `0` before the start, the full principal at or after the end, and linear in between. A function of time alone, independent of what has been unlocked.
 
 **Unlockable balance** (`unlockableBalanceOf`): What `unlock()` would move from locked to unlocked right now: `max(0, vested − unlocked)`.
 
-**Unlock** (`unlock`): The action by which an account moves its currently unlockable (vested-but-not-yet-unlocked) tokens from its locked to its unlocked balance, making them spendable. Does not change `balanceOf` and moves no tokens between accounts.
+**Unlock** (`unlock`): The action by which an account moves its currently unlockable (vested-but-not-yet-unlocked) tokens from its locked to its unlocked balance, making them spendable. In `XanV2`, it does not change `balanceOf` and moves no tokens between accounts; in `XanVesting`, it transfers the unlocked amount from the contract to the account.
 
-**Vesting schedule**: The linear schedule over which principals vest, from `XAN_VESTING_START` to `XAN_VESTING_START + XAN_VESTING_DURATION` (the vesting end). Identical for every account and baked into the V2 implementation; there is no cliff.
+**Vesting schedule**: The linear schedule over which principals vest, from `XAN_VESTING_START` to `XAN_VESTING_START + XAN_VESTING_DURATION` (the vesting end). Identical for every account and baked into the V2 implementation; there is no cliff. `XanVesting` copies it from the token at deployment.
+
+**Recipient**: An account with a principal in `XanVesting`. It has no principal in the token, so the XAN it unlocks is freely transferable.
+
+**Surplus**: The XAN that `XanVesting` holds above its total locked balance. Only the owner can withdraw it. Below the total locked balance, an unlock that needs more XAN than the contract holds reverts until the Anoma Foundation tops the contract up.
 
 ### Upgrade
 
