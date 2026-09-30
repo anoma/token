@@ -1,6 +1,6 @@
-# XanV2 Upgrade — Deployment Checklist
+# Deployment Checklist
 
-Step 1 deploys both networks; steps 2 and 3 are then run on Sepolia first and on mainnet once the rehearsal has completed. The token spec is [`docs/01-XanV2-upgrade.md`](docs/01-XanV2-upgrade.md) and the governance spec is [`docs/02-XanV2-governance.md`](docs/02-XanV2-governance.md).
+Step 1 deploys both networks; steps 2 and 3 are then run on Sepolia first and on mainnet once the rehearsal has completed. The token spec is [`docs/01-XanV2-upgrade.md`](docs/01-XanV2-upgrade.md) and the governance spec is [`docs/02-XanV2-governance.md`](docs/02-XanV2-governance.md). Section 5 deploys `XanVesting` (see [`docs/03-XanVesting.md`](docs/03-XanVesting.md)).
 
 ## 1. Before you start
 
@@ -113,4 +113,44 @@ The alternative V1 path is the voter-body quorum — hold `castVote(implementati
 
   ```bash
   cast call <proxy> "owner()(address)" --rpc-url <chain>
+  ```
+
+## 5. XanVesting
+
+Deploys `XanVesting` for the eligible recipients that the V1 genesis distribution did not contain. Run on Sepolia first; repeat on mainnet once the rehearsal has completed.
+
+- [ ] **Pick a deployer other than the wallet of section 1**, which must be used for nothing else.
+
+- [ ] **Check every address.** Each recipient signs a message with its address, and the team checks and records the signature before the address goes into the recipient list. A principal for an address that can never unlock stays in the contract (see [Trust assumptions](docs/03-XanVesting.md#10-trust-assumptions)).
+
+- [ ] **Write the recipient list** into a JSON file in `script/input/`, with the locked tranches as decimal strings in the smallest unit (see section [Deployment](docs/03-XanVesting.md#11-deployment)).
+
+- [ ] **Confirm `<owner>` is the Anoma Foundation wallet.** It owns and funds the contract (see [ADR-10](docs/adr/10-the-anoma-foundation-wallet-owns-xanvesting.md)).
+
+- [ ] **Dry-run.**
+
+  ```bash
+  just deploy-vesting-simulate <proxy> <owner> <recipients-json> <chain>
+  ```
+
+- [ ] **Broadcast.**
+
+  ```bash
+  just deploy-vesting <deployer> <proxy> <owner> <recipients-json> <chain>
+  ```
+
+- [ ] **Verify the contract on the explorers.**
+
+  ```bash
+  just verify-impl <xan-vesting> src/XanVesting.sol:XanVesting <chain>
+  ```
+
+- [ ] **Record the address** in [README.md](README.md#deployed-contracts).
+
+- [ ] **Send any liquid tranches directly.** `XanVesting` holds only the locked tranches.
+
+- [ ] **Fund it.** The foundation transfers XAN to the contract and tops it up periodically. Before each top-up, this prints the XAN that the contract must hold now; add the XAN that vests until the next top-up:
+
+  ```bash
+  cast call <xan-vesting> "totalUnlockableBalance()(uint256)" --rpc-url <chain>
   ```

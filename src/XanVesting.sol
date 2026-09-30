@@ -14,8 +14,8 @@ import {XanV2} from "./XanV2.sol";
 /// @author Anoma Foundation, 2026
 /// @notice Vests the XAN principals that the genesis distribution did not contain, with the schedule and the unlock
 /// mechanism of `XanV2`, and transfers the unlocked tokens from its own XAN balance.
-/// @dev The principal of an account is the sum of its locked balance, which this contract still holds, and its
-/// unlocked balance, which this contract has already transferred.
+/// @dev The principal of an account is the sum of its locked balance, which it has not unlocked yet, and its unlocked
+/// balance, which this contract has already transferred to it.
 /// @custom:security-contact security@anoma.foundation
 contract XanVesting is IXanVesting, Ownable {
     using SafeERC20 for IERC20;
@@ -60,9 +60,6 @@ contract XanVesting is IXanVesting, Ownable {
     /// @notice Thrown when a principal is added for an account that already has a principal in this contract.
     error PrincipalAlreadySet(address account, uint256 principal);
 
-    /// @notice Thrown when a principal is added for an account that already has a principal in the XAN token.
-    error PrincipalSetInToken(address account, uint256 principal);
-
     /// @notice Thrown when the XAN balance of this contract is below the amount that the caller unlocks.
     error TokenBalanceInsufficient(uint256 tokenBalance, uint256 value);
 
@@ -71,8 +68,7 @@ contract XanVesting is IXanVesting, Ownable {
     error SurplusInsufficient(uint256 surplus, uint256 value);
 
     /// @notice Binds the XAN token, copies its vesting schedule into the bytecode, and adds the initial principals.
-    /// @param xanToken The XAN token proxy, which this contract transfers on unlock and reads existing principals and
-    /// the vesting schedule from.
+    /// @param xanToken The XAN token proxy, whose XAN this contract transfers on unlock and whose schedule it copies.
     /// @param initialOwner The account that can add more principals and withdraw the surplus.
     /// @param recipients The initial accounts and the principals vesting for them.
     constructor(IERC20 xanToken, address initialOwner, Recipient[] memory recipients) Ownable(initialOwner) {
@@ -135,14 +131,14 @@ contract XanVesting is IXanVesting, Ownable {
     }
 
     /// @inheritdoc IXanVesting
-    function withdraw(address receiver, uint256 value) external override onlyOwner {
+    function withdrawSurplus(address receiver, uint256 value) external override onlyOwner {
         uint256 lockedBalance = totalLockedBalance();
         uint256 tokenBalance = XAN_TOKEN.balanceOf(address(this));
         uint256 surplus = tokenBalance > lockedBalance ? tokenBalance - lockedBalance : 0;
 
         require(value < surplus + 1, SurplusInsufficient({surplus: surplus, value: value}));
 
-        emit Withdrawn({receiver: receiver, value: value});
+        emit SurplusWithdrawn({receiver: receiver, value: value});
 
         XAN_TOKEN.safeTransfer(receiver, value);
     }
@@ -185,6 +181,12 @@ contract XanVesting is IXanVesting, Ownable {
     }
 
     /// @inheritdoc IXanVesting
+    function totalUnlockableBalance() public view override returns (uint256 total) {
+        // `_vestedAmount(_totalPrincipal)` is at least the sum of the vested amounts, so at least `_totalUnlocked`.
+        total = _vestedAmount(_totalPrincipal) - _totalUnlocked;
+    }
+
+    /// @inheritdoc IXanVesting
     function unlockableBalanceOf(address account) public view override returns (uint256 value) {
         uint256 vested = _vestedAmount(_principals[account]);
         uint256 alreadyUnlocked = _unlocked[account];
@@ -202,7 +204,7 @@ contract XanVesting is IXanVesting, Ownable {
         end = _VESTING_START + _VESTING_DURATION;
     }
 
-    /// @notice Adds the principal of an account that has no principal yet, neither here nor in the XAN token.
+    /// @notice Adds the principal of an account that has no principal here yet.
     /// @param account The account the principal vests for.
     /// @param principal The amount of XAN vesting for the account.
     /// @dev The caller must add `principal` to `_totalPrincipal`.
@@ -214,11 +216,6 @@ contract XanVesting is IXanVesting, Ownable {
 
         uint256 existingPrincipal = _principals[account];
         require(existingPrincipal == 0, PrincipalAlreadySet({account: account, principal: existingPrincipal}));
-
-        // NOTE: The XAN token has no batch getter for principals, so the read belongs in the loop.
-        // forge-lint: disable-next-line(calls-loop)
-        uint256 tokenPrincipal = IXanV2(address(XAN_TOKEN)).principalOf(account);
-        require(tokenPrincipal == 0, PrincipalSetInToken({account: account, principal: tokenPrincipal}));
 
         _principals[account] = principal;
         _accounts.push(account);

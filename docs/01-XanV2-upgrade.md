@@ -47,7 +47,7 @@ See [`CONTEXT.md`](../CONTEXT.md) for definitions. Key relationships for any acc
 
 ## 4. Vesting
 
-**Source of principal.** `principalOf(account)` reads `lockingData.lockedBalances[account]` from the **V1** ERC-7201 storage namespace, under the single mainnet V1 implementation `_XAN_V1_IMPLEMENTATION = 0x03997b568FE70E91A53c458DC19dc29e0bC2735E`. These are the locked tranches distributed by the Merkle `TokenDistributor` via `transferAndLock` (the unlocked tranche was already liquid). This is correct only because that proxy has only ever run that one implementation — a **hard precondition**.
+**Source of principal.** `principalOf(account)` reads `lockingData.lockedBalances[account]` from the **V1** ERC-7201 storage namespace, under the single mainnet V1 implementation `_XAN_V1_IMPLEMENTATION = 0x03997b568FE70E91A53c458DC19dc29e0bC2735E`. These are the locked tranches distributed by the Merkle `TokenDistributor` via `transferAndLock` (the unlocked tranche was already liquid). This is correct only because that proxy has only ever run that one implementation — a **hard precondition**. Eligible recipients that the distribution did not contain vest in a separate contract, `XanVesting` (see [`03-XanVesting.md`](./03-XanVesting.md)).
 
 **Schedule.** Linear between `XAN_VESTING_START` and `XAN_VESTING_START + XAN_VESTING_DURATION`:
 

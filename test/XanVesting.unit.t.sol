@@ -54,19 +54,6 @@ contract XanVestingUnitTest is XanV2Fixture {
         _deployVesting(recipients);
     }
 
-    function test_constructor_reverts_on_an_account_with_a_principal_in_the_token() public {
-        uint256 tokenPrincipal = _xanV2Proxy.principalOf(_defaultSender);
-        assertGt(tokenPrincipal, 0, "the default sender must have a principal in the token");
-
-        vm.expectRevert(abi.encodeWithSelector(XanVesting.PrincipalSetInToken.selector, _defaultSender, tokenPrincipal));
-        _deployVesting(_recipients(_defaultSender, _PRINCIPAL));
-    }
-
-    function test_constructor_reverts_when_the_recipient_is_the_token() public {
-        vm.expectRevert(XanVesting.TokenRecipientNotAllowed.selector);
-        _deployVesting(_recipients(address(_xan), _PRINCIPAL));
-    }
-
     function test_addRecipients_adds_the_principals() public {
         vm.prank(_OWNER);
         _vesting.addRecipients(_recipients(_BOB, _PRINCIPAL));
@@ -104,13 +91,13 @@ contract XanVestingUnitTest is XanV2Fixture {
         _vesting.addRecipients(_recipients(_ALICE, _PRINCIPAL));
     }
 
-    function test_addRecipients_reverts_on_an_account_with_a_principal_in_the_token() public {
-        uint256 tokenPrincipal = _xanV2Proxy.principalOf(_defaultSender);
-        assertGt(tokenPrincipal, 0, "the default sender must have a principal in the token");
+    function test_addRecipients_adds_an_account_with_a_principal_in_the_token() public {
+        assertGt(_xanV2Proxy.principalOf(_defaultSender), 0, "the default sender must have a principal in the token");
 
-        vm.expectRevert(abi.encodeWithSelector(XanVesting.PrincipalSetInToken.selector, _defaultSender, tokenPrincipal));
         vm.prank(_OWNER);
         _vesting.addRecipients(_recipients(_defaultSender, _PRINCIPAL));
+
+        assertEq(_vesting.principalOf(_defaultSender), _PRINCIPAL);
     }
 
     function test_addRecipients_reverts_on_the_zero_account() public {
@@ -247,56 +234,56 @@ contract XanVestingUnitTest is XanV2Fixture {
         assertEq(firstValue + secondValue, _PRINCIPAL);
     }
 
-    function test_withdraw_transfers_the_surplus() public {
+    function test_withdrawSurplus_transfers_the_surplus() public {
         uint256 surplus = _PRINCIPAL / 4;
         deal(address(_xan), address(_vesting), _PRINCIPAL + surplus);
 
         vm.prank(_OWNER);
-        _vesting.withdraw({receiver: _RECEIVER, value: surplus});
+        _vesting.withdrawSurplus({receiver: _RECEIVER, value: surplus});
 
         assertEq(_xan.balanceOf(_RECEIVER), surplus);
         assertEq(_xan.balanceOf(address(_vesting)), _vesting.totalLockedBalance());
     }
 
-    function test_withdraw_emits_the_Withdrawn_event() public {
+    function test_withdrawSurplus_emits_the_SurplusWithdrawn_event() public {
         uint256 surplus = _PRINCIPAL / 4;
         deal(address(_xan), address(_vesting), _PRINCIPAL + surplus);
 
         vm.expectEmit(address(_vesting));
-        emit IXanVesting.Withdrawn({receiver: _RECEIVER, value: surplus});
+        emit IXanVesting.SurplusWithdrawn({receiver: _RECEIVER, value: surplus});
 
         vm.prank(_OWNER);
-        _vesting.withdraw({receiver: _RECEIVER, value: surplus});
+        _vesting.withdrawSurplus({receiver: _RECEIVER, value: surplus});
     }
 
-    function test_withdraw_reverts_if_the_caller_is_not_the_owner() public {
+    function test_withdrawSurplus_reverts_if_the_caller_is_not_the_owner() public {
         uint256 surplus = _PRINCIPAL / 4;
         deal(address(_xan), address(_vesting), _PRINCIPAL + surplus);
 
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _BOB));
         vm.prank(_BOB);
-        _vesting.withdraw({receiver: _BOB, value: surplus});
+        _vesting.withdrawSurplus({receiver: _BOB, value: surplus});
     }
 
-    function test_withdraw_reverts_above_the_surplus() public {
+    function test_withdrawSurplus_reverts_above_the_surplus() public {
         uint256 surplus = _PRINCIPAL / 4;
         deal(address(_xan), address(_vesting), _PRINCIPAL + surplus);
 
         vm.expectRevert(abi.encodeWithSelector(XanVesting.SurplusInsufficient.selector, surplus, surplus + 1));
         vm.prank(_OWNER);
-        _vesting.withdraw({receiver: _RECEIVER, value: surplus + 1});
+        _vesting.withdrawSurplus({receiver: _RECEIVER, value: surplus + 1});
     }
 
-    function test_withdraw_reverts_when_the_balance_is_below_the_total_locked_balance() public {
+    function test_withdrawSurplus_reverts_when_the_balance_is_below_the_total_locked_balance() public {
         deal(address(_xan), address(_vesting), _PRINCIPAL / 2);
         assertLt(_xan.balanceOf(address(_vesting)), _vesting.totalLockedBalance(), "the balance must be too low");
 
         vm.expectRevert(abi.encodeWithSelector(XanVesting.SurplusInsufficient.selector, 0, 1));
         vm.prank(_OWNER);
-        _vesting.withdraw({receiver: _RECEIVER, value: 1});
+        _vesting.withdrawSurplus({receiver: _RECEIVER, value: 1});
     }
 
-    function testFuzz_withdraw_of_the_whole_surplus_leaves_enough_for_all_unlocks(uint256 unlockTime) public {
+    function testFuzz_withdrawSurplus_leaves_enough_for_all_unlocks(uint256 unlockTime) public {
         uint256 surplus = _PRINCIPAL / 4;
         deal(address(_xan), address(_vesting), _PRINCIPAL + surplus);
         unlockTime = bound(unlockTime, _vestingStart + 1, _vestingEnd - 1);
@@ -306,7 +293,7 @@ contract XanVestingUnitTest is XanV2Fixture {
         _vesting.unlock();
 
         vm.prank(_OWNER);
-        _vesting.withdraw({receiver: _RECEIVER, value: surplus});
+        _vesting.withdrawSurplus({receiver: _RECEIVER, value: surplus});
 
         vm.warp(_vestingEnd);
         vm.prank(_ALICE);
@@ -314,6 +301,45 @@ contract XanVestingUnitTest is XanV2Fixture {
 
         assertEq(_xan.balanceOf(_ALICE), _PRINCIPAL);
         assertEq(_xan.balanceOf(address(_vesting)), 0);
+    }
+
+    function test_totalUnlockableBalance_equals_the_sum_of_the_unlockable_balances() public {
+        vm.prank(_OWNER);
+        _vesting.addRecipients(_recipients(_BOB, _PRINCIPAL / 2));
+        vm.warp(_vestingMid);
+
+        assertEq(
+            _vesting.totalUnlockableBalance(), _vesting.unlockableBalanceOf(_ALICE) + _vesting.unlockableBalanceOf(_BOB)
+        );
+
+        vm.prank(_ALICE);
+        _vesting.unlock();
+
+        assertEq(_vesting.totalUnlockableBalance(), _vesting.unlockableBalanceOf(_BOB));
+    }
+
+    function testFuzz_totalUnlockableBalance_bounds_the_sum_of_the_unlockable_balances(
+        uint256 principalOfBob,
+        uint256 unlockTime,
+        uint256 readTime
+    ) public {
+        principalOfBob = bound(principalOfBob, 1, _PRINCIPAL);
+        unlockTime = bound(unlockTime, _vestingStart + 1, _vestingEnd);
+        readTime = bound(readTime, unlockTime, _vestingEnd);
+
+        vm.prank(_OWNER);
+        _vesting.addRecipients(_recipients(_BOB, principalOfBob));
+
+        vm.warp(unlockTime);
+        vm.prank(_ALICE);
+        _vesting.unlock();
+
+        vm.warp(readTime);
+        uint256 sum = _vesting.unlockableBalanceOf(_ALICE) + _vesting.unlockableBalanceOf(_BOB);
+        uint256 total = _vesting.totalUnlockableBalance();
+
+        assertGe(total, sum, "the total must not be below the sum");
+        assertLe(total, sum + _vesting.getRecipients().length, "rounding adds at most 1 wei per recipient");
     }
 
     function test_constructor_copies_the_vesting_schedule_of_the_token() public view {
