@@ -114,6 +114,12 @@ contract XanVestingUnitTest is XanV2Fixture {
         _vesting.addRecipients(_recipients(address(0), _PRINCIPAL));
     }
 
+    function test_addRecipients_reverts_when_the_recipient_is_the_vesting_contract() public {
+        vm.expectRevert();
+        vm.prank(_OWNER);
+        _vesting.addRecipients(_recipients(address(_vesting), _PRINCIPAL));
+    }
+
     function test_addRecipients_reverts_on_the_zero_principal() public {
         vm.expectRevert(XanVesting.ZeroPrincipalNotAllowed.selector);
         vm.prank(_OWNER);
