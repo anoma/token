@@ -48,6 +48,9 @@ contract XanVesting is IXanVesting, Ownable {
     /// @notice Thrown if the zero address is provided as the account of a recipient.
     error ZeroAccountNotAllowed();
 
+    /// @notice Thrown if this contract is provided as the account of a recipient.
+    error SelfRecipientNotAllowed();
+
     /// @notice Thrown if the zero amount is provided as the principal of a recipient.
     error ZeroPrincipalNotAllowed();
 
@@ -202,6 +205,7 @@ contract XanVesting is IXanVesting, Ownable {
     /// @dev The caller must add `principal` to `_totalPrincipal`.
     function _addRecipient(address account, uint256 principal) internal {
         require(account != address(0), ZeroAccountNotAllowed());
+        require(account != address(this), SelfRecipientNotAllowed());
         require(principal != 0, ZeroPrincipalNotAllowed());
 
         uint256 existingPrincipal = _principals[account];
