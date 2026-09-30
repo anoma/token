@@ -121,20 +121,22 @@ Deploys `XanVesting` for the eligible recipients that the V1 genesis distributio
 
 - [ ] **Pick a deployer other than the wallet of section 1**, which must be used for nothing else.
 
-- [ ] **Write the recipient list** into a JSON file in `script/input/`, with the principals as decimal strings in the smallest unit (see section [Deployment](docs/03-XanVesting.md#11-deployment)).
+- [ ] **Check every address.** Each recipient signs a message with its address, and the team checks and records the signature before the address goes into the recipient list. A principal for an address that can never unlock stays in the contract (see [Trust assumptions](docs/03-XanVesting.md#10-trust-assumptions)).
 
-- [ ] **Confirm `<council>` is the council multisig.** It becomes the owner (see [ADR-10](docs/adr/10-the-council-multisig-owns-xanvesting.md)).
+- [ ] **Write the recipient list** into a JSON file in `script/input/`, with the locked tranches as decimal strings in the smallest unit (see section [Deployment](docs/03-XanVesting.md#11-deployment)).
+
+- [ ] **Confirm `<owner>` is the foundation multisig.** It owns and funds the contract (see [ADR-10](docs/adr/10-the-foundation-multisig-owns-xanvesting.md)).
 
 - [ ] **Dry-run.** It reverts if a recipient has a principal in the token.
 
   ```bash
-  just deploy-vesting-simulate <proxy> <council> <recipients-json> <chain>
+  just deploy-vesting-simulate <proxy> <owner> <recipients-json> <chain>
   ```
 
 - [ ] **Broadcast.**
 
   ```bash
-  just deploy-vesting <deployer> <proxy> <council> <recipients-json> <chain>
+  just deploy-vesting <deployer> <proxy> <owner> <recipients-json> <chain>
   ```
 
 - [ ] **Verify the contract on the explorers.**
@@ -145,8 +147,10 @@ Deploys `XanVesting` for the eligible recipients that the V1 genesis distributio
 
 - [ ] **Record the address** in [README.md](README.md#deployed-contracts).
 
-- [ ] **Fund it.** The Anoma Foundation transfers XAN to the contract and tops it up periodically. This prints the XAN that the contract must hold to pay every remaining unlock:
+- [ ] **Send any liquid tranches directly.** `XanVesting` holds only the locked tranches.
+
+- [ ] **Fund it.** The foundation transfers XAN to the contract and tops it up periodically. Before each top-up, this prints the XAN that the contract must hold now; add the XAN that vests until the next top-up:
 
   ```bash
-  cast call <xan-vesting> "totalLockedBalance()(uint256)" --rpc-url <chain>
+  cast call <xan-vesting> "totalUnlockableBalance()(uint256)" --rpc-url <chain>
   ```

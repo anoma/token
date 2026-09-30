@@ -6,7 +6,7 @@ This document specifies `XanVesting`, the contract that vests XAN for eligible r
 
 The genesis distribution of XAN V1 gave each eligible recipient that submitted an address its locked tranche, through the Merkle `TokenDistributor` and `transferAndLock`. A few eligible recipients did not submit an address, so the distribution does not contain them. `XanV2` vests only the principals that V1 recorded (see section [Vesting](./01-XanV2-upgrade.md#4-vesting)), so it cannot vest their tranches.
 
-The Anoma Foundation holds these tranches. It moves them into `XanVesting`, and each recipient unlocks its tranche there over time, on the same schedule and with the same `unlock()` as the holders in the token.
+The Anoma Foundation holds these tranches. It moves them into `XanVesting`, and each recipient unlocks its tranche there over time, on the same schedule and with the same `unlock()` as the holders in the token. A principal is the locked tranche that the recipient missed; if the recipient was also owed a liquid tranche, the foundation sends that directly with an ordinary transfer.
 
 **No new tokens.** `XanV2` cannot mint, so the supply stays fixed. `XanVesting` only passes existing XAN from the foundation to the recipients.
 
@@ -14,14 +14,13 @@ The Anoma Foundation holds these tranches. It moves them into `XanVesting`, and 
 
 ```mermaid
 flowchart LR
-    foundation([Anoma Foundation])
-    owner([Owner<br/>council multisig])
+    foundation([Anoma Foundation<br/>multisig, owner])
     recipient([Recipient])
     vesting[XanVesting]
     token[(XanV2 proxy)]
 
     foundation -->|transfer XAN| vesting
-    owner -->|addRecipients / withdrawSurplus| vesting
+    foundation -->|addRecipients / withdrawSurplus| vesting
     recipient -->|unlock| vesting
     vesting -->|transfer vested XAN| recipient
     vesting -.->|read schedule and principals| token
@@ -43,10 +42,11 @@ The relationships mirror those of `XanV2` (see section [Domain model & balances]
 
 **`unlockedBalanceOf` differs from `XanV2`.** In `XanV2`, it is the spendable balance, `balanceOf − lockedBalanceOf`. `XanVesting` holds no balance per account, because unlocked XAN leaves the contract, so it returns the amount transferred so far. The transferred XAN is freely transferable in the token, because no recipient has a principal there (see section [Recipients](#5-recipients)).
 
-Two totals cover all recipients:
+Three totals cover all recipients:
 
 - `totalPrincipal()` — the sum of all principals
 - `totalLockedBalance()` — the sum of all locked balances: the XAN that the contract must hold to pay every remaining unlock
+- `totalUnlockableBalance()` — the XAN that the contract must hold now so that every recipient can unlock: `vested(totalPrincipal) − Σ unlocked`, which exceeds the sum of the unlockable balances by at most 1 wei per recipient
 
 ## 4. Vesting
 
@@ -79,7 +79,7 @@ Each added principal emits `PrincipalAdded`. `getRecipients()` returns all recip
 The Anoma Foundation funds the contract with ordinary XAN transfers; the contract has no deposit function. The owner can add principals before the XAN arrives, so the contract can hold less than `totalLockedBalance()` for a time. This is accepted:
 
 - **Underfunded.** An `unlock()` that needs more XAN than the contract holds reverts `TokenBalanceInsufficient` and records nothing. The recipient keeps its unlockable amount and calls again after the next top-up, so no vesting is lost. While the balance is low, the unlocks that land first are paid first.
-- **Top-ups.** The foundation tops up the contract periodically, so that vesting continues and recipients can unlock. A balance of at least `totalLockedBalance()` covers every present and future unlock; `totalLockedBalance() − balance` is the shortfall.
+- **Top-ups.** The foundation tops up the contract periodically, so that vesting continues and recipients can unlock. At each top-up, it brings the balance above `totalUnlockableBalance()` plus the XAN that vests until the next top-up. A balance of at least `totalLockedBalance()` covers every present and future unlock.
 - **Surplus.** `withdrawSurplus(receiver, value)` lets the owner take the XAN above `totalLockedBalance()`, for example after an overpayment, and emits `SurplusWithdrawn`. A larger `value` reverts `SurplusInsufficient`, so `withdrawSurplus` cannot take XAN that a locked balance needs.
 
 ## 7. Voting
@@ -92,15 +92,16 @@ A client picks the contract by account. If `principalOf(account)` on `XanVesting
 
 ## 9. Ownership
 
-The owner is the council multisig (see [ADR-10](./adr/10-the-council-multisig-owns-xanvesting.md) and [Deployed Contracts](../README.md#deployed-contracts)), which the deployment passes as `initialOwner`. The owner can add recipients, withdraw the surplus, and transfer or renounce ownership (`Ownable`). It cannot change or remove a principal, and it cannot unlock for a recipient. With the council multisig as owner, the voter body has no power over `XanVesting`. The contract has no proxy, so a change to its code needs a new deployment.
+The owner is the multisig of the Anoma Foundation that funds the contract (see [ADR-10](./adr/10-the-foundation-multisig-owns-xanvesting.md)), which the deployment passes as `initialOwner`. The owner can add recipients, withdraw the surplus, and transfer or renounce ownership (`Ownable`). It cannot change or remove a principal, and it cannot unlock for a recipient. The voter body has no power over `XanVesting`. The contract has no proxy, so a change to its code needs a new deployment.
 
 ## 10. Trust assumptions
 
-- **The owner adds only eligible recipients with their correct principals.** All principals draw on one XAN balance. A principal that the foundation does not fund, such as an oversized one, takes XAN that backs the other recipients when it unlocks, and it cannot be removed. The owner, the council multisig, is trusted to add only principals that the foundation funds (see [ADR-10](./adr/10-the-council-multisig-owns-xanvesting.md)); `withdrawSurplus` alone cannot take XAN that a locked balance needs.
+- **The owner adds only eligible recipients with their correct principals.** All principals draw on one XAN balance. A principal that the foundation does not fund, such as an oversized one, takes XAN that backs the other recipients when it unlocks, and it cannot be removed. The owner, the foundation multisig, is trusted to add only principals that it funds (see [ADR-10](./adr/10-the-foundation-multisig-owns-xanvesting.md)); `withdrawSurplus` alone cannot take XAN that a locked balance needs.
 - **The foundation keeps the contract funded.** Unlocks depend on its top-ups. An underfunded contract delays unlocks but loses no vesting.
-- **A principal leaves the contract only through `unlock()` by its account.** `withdrawSurplus` cannot take it. A principal for an address that can never call `unlock()`, such as a wrong address or a lost key, stays in the contract. Check every address before adding it.
+- **A principal leaves the contract only through `unlock()` by its account.** `withdrawSurplus` cannot take it. A principal for an address that can never call `unlock()`, such as a wrong address or a lost key, stays in the contract. So each recipient proves control of its address before it is added (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanvesting)). If a dead principal is found later, the foundation does not fund it: unlocks check only the balance, so the other recipients can still unlock in full, and `totalLockedBalance()` and `totalUnlockableBalance()` then overstate what is owed by that principal.
 - **The schedule is fixed at deployment.** A later token upgrade that changes the schedule of the token does not change the schedule of `XanVesting`.
 - **Locked principals do not vote.** See section [Voting](#7-voting).
+- **No external audit.** `XanVesting` relies on its tests, an internal security review, and the linters; unlike the other contracts in this repository, no external auditor has reviewed it.
 
 ## 11. Deployment
 
@@ -110,13 +111,13 @@ The owner is the council multisig (see [ADR-10](./adr/10-the-council-multisig-ow
 { "recipients": [{ "account": "0x…", "principal": "1000000000000000000" }] }
 ```
 
-Principals are decimal strings in the smallest unit (18 decimals). Before it deploys, the script checks that no recipient has a principal in the XAN token. After the deployment, the foundation transfers the XAN.
+Principals are decimal strings in the smallest unit (18 decimals). Every recipient has proved control of its address beforehand (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanvesting)). Before it deploys, the script checks that no recipient has a principal in the XAN token. After the deployment, the foundation transfers the XAN.
 
 ## 12. Parameters
 
-| Getter           | Source                       | Mainnet                                                                           |
-| ---------------- | ---------------------------- | --------------------------------------------------------------------------------- |
-| `XAN_TOKEN()`    | constructor                  | `0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7`                                      |
-| `vestingStart()` | XAN token, at construction   | `1790683200` (2026-09-29 12:00 UTC)                                               |
-| `vestingEnd()`   | XAN token, at construction   | `1885291200` (2029-09-28 12:00 UTC)                                               |
-| `owner()`        | constructor (`initialOwner`) | the council multisig ([ADR-10](./adr/10-the-council-multisig-owns-xanvesting.md)) |
+| Getter           | Source                       | Mainnet                                                                                 |
+| ---------------- | ---------------------------- | --------------------------------------------------------------------------------------- |
+| `XAN_TOKEN()`    | constructor                  | `0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7`                                            |
+| `vestingStart()` | XAN token, at construction   | `1790683200` (2026-09-29 12:00 UTC)                                                     |
+| `vestingEnd()`   | XAN token, at construction   | `1885291200` (2029-09-28 12:00 UTC)                                                     |
+| `owner()`        | constructor (`initialOwner`) | the foundation multisig ([ADR-10](./adr/10-the-foundation-multisig-owns-xanvesting.md)) |

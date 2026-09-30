@@ -17,6 +17,7 @@ flowchart LR
     tokenV1[(XanV1)]
     token[(XanV2)]
     vesting[XanVesting]
+    foundation([Foundation multisig])
 
     voters -->|delegate + vote| gov
     gov -->|proposals| timelock
@@ -27,7 +28,7 @@ flowchart LR
     proxy -->|delegates to| token
 
     voters -->|cancel + replace| module
-    multisig -->|owns| vesting
+    foundation -->|owns + funds| vesting
 ```
 
 ### Actors
@@ -36,7 +37,7 @@ flowchart LR
 - **Timelock** — owns the token and is the only account that can upgrade it. Every privileged action waits out a delay before anyone may execute it.
 - **XanGovernor** — the voter body's instrument: holders delegate and vote, and an accepted proposal is queued through the timelock and then executed.
 - **XanUpgradeCouncilModule** — a module fronting a fixed council multisig that can initiate a token upgrade as a backup when the voter body is inactive. It can withdraw its own pending upgrade but holds no power over voter-body operations.
-- **XanVesting** — vests XAN for the eligible recipients that the V1 genesis distribution did not contain, on the V2 schedule. It pays unlocks from the XAN that the Anoma Foundation moves into it. The council multisig owns it, outside the voter body's control.
+- **XanVesting** — vests XAN for the eligible recipients that the V1 genesis distribution did not contain, on the V2 schedule. It pays unlocks from the XAN that the Anoma Foundation moves into it. The Anoma Foundation's multisig owns and funds it, outside the voter body's control.
 
 ### Interplay
 
@@ -56,11 +57,11 @@ flowchart LR
 
 **Timelock** (`TimelockController`): The OpenZeppelin timelock that owns the token and executes accepted operations after a delay. Anyone may execute once the delay elapses; it self-administers, so its roles change only through governance.
 
-**XanVesting**: The non-upgradeable contract that vests XAN for the eligible recipients that the V1 genesis distribution did not contain. It copies the V2 vesting schedule and `unlock()`, and it pays each unlock from the XAN that the Anoma Foundation moves into it. Owned by the council multisig; its locked principals carry no voting power.
+**XanVesting**: The non-upgradeable contract that vests XAN for the eligible recipients that the V1 genesis distribution did not contain. It copies the V2 vesting schedule and `unlock()`, and it pays each unlock from the XAN that the Anoma Foundation moves into it. Owned by the foundation multisig that funds it; its locked principals carry no voting power.
 
 ### Token & vesting
 
-**Principal** (`principalOf`): The amount an account had locked under XAN V1 — its locked tranche from the distribution, received via `transferAndLock`. In V2 the principal vests linearly; it is fixed per account and never increases. In `XanVesting`, the principal is the amount that the owner added for a recipient that the distribution did not contain.
+**Principal** (`principalOf`): The amount an account had locked under XAN V1 — its locked tranche from the distribution, received via `transferAndLock`. In V2 the principal vests linearly; it is fixed per account and never increases. In `XanVesting`, the principal is the locked tranche that the owner added for a recipient that the distribution did not contain.
 
 **Locked balance** (`lockedBalanceOf`): The still-locked, non-transferable part of an account's principal: `principal − unlocked`. Reaches zero once the principal has fully vested and been unlocked.
 
