@@ -62,15 +62,31 @@ contract XanVestingUnitTest is XanV2Fixture {
         _deployVesting(_recipients(_defaultSender, _PRINCIPAL));
     }
 
-    function test_addRecipients_adds_the_principals() public {
+    function test_addRecipients_accepts_funded_principals_after_an_unlock() public {
+        vm.warp(_vestingMid);
+        vm.prank(_ALICE);
+        _vesting.unlock();
+        deal(address(_xan), address(_vesting), 3 * _PRINCIPAL / 2);
+
         vm.prank(_OWNER);
         _vesting.addRecipients(_recipients(_BOB, _PRINCIPAL));
 
         assertEq(_vesting.principalOf(_BOB), _PRINCIPAL);
+
+        vm.warp(_vestingEnd);
+        vm.prank(_ALICE);
+        _vesting.unlock();
+        vm.prank(_BOB);
+        _vesting.unlock();
+
+        assertEq(_xan.balanceOf(_ALICE), _PRINCIPAL);
+        assertEq(_xan.balanceOf(_BOB), _PRINCIPAL);
+        assertEq(_xan.balanceOf(address(_vesting)), 0);
     }
 
     function test_addRecipients_raises_the_total_principal_and_the_total_locked_balance() public {
         uint256 principalOfBob = _PRINCIPAL / 2;
+        deal(address(_xan), address(_vesting), _PRINCIPAL + principalOfBob);
 
         vm.prank(_OWNER);
         _vesting.addRecipients(_recipients(_BOB, principalOfBob));
@@ -80,6 +96,8 @@ contract XanVestingUnitTest is XanV2Fixture {
     }
 
     function test_addRecipients_emits_the_PrincipalAdded_event() public {
+        deal(address(_xan), address(_vesting), 2 * _PRINCIPAL);
+
         vm.expectEmit(address(_vesting));
         emit IXanVesting.PrincipalAdded({account: _BOB, principal: _PRINCIPAL});
 
@@ -122,6 +140,7 @@ contract XanVestingUnitTest is XanV2Fixture {
 
     function test_getRecipients_returns_the_accounts_and_the_principals_in_the_order_they_were_added() public {
         uint256 principalOfBob = _PRINCIPAL / 2;
+        deal(address(_xan), address(_vesting), _PRINCIPAL + principalOfBob);
 
         vm.prank(_OWNER);
         _vesting.addRecipients(_recipients(_BOB, principalOfBob));
@@ -203,38 +222,32 @@ contract XanVestingUnitTest is XanV2Fixture {
     }
 
     function test_unlock_reverts_if_the_token_balance_is_too_low() public {
-        vm.prank(_OWNER);
-        _vesting.addRecipients(_recipients(_BOB, _PRINCIPAL));
-
+        deal(address(_xan), address(_vesting), 0);
         vm.warp(_vestingEnd);
-        vm.prank(_ALICE);
-        _vesting.unlock();
-        assertEq(_xan.balanceOf(address(_vesting)), 0, "the unlock of alice must use up the balance");
 
         vm.expectRevert(abi.encodeWithSelector(XanVesting.TokenBalanceInsufficient.selector, 0, _PRINCIPAL));
-        vm.prank(_BOB);
+        vm.prank(_ALICE);
         _vesting.unlock();
     }
 
-    function test_unlock_preserves_the_reserves_of_existing_recipients_after_an_unfunded_addition() public {
+    function test_addRecipients_reverts_when_the_new_total_is_underfunded() public {
         vm.warp(_vestingMid);
-        assertEq(_xan.balanceOf(address(_vesting)), _vesting.lockedBalanceOf(_ALICE));
+        uint256 tokenBalance = 2 * _PRINCIPAL - 1;
+        deal(address(_xan), address(_vesting), tokenBalance);
 
-        vm.expectRevert(abi.encodeWithSelector(XanVesting.SurplusInsufficient.selector, 0, 1));
-        vm.prank(_OWNER);
-        _vesting.withdraw({receiver: _BOB, value: 1});
-
-        vm.prank(_OWNER);
-        _vesting.addRecipients(_recipients(_BOB, 2 * _PRINCIPAL));
-
-        vm.prank(_BOB);
-        _vesting.unlock();
-
-        assertGe(
-            _xan.balanceOf(address(_vesting)),
-            _vesting.lockedBalanceOf(_ALICE),
-            "Alice's outstanding allocation must remain backed"
+        vm.expectRevert(
+            abi.encodeWithSelector(XanVesting.TokenBalanceInsufficient.selector, tokenBalance, 2 * _PRINCIPAL)
         );
+        vm.prank(_OWNER);
+        _vesting.addRecipients(_recipients(_BOB, _PRINCIPAL));
+
+        assertEq(_vesting.principalOf(_BOB), 0);
+        assertEq(_vesting.totalPrincipal(), _PRINCIPAL);
+        assertEq(_vesting.totalLockedBalance(), _PRINCIPAL);
+        assertEq(_vesting.getRecipients().length, 1);
+
+        vm.prank(_ALICE);
+        assertEq(_vesting.unlock(), _PRINCIPAL / 2);
     }
 
     function testFuzz_unlock_transfers_exactly_the_principal_in_total(uint256 firstUnlockTime) public {

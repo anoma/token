@@ -57,7 +57,7 @@ contract XanVesting is IXanVesting, Ownable {
     /// @notice Thrown when a principal is added for an account that already has a principal in the XAN token.
     error PrincipalSetInToken(address account, uint256 principal);
 
-    /// @notice Thrown when the XAN balance of this contract is below the amount that the caller unlocks.
+    /// @notice Thrown when the XAN balance cannot cover an unlock or the locked balance after adding recipients.
     error TokenBalanceInsufficient(uint256 tokenBalance, uint256 value);
 
     /// @notice Thrown when the owner withdraws more than the XAN that this contract holds above the total locked
@@ -126,6 +126,12 @@ contract XanVesting is IXanVesting, Ownable {
         // NOTE: The `PrincipalAdded` event of each entry reports its part of this change.
         // slither-disable-next-line events-maths
         _totalPrincipal += addedPrincipal;
+
+        uint256 lockedBalance = totalLockedBalance();
+        uint256 tokenBalance = XAN_TOKEN.balanceOf(address(this));
+        if (tokenBalance < lockedBalance) {
+            revert TokenBalanceInsufficient({tokenBalance: tokenBalance, value: lockedBalance});
+        }
     }
 
     /// @inheritdoc IXanVesting
