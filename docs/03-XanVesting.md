@@ -14,7 +14,7 @@ The Anoma Foundation holds these tranches. It moves them into `XanVesting`, and 
 
 ```mermaid
 flowchart LR
-    foundation([Anoma Foundation<br/>multisig, owner])
+    foundation([Anoma Foundation<br/>wallet, owner])
     recipient([Recipient])
     vesting[XanVesting]
     token[(XanV2 proxy)]
@@ -92,11 +92,11 @@ A client picks the contract by account. If `principalOf(account)` on `XanVesting
 
 ## 9. Ownership
 
-The owner is the multisig of the Anoma Foundation that funds the contract (see [ADR-10](./adr/10-the-foundation-multisig-owns-xanvesting.md)), which the deployment passes as `initialOwner`. The owner can add recipients, withdraw the surplus, and transfer or renounce ownership (`Ownable`). It cannot change or remove a principal, and it cannot unlock for a recipient. The voter body has no power over `XanVesting`. The contract has no proxy, so a change to its code needs a new deployment.
+The owner is the Anoma Foundation wallet, which funds the contract (see [ADR-10](./adr/10-the-anoma-foundation-wallet-owns-xanvesting.md)), which the deployment passes as `initialOwner`. The owner can add recipients, withdraw the surplus, and transfer or renounce ownership (`Ownable`). It cannot change or remove a principal, and it cannot unlock for a recipient. The voter body has no power over `XanVesting`. The contract has no proxy, so a change to its code needs a new deployment.
 
 ## 10. Trust assumptions
 
-- **The owner adds only eligible recipients with their correct principals.** All principals draw on one XAN balance. A principal that the foundation does not fund, such as an oversized one, takes XAN that backs the other recipients when it unlocks, and it cannot be removed. The owner, the foundation multisig, is trusted to add only principals that it funds (see [ADR-10](./adr/10-the-foundation-multisig-owns-xanvesting.md)); `withdrawSurplus` alone cannot take XAN that a locked balance needs.
+- **The owner adds only eligible recipients with their correct principals.** All principals draw on one XAN balance. A principal that the foundation does not fund, such as an oversized one, takes XAN that backs the other recipients when it unlocks, and it cannot be removed. The owner, the Anoma Foundation wallet, is trusted to add only principals that it funds (see [ADR-10](./adr/10-the-anoma-foundation-wallet-owns-xanvesting.md)); `withdrawSurplus` alone cannot take XAN that a locked balance needs.
 - **The foundation keeps the contract funded.** Unlocks depend on its top-ups. An underfunded contract delays unlocks but loses no vesting.
 - **A principal leaves the contract only through `unlock()` by its account.** `withdrawSurplus` cannot take it. A principal for an address that can never call `unlock()`, such as a wrong address or a lost key, stays in the contract. So each recipient proves control of its address before it is added (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanvesting)). If a dead principal is found later, the foundation does not fund it: unlocks check only the balance, so the other recipients can still unlock in full, and `totalLockedBalance()` and `totalUnlockableBalance()` then overstate what is owed by that principal.
 - **The schedule is fixed at deployment.** A later token upgrade that changes the schedule of the token does not change the schedule of `XanVesting`.
@@ -115,9 +115,9 @@ Principals are decimal strings in the smallest unit (18 decimals). Every recipie
 
 ## 12. Parameters
 
-| Getter           | Source                       | Mainnet                                                                                 |
-| ---------------- | ---------------------------- | --------------------------------------------------------------------------------------- |
-| `XAN_TOKEN()`    | constructor                  | `0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7`                                            |
-| `vestingStart()` | XAN token, at construction   | `1790683200` (2026-09-29 12:00 UTC)                                                     |
-| `vestingEnd()`   | XAN token, at construction   | `1885291200` (2029-09-28 12:00 UTC)                                                     |
-| `owner()`        | constructor (`initialOwner`) | the foundation multisig ([ADR-10](./adr/10-the-foundation-multisig-owns-xanvesting.md)) |
+| Getter           | Source                       | Mainnet                                                                                         |
+| ---------------- | ---------------------------- | ----------------------------------------------------------------------------------------------- |
+| `XAN_TOKEN()`    | constructor                  | `0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7`                                                    |
+| `vestingStart()` | XAN token, at construction   | `1790683200` (2026-09-29 12:00 UTC)                                                             |
+| `vestingEnd()`   | XAN token, at construction   | `1885291200` (2029-09-28 12:00 UTC)                                                             |
+| `owner()`        | constructor (`initialOwner`) | the Anoma Foundation wallet ([ADR-10](./adr/10-the-anoma-foundation-wallet-owns-xanvesting.md)) |

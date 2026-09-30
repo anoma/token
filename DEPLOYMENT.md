@@ -125,7 +125,7 @@ Deploys `XanVesting` for the eligible recipients that the V1 genesis distributio
 
 - [ ] **Write the recipient list** into a JSON file in `script/input/`, with the locked tranches as decimal strings in the smallest unit (see section [Deployment](docs/03-XanVesting.md#11-deployment)).
 
-- [ ] **Confirm `<owner>` is the foundation multisig.** It owns and funds the contract (see [ADR-10](docs/adr/10-the-foundation-multisig-owns-xanvesting.md)).
+- [ ] **Confirm `<owner>` is the Anoma Foundation wallet.** It owns and funds the contract (see [ADR-10](docs/adr/10-the-anoma-foundation-wallet-owns-xanvesting.md)).
 
 - [ ] **Dry-run.** It reverts if a recipient has a principal in the token.
 

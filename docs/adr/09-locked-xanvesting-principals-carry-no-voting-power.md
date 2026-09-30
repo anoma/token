@@ -4,7 +4,7 @@
 
 ## Considered options
 
-- **The owner delegates the votes of the contract** — rejected: it gives the owner, a multisig, the voting power of every locked principal, which the recipients do not control.
+- **The owner delegates the votes of the contract** — rejected: it gives the owner the voting power of every locked principal, which the recipients do not control.
 - **Delegation per recipient** — rejected: `ERC20Votes` gives each holder one delegate, so every recipient would need a holder of its own, such as an escrow contract per recipient. That is a larger design for a few recipients.
 
 ## Consequences

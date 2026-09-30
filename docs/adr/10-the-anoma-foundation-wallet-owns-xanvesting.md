@@ -1,12 +1,12 @@
-# The foundation multisig owns XanVesting
+# The Anoma Foundation wallet owns XanVesting
 
 `XanVesting` has an owner that adds recipients with their principals and withdraws the surplus (see [docs/03-XanVesting.md](../03-XanVesting.md#9-ownership)). All principals draw on one XAN balance, so the owner decides who receives the XAN that the contract holds. The timelock owns the token, so every privileged action on the token waits out a timelock delay under the governance layer (see [docs/02-XanV2-governance.md](../02-XanV2-governance.md#1-actors)); `XanVesting` needs an owner of its own.
 
-We make the **foundation multisig** the owner: the multisig of the Anoma Foundation that holds the missed tranches and funds the contract. The deployment passes it as `initialOwner`.
+We make the **Anoma Foundation wallet** the owner: the wallet that holds the missed tranches and funds the contract. The deployment passes it as `initialOwner`.
 
 ## Considered options
 
-- **The foundation multisig** — chosen: the party that funds the contract also allocates its XAN, so the owner gains no power over XAN that someone else provided. The foundation could withhold that XAN anyway.
+- **The Anoma Foundation wallet** — chosen: the party that funds the contract also allocates its XAN, so the owner gains no power over XAN that someone else provided. The foundation could withhold that XAN anyway.
 - **The council multisig** — rejected: a captured council could then allocate the XAN in `XanVesting`, which widens its power beyond token upgrades (see [Trust assumptions](../02-XanV2-governance.md#8-trust-assumptions)).
 - **The timelock** — rejected: it keeps `XanVesting` under the voter body, but every batch of recipients and every surplus withdrawal would then need a full voter-body proposal (35 days, see [Timings](../02-XanV2-governance.md#timings)), while the funding still happens off-chain.
 
