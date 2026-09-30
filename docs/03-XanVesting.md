@@ -79,8 +79,28 @@ Each added principal emits `PrincipalAdded`. `getRecipients()` returns all recip
 The Anoma Foundation funds the contract with ordinary XAN transfers; the contract has no deposit function. The owner can add principals before the XAN arrives, so the contract can hold less than `totalLockedBalance()` for a time. This is accepted:
 
 - **Underfunded.** An `unlock()` that needs more XAN than the contract holds reverts `TokenBalanceInsufficient` and records nothing. The recipient keeps its unlockable amount and calls again after the next top-up, so no vesting is lost. While the balance is low, the unlocks that land first are paid first.
-- **Top-ups.** The foundation tops up the contract periodically, so that vesting continues and recipients can unlock. At each top-up, it brings the balance above `totalUnlockableBalance()` plus the XAN that vests until the next top-up. A balance of at least `totalLockedBalance()` covers every present and future unlock.
+- **Top-ups.** The foundation tops up the contract periodically, so that vesting continues and recipients can unlock (see [Top-up amount](#top-up-amount)).
 - **Surplus.** `withdrawSurplus(receiver, value)` lets the owner take the XAN above `totalLockedBalance()`, for example after an overpayment, and emits `SurplusWithdrawn`. A larger `value` reverts `SurplusInsufficient`, so `withdrawSurplus` cannot take XAN that a locked balance needs.
+
+### Top-up amount
+
+Two formulas give the XAN to send, with `balance` the XAN balance of the contract. A negative result means that the contract needs no XAN.
+
+**Top up for Δt.** Covers the unlocks until the next top-up, which is `Δt` away:
+
+```
+topUp = min(totalLockedBalance(), totalUnlockableBalance() + totalPrincipal() · Δt / (vestingEnd() − vestingStart())) − balance
+```
+
+`totalUnlockableBalance()` is what recipients can unlock now. All principals vest on one schedule, so together they vest `totalPrincipal() · Δt / (vestingEnd() − vestingStart())` in `Δt`. The `min` stops at the amount for full funding. For example, 3,650,000 XAN of principals vest about 3,333 XAN per day, so a 30-day `Δt` adds 100,000 XAN to what recipients can unlock now.
+
+**Top up once.** Covers every present and future unlock, until the owner adds more recipients:
+
+```
+topUp = totalLockedBalance() − balance
+```
+
+A principal that the foundation leaves unfunded (see section [Trust assumptions](#10-trust-assumptions)) lowers both amounts: subtract its `unlockableBalanceOf` plus `principalOf · Δt / (vestingEnd() − vestingStart())` from the first, and its `lockedBalanceOf` from the second.
 
 ## 7. Voting
 
