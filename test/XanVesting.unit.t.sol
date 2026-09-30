@@ -299,6 +299,45 @@ contract XanVestingUnitTest is XanV2Fixture {
         assertEq(_xan.balanceOf(address(_vesting)), 0);
     }
 
+    function test_totalUnlockableBalance_equals_the_sum_of_the_unlockable_balances() public {
+        vm.prank(_OWNER);
+        _vesting.addRecipients(_recipients(_BOB, _PRINCIPAL / 2));
+        vm.warp(_vestingMid);
+
+        assertEq(
+            _vesting.totalUnlockableBalance(), _vesting.unlockableBalanceOf(_ALICE) + _vesting.unlockableBalanceOf(_BOB)
+        );
+
+        vm.prank(_ALICE);
+        _vesting.unlock();
+
+        assertEq(_vesting.totalUnlockableBalance(), _vesting.unlockableBalanceOf(_BOB));
+    }
+
+    function testFuzz_totalUnlockableBalance_bounds_the_sum_of_the_unlockable_balances(
+        uint256 principalOfBob,
+        uint256 unlockTime,
+        uint256 readTime
+    ) public {
+        principalOfBob = bound(principalOfBob, 1, _PRINCIPAL);
+        unlockTime = bound(unlockTime, _vestingStart + 1, _vestingEnd);
+        readTime = bound(readTime, unlockTime, _vestingEnd);
+
+        vm.prank(_OWNER);
+        _vesting.addRecipients(_recipients(_BOB, principalOfBob));
+
+        vm.warp(unlockTime);
+        vm.prank(_ALICE);
+        _vesting.unlock();
+
+        vm.warp(readTime);
+        uint256 sum = _vesting.unlockableBalanceOf(_ALICE) + _vesting.unlockableBalanceOf(_BOB);
+        uint256 total = _vesting.totalUnlockableBalance();
+
+        assertGe(total, sum, "the total must not be below the sum");
+        assertLe(total, sum + _vesting.getRecipients().length, "rounding adds at most 1 wei per recipient");
+    }
+
     function test_constructor_copies_the_vesting_schedule_of_the_token() public view {
         assertEq(_vesting.vestingStart(), _xanV2Proxy.vestingStart());
         assertEq(_vesting.vestingEnd(), _xanV2Proxy.vestingEnd());

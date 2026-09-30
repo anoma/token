@@ -179,6 +179,12 @@ contract XanVesting is IXanVesting, Ownable {
     }
 
     /// @inheritdoc IXanVesting
+    function totalUnlockableBalance() public view override returns (uint256 total) {
+        // `_vestedAmount(_totalPrincipal)` is at least the sum of the vested amounts, so at least `_totalUnlocked`.
+        total = _vestedAmount(_totalPrincipal) - _totalUnlocked;
+    }
+
+    /// @inheritdoc IXanVesting
     function unlockableBalanceOf(address account) public view override returns (uint256 value) {
         uint256 vested = _vestedAmount(_principals[account]);
         uint256 alreadyUnlocked = _unlocked[account];

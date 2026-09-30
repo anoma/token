@@ -71,6 +71,11 @@ interface IXanVesting {
     /// @return total The total locked balance.
     function totalLockedBalance() external view returns (uint256 total);
 
+    /// @notice Returns the XAN that this contract must hold now so that every account can unlock.
+    /// @dev Rounding each account down makes the sum of the unlockable balances lower by up to 1 wei per account.
+    /// @return total An upper bound of the sum of the unlockable balances of all accounts.
+    function totalUnlockableBalance() external view returns (uint256 total);
+
     /// @notice Returns the timestamp at which vesting starts.
     /// @return start The vesting start timestamp.
     function vestingStart() external view returns (uint48 start);
