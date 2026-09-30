@@ -62,6 +62,11 @@ contract XanVestingUnitTest is XanV2Fixture {
         _deployVesting(_recipients(_defaultSender, _PRINCIPAL));
     }
 
+    function test_constructor_reverts_when_the_recipient_is_the_token() public {
+        vm.expectRevert(XanVesting.TokenRecipientNotAllowed.selector);
+        _deployVesting(_recipients(address(_xan), _PRINCIPAL));
+    }
+
     function test_addRecipients_adds_the_principals() public {
         vm.prank(_OWNER);
         _vesting.addRecipients(_recipients(_BOB, _PRINCIPAL));
@@ -112,6 +117,18 @@ contract XanVestingUnitTest is XanV2Fixture {
         vm.expectRevert(XanVesting.ZeroAccountNotAllowed.selector);
         vm.prank(_OWNER);
         _vesting.addRecipients(_recipients(address(0), _PRINCIPAL));
+    }
+
+    function test_addRecipients_reverts_when_the_recipient_is_the_vesting_contract() public {
+        vm.expectRevert(XanVesting.SelfRecipientNotAllowed.selector);
+        vm.prank(_OWNER);
+        _vesting.addRecipients(_recipients(address(_vesting), _PRINCIPAL));
+    }
+
+    function test_addRecipients_reverts_when_the_recipient_is_the_token() public {
+        vm.expectRevert(XanVesting.TokenRecipientNotAllowed.selector);
+        vm.prank(_OWNER);
+        _vesting.addRecipients(_recipients(address(_xan), _PRINCIPAL));
     }
 
     function test_addRecipients_reverts_on_the_zero_principal() public {
