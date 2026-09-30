@@ -230,56 +230,56 @@ contract XanVestingUnitTest is XanV2Fixture {
         assertEq(firstValue + secondValue, _PRINCIPAL);
     }
 
-    function test_withdraw_transfers_the_surplus() public {
+    function test_withdrawSurplus_transfers_the_surplus() public {
         uint256 surplus = _PRINCIPAL / 4;
         deal(address(_xan), address(_vesting), _PRINCIPAL + surplus);
 
         vm.prank(_OWNER);
-        _vesting.withdraw({receiver: _RECEIVER, value: surplus});
+        _vesting.withdrawSurplus({receiver: _RECEIVER, value: surplus});
 
         assertEq(_xan.balanceOf(_RECEIVER), surplus);
         assertEq(_xan.balanceOf(address(_vesting)), _vesting.totalLockedBalance());
     }
 
-    function test_withdraw_emits_the_Withdrawn_event() public {
+    function test_withdrawSurplus_emits_the_SurplusWithdrawn_event() public {
         uint256 surplus = _PRINCIPAL / 4;
         deal(address(_xan), address(_vesting), _PRINCIPAL + surplus);
 
         vm.expectEmit(address(_vesting));
-        emit IXanVesting.Withdrawn({receiver: _RECEIVER, value: surplus});
+        emit IXanVesting.SurplusWithdrawn({receiver: _RECEIVER, value: surplus});
 
         vm.prank(_OWNER);
-        _vesting.withdraw({receiver: _RECEIVER, value: surplus});
+        _vesting.withdrawSurplus({receiver: _RECEIVER, value: surplus});
     }
 
-    function test_withdraw_reverts_if_the_caller_is_not_the_owner() public {
+    function test_withdrawSurplus_reverts_if_the_caller_is_not_the_owner() public {
         uint256 surplus = _PRINCIPAL / 4;
         deal(address(_xan), address(_vesting), _PRINCIPAL + surplus);
 
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _BOB));
         vm.prank(_BOB);
-        _vesting.withdraw({receiver: _BOB, value: surplus});
+        _vesting.withdrawSurplus({receiver: _BOB, value: surplus});
     }
 
-    function test_withdraw_reverts_above_the_surplus() public {
+    function test_withdrawSurplus_reverts_above_the_surplus() public {
         uint256 surplus = _PRINCIPAL / 4;
         deal(address(_xan), address(_vesting), _PRINCIPAL + surplus);
 
         vm.expectRevert(abi.encodeWithSelector(XanVesting.SurplusInsufficient.selector, surplus, surplus + 1));
         vm.prank(_OWNER);
-        _vesting.withdraw({receiver: _RECEIVER, value: surplus + 1});
+        _vesting.withdrawSurplus({receiver: _RECEIVER, value: surplus + 1});
     }
 
-    function test_withdraw_reverts_when_the_balance_is_below_the_total_locked_balance() public {
+    function test_withdrawSurplus_reverts_when_the_balance_is_below_the_total_locked_balance() public {
         deal(address(_xan), address(_vesting), _PRINCIPAL / 2);
         assertLt(_xan.balanceOf(address(_vesting)), _vesting.totalLockedBalance(), "the balance must be too low");
 
         vm.expectRevert(abi.encodeWithSelector(XanVesting.SurplusInsufficient.selector, 0, 1));
         vm.prank(_OWNER);
-        _vesting.withdraw({receiver: _RECEIVER, value: 1});
+        _vesting.withdrawSurplus({receiver: _RECEIVER, value: 1});
     }
 
-    function testFuzz_withdraw_of_the_whole_surplus_leaves_enough_for_all_unlocks(uint256 unlockTime) public {
+    function testFuzz_withdrawSurplus_leaves_enough_for_all_unlocks(uint256 unlockTime) public {
         uint256 surplus = _PRINCIPAL / 4;
         deal(address(_xan), address(_vesting), _PRINCIPAL + surplus);
         unlockTime = bound(unlockTime, _vestingStart + 1, _vestingEnd - 1);
@@ -289,7 +289,7 @@ contract XanVestingUnitTest is XanV2Fixture {
         _vesting.unlock();
 
         vm.prank(_OWNER);
-        _vesting.withdraw({receiver: _RECEIVER, value: surplus});
+        _vesting.withdrawSurplus({receiver: _RECEIVER, value: surplus});
 
         vm.warp(_vestingEnd);
         vm.prank(_ALICE);

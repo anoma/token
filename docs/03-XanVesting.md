@@ -21,7 +21,7 @@ flowchart LR
     token[(XanV2 proxy)]
 
     foundation -->|transfer XAN| vesting
-    owner -->|addRecipients / withdraw| vesting
+    owner -->|addRecipients / withdrawSurplus| vesting
     recipient -->|unlock| vesting
     vesting -->|transfer vested XAN| recipient
     vesting -.->|read schedule and principals| token
@@ -80,7 +80,7 @@ The Anoma Foundation funds the contract with ordinary XAN transfers; the contrac
 
 - **Underfunded.** An `unlock()` that needs more XAN than the contract holds reverts `TokenBalanceInsufficient` and records nothing. The recipient keeps its unlockable amount and calls again after the next top-up, so no vesting is lost. While the balance is low, the unlocks that land first are paid first.
 - **Top-ups.** The foundation tops up the contract periodically, so that vesting continues and recipients can unlock. A balance of at least `totalLockedBalance()` covers every present and future unlock; `totalLockedBalance() − balance` is the shortfall.
-- **Surplus.** `withdraw(receiver, value)` lets the owner take the XAN above `totalLockedBalance()`, for example after an overpayment, and emits `Withdrawn`. A larger `value` reverts `SurplusInsufficient`, so `withdraw` cannot take XAN that a locked balance needs.
+- **Surplus.** `withdrawSurplus(receiver, value)` lets the owner take the XAN above `totalLockedBalance()`, for example after an overpayment, and emits `SurplusWithdrawn`. A larger `value` reverts `SurplusInsufficient`, so `withdrawSurplus` cannot take XAN that a locked balance needs.
 
 ## 7. Voting
 
@@ -96,9 +96,9 @@ The owner is the council multisig (see [ADR-10](./adr/10-the-council-multisig-ow
 
 ## 10. Trust assumptions
 
-- **The owner adds only eligible recipients with their correct principals.** All principals draw on one XAN balance. A principal that the foundation does not fund, such as an oversized one, takes XAN that backs the other recipients when it unlocks, and it cannot be removed. The owner, the council multisig, is trusted to add only principals that the foundation funds (see [ADR-10](./adr/10-the-council-multisig-owns-xanvesting.md)); `withdraw` alone cannot take XAN that a locked balance needs.
+- **The owner adds only eligible recipients with their correct principals.** All principals draw on one XAN balance. A principal that the foundation does not fund, such as an oversized one, takes XAN that backs the other recipients when it unlocks, and it cannot be removed. The owner, the council multisig, is trusted to add only principals that the foundation funds (see [ADR-10](./adr/10-the-council-multisig-owns-xanvesting.md)); `withdrawSurplus` alone cannot take XAN that a locked balance needs.
 - **The foundation keeps the contract funded.** Unlocks depend on its top-ups. An underfunded contract delays unlocks but loses no vesting.
-- **A principal leaves the contract only through `unlock()` by its account.** `withdraw` cannot take it. A principal for an address that can never call `unlock()`, such as a wrong address or a lost key, stays in the contract. Check every address before adding it.
+- **A principal leaves the contract only through `unlock()` by its account.** `withdrawSurplus` cannot take it. A principal for an address that can never call `unlock()`, such as a wrong address or a lost key, stays in the contract. Check every address before adding it.
 - **The schedule is fixed at deployment.** A later token upgrade that changes the schedule of the token does not change the schedule of `XanVesting`.
 - **Locked principals do not vote.** See section [Voting](#7-voting).
 

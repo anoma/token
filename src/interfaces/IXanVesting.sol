@@ -26,7 +26,7 @@ interface IXanVesting {
     /// @notice Emitted when the owner withdraws XAN that no locked balance needs.
     /// @param receiver The account that received the XAN.
     /// @param value The amount of XAN transferred to the receiver.
-    event Withdrawn(address indexed receiver, uint256 value);
+    event SurplusWithdrawn(address indexed receiver, uint256 value);
 
     /// @notice Unlocks the tokens of the caller that have vested since the last unlock and transfers them to the
     /// caller.
@@ -41,7 +41,7 @@ interface IXanVesting {
     /// @notice Transfers XAN that this contract holds above the total locked balance to a receiver.
     /// @param receiver The account that receives the XAN.
     /// @param value The amount of XAN to transfer, at most the XAN balance minus `totalLockedBalance()`.
-    function withdraw(address receiver, uint256 value) external;
+    function withdrawSurplus(address receiver, uint256 value) external;
 
     /// @notice Returns the amount of tokens that an account can unlock (vested but not yet unlocked).
     /// @param account The account to query.

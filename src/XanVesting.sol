@@ -129,14 +129,14 @@ contract XanVesting is IXanVesting, Ownable {
     }
 
     /// @inheritdoc IXanVesting
-    function withdraw(address receiver, uint256 value) external override onlyOwner {
+    function withdrawSurplus(address receiver, uint256 value) external override onlyOwner {
         uint256 lockedBalance = totalLockedBalance();
         uint256 tokenBalance = XAN_TOKEN.balanceOf(address(this));
         uint256 surplus = tokenBalance > lockedBalance ? tokenBalance - lockedBalance : 0;
 
         require(value < surplus + 1, SurplusInsufficient({surplus: surplus, value: value}));
 
-        emit Withdrawn({receiver: receiver, value: value});
+        emit SurplusWithdrawn({receiver: receiver, value: value});
 
         XAN_TOKEN.safeTransfer(receiver, value);
     }
