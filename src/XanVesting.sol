@@ -14,8 +14,8 @@ import {XanV2} from "./XanV2.sol";
 /// @author Anoma Foundation, 2026
 /// @notice Vests the XAN principals that the genesis distribution did not contain, with the schedule and the unlock
 /// mechanism of `XanV2`, and transfers the unlocked tokens from its own XAN balance.
-/// @dev The principal of an account is the sum of its locked balance, which this contract still holds, and its
-/// unlocked balance, which this contract has already transferred.
+/// @dev The principal of an account is the sum of its locked balance, which it has not unlocked yet, and its unlocked
+/// balance, which this contract has already transferred to it.
 /// @custom:security-contact security@anoma.foundation
 contract XanVesting is IXanVesting, Ownable {
     using SafeERC20 for IERC20;

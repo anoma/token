@@ -6,7 +6,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /// @title IXanVesting
 /// @author Anoma Foundation, 2026
 /// @notice The interface of the contract vesting the XAN principals that the genesis distribution did not contain.
-/// @dev The contract emits the `VestingScheduled` and `Unlocked` events of `IXanV2`.
+/// @dev The contract emits the `IXanV2` events `VestingScheduled`, at deployment and for its own principals, and
+/// `Unlocked`, when it transfers unlocked XAN.
 /// @custom:security-contact security@anoma.foundation
 interface IXanVesting {
     /// @notice An account and the principal vesting for it.
@@ -33,6 +34,7 @@ interface IXanVesting {
     function unlock() external returns (uint256 value);
 
     /// @notice Adds principals for accounts that have none yet, neither here nor in the XAN token.
+    /// @dev All principals draw on one XAN balance, so an unfunded principal takes XAN that backs the others.
     /// @param recipients The accounts and the principals vesting for them.
     function addRecipients(Recipient[] calldata recipients) external;
 
@@ -51,7 +53,7 @@ interface IXanVesting {
     /// @return unlockedBalance The unlocked balance.
     function unlockedBalanceOf(address account) external view returns (uint256 unlockedBalance);
 
-    /// @notice Returns the amount of the principal of an account that this contract still holds for it.
+    /// @notice Returns the part of the principal of an account that it has not unlocked yet.
     /// @param account The account to query.
     /// @return lockedBalance The locked balance.
     function lockedBalanceOf(address account) external view returns (uint256 lockedBalance);
