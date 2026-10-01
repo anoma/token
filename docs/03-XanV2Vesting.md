@@ -117,7 +117,7 @@ The owner is the council multisig, which funds the contract (see [ADR-10](./adr/
 
 ## 11. Deployment
 
-`script/DeployXanV2Vesting.s.sol` (`just deploy-vesting-simulate`, then `just deploy-vesting`) deploys the implementation and an `ERC1967Proxy` that calls `initialize`, after the OpenZeppelin upgrades plugin has validated the implementation. It takes the XAN token proxy and reads the initial recipients from `script/xan-v2-vesting-recipients.json`:
+`script/DeployXanV2Vesting.s.sol` (`just deploy-vesting-simulate`, then `just deploy-vesting`) deploys the implementation and an `ERC1967Proxy` that calls `initialize`, after the OpenZeppelin upgrades plugin has validated the implementation. It binds the XAN token proxy `0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7`, which has the same address on Ethereum mainnet and Sepolia, and reads the initial recipients from `script/xan-v2-vesting-recipients.json`:
 
 ```json
 { "recipients": [{ "account": "0x…", "principal": "1000000000000000000" }] }

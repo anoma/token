@@ -11,6 +11,9 @@ import {XanV2Vesting} from "../src/XanV2Vesting.sol";
 
 /// @notice Deploys `XanV2Vesting` behind a UUPS proxy with the recipients of `script/xan-v2-vesting-recipients.json`.
 contract DeployXanV2Vesting is Script {
+    /// @notice The XAN token proxy, which has the same address on Ethereum mainnet and Sepolia.
+    address public constant XAN_TOKEN = 0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7;
+
     /// @notice The file with the initial recipients. It stays empty until the recipients are known.
     string public constant RECIPIENTS_PATH = "script/xan-v2-vesting-recipients.json";
 
@@ -32,20 +35,18 @@ contract DeployXanV2Vesting is Script {
     error ZeroRecipientsNotAllowed();
 
     /// @notice Deploys `XanV2Vesting` with the recipients of `RECIPIENTS_PATH`.
-    /// @param xanToken The XAN token proxy.
     /// @return proxy The `XanV2Vesting` proxy.
     /// @return implementation The `XanV2Vesting` implementation.
-    function run(address xanToken) public returns (address proxy, address implementation) {
-        (proxy, implementation) = deploy({xanToken: xanToken, recipients: readRecipients(RECIPIENTS_PATH)});
+    function run() public returns (address proxy, address implementation) {
+        (proxy, implementation) = deploy(readRecipients(RECIPIENTS_PATH));
     }
 
-    /// @notice Deploys the `XanV2Vesting` implementation and its proxy, and initializes the proxy with the council
-    /// multisig as the owner and with the recipients.
-    /// @param xanToken The XAN token proxy.
+    /// @notice Deploys the `XanV2Vesting` implementation for `XAN_TOKEN` and its proxy, and initializes the proxy with
+    /// the council multisig as the owner and with the recipients.
     /// @param recipients The initial accounts and the principals vesting for them.
     /// @return proxy The `XanV2Vesting` proxy.
     /// @return implementation The `XanV2Vesting` implementation.
-    function deploy(address xanToken, IXanV2Vesting.Recipient[] memory recipients)
+    function deploy(IXanV2Vesting.Recipient[] memory recipients)
         public
         returns (address proxy, address implementation)
     {
@@ -60,7 +61,7 @@ contract DeployXanV2Vesting is Script {
         require(recipients.length != 0, ZeroRecipientsNotAllowed());
 
         Options memory opts;
-        opts.constructorData = abi.encode(xanToken);
+        opts.constructorData = abi.encode(XAN_TOKEN);
 
         vm.startBroadcast(msg.sender);
         proxy = Upgrades.deployUUPSProxy({

@@ -21,20 +21,24 @@ contract DeployXanV2VestingTest is XanV2Fixture {
     function setUp() public override {
         super.setUp();
         _script = new DeployXanV2Vesting();
+
+        // The script deploys for the XAN token proxy of Ethereum mainnet and Sepolia, whose schedule the constructor of
+        // the implementation reads. The code of the local V2 implementation returns the schedule of the local token.
+        vm.etch(_script.XAN_TOKEN(), _xanV2Impl.code);
     }
 
     function test_run_reverts_while_the_recipient_file_is_empty() public {
         vm.skip(_script.readRecipients(_script.RECIPIENTS_PATH()).length != 0, "The recipient file lists recipients.");
 
         vm.expectRevert(DeployXanV2Vesting.ZeroRecipientsNotAllowed.selector);
-        _script.run({xanToken: address(_xanV2Proxy)});
+        _script.run();
     }
 
     function test_run_deploys_the_recipients_of_the_file() public {
         IXanV2Vesting.Recipient[] memory recipients = _script.readRecipients(_script.RECIPIENTS_PATH());
         vm.skip(recipients.length == 0, "The recipient file is still empty.");
 
-        (address proxy,) = _script.run({xanToken: address(_xanV2Proxy)});
+        (address proxy,) = _script.run();
 
         assertEq(XanV2Vesting(proxy).getRecipients().length, recipients.length);
     }
@@ -42,11 +46,11 @@ contract DeployXanV2VestingTest is XanV2Fixture {
     function test_deploy_deploys_with_the_schedule_of_the_token_and_the_recipients() public {
         IXanV2Vesting.Recipient[] memory recipients = _script.readRecipients(_RECIPIENTS_PATH);
 
-        (address proxy, address implementation) =
-            _script.deploy({xanToken: address(_xanV2Proxy), recipients: recipients});
+        (address proxy, address implementation) = _script.deploy(recipients);
         XanV2Vesting vesting = XanV2Vesting(proxy);
 
         assertEq(UnsafeUpgrades.getImplementationAddress(proxy), implementation);
+        assertEq(address(vesting.XAN_TOKEN()), _script.XAN_TOKEN());
         assertEq(vesting.vestingStart(), _xanV2Proxy.vestingStart());
         assertEq(vesting.vestingEnd(), _xanV2Proxy.vestingEnd());
         assertEq(vesting.owner(), Parameters.COUNCIL_MULTISIG);
@@ -61,7 +65,7 @@ contract DeployXanV2VestingTest is XanV2Fixture {
 
     function test_deploy_reverts_on_an_empty_recipient_list() public {
         vm.expectRevert(DeployXanV2Vesting.ZeroRecipientsNotAllowed.selector);
-        _script.deploy({xanToken: address(_xanV2Proxy), recipients: new IXanV2Vesting.Recipient[](0)});
+        _script.deploy(new IXanV2Vesting.Recipient[](0));
     }
 
     function test_deploy_reverts_on_mainnet_and_sepolia_if_the_proxy_would_land_at_another_address() public {
@@ -72,7 +76,7 @@ contract DeployXanV2VestingTest is XanV2Fixture {
             vm.chainId(chainIds[i]);
 
             vm.expectPartialRevert(DeployXanV2Vesting.UnexpectedProxyAddress.selector);
-            _script.deploy({xanToken: address(_xanV2Proxy), recipients: recipients});
+            _script.deploy(recipients);
         }
     }
 

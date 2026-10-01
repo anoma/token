@@ -140,13 +140,13 @@ Deploys the `XanV2Vesting` implementation and its UUPS proxy for the eligible re
 - [ ] **Dry-run.** The printed `proxy` and `implementation` must be the addresses of the first step.
 
   ```bash
-  just deploy-vesting-simulate <sender> <proxy> <chain>
+  just deploy-vesting-simulate <sender> <chain>
   ```
 
 - [ ] **Broadcast.**
 
   ```bash
-  just deploy-vesting <deployer> <sender> <proxy> <chain>
+  just deploy-vesting <deployer> <sender> <chain>
   ```
 
 - [ ] **Verify the implementation on the explorers.** `just deploy-vesting` already verifies both contracts on Etherscan.
