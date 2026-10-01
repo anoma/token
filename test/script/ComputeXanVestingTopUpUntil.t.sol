@@ -1,0 +1,71 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma solidity ^0.8.30;
+
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
+
+import {ComputeXanVestingTopUpUntil} from "../../script/ComputeXanVestingTopUpUntil.s.sol";
+import {IXanVesting} from "../../src/interfaces/IXanVesting.sol";
+import {XanVesting} from "../../src/XanVesting.sol";
+import {XanVestingFixture} from "../fixtures/XanVestingFixture.sol";
+
+contract ComputeXanVestingTopUpUntilTest is XanVestingFixture {
+    ComputeXanVestingTopUpUntil internal _script;
+
+    function setUp() public override {
+        super.setUp();
+        _script = new ComputeXanVestingTopUpUntil();
+    }
+
+    function testFuzz_run_covers_every_unlock_until_the_timestamp(uint256 topUpTime, uint256 untilTime) public {
+        topUpTime = bound(topUpTime, _vestingStart, _vestingEnd);
+        untilTime = bound(untilTime, topUpTime, _vestingEnd + 365 days);
+
+        vm.warp(topUpTime);
+        deal(address(_xan), address(_vesting), _script.run({vesting: _vesting, timestamp: uint48(untilTime)}));
+
+        vm.warp(untilTime);
+        _unlockAll();
+    }
+
+    function test_run_returns_exactly_the_unlock_of_a_single_recipient() public {
+        IXanVesting.Recipient[] memory recipients = new IXanVesting.Recipient[](1);
+        recipients[0] = IXanVesting.Recipient({account: _ALICE, principal: _PRINCIPAL});
+        XanVesting vesting = _deployVesting(recipients);
+
+        uint48 topUpTime = _vestingStart + 101;
+        uint48 untilTime = topUpTime + 30 days;
+
+        vm.warp(topUpTime);
+        uint256 topUp = _script.run({vesting: vesting, timestamp: untilTime});
+        deal(address(_xan), address(vesting), topUp);
+
+        vm.warp(untilTime);
+        vm.prank(_ALICE);
+        assertEq(vesting.unlock(), topUp, "a single recipient must unlock exactly the top-up");
+    }
+
+    function test_run_restores_the_block_timestamp() public {
+        vm.warp(_vestingMid);
+
+        _script.run({vesting: _vesting, timestamp: _vestingEnd});
+
+        assertEq(Time.timestamp(), _vestingMid);
+    }
+
+    function test_run_returns_zero_when_the_balance_is_enough() public {
+        deal(address(_xan), address(_vesting), _vesting.totalLockedBalance());
+        vm.warp(_vestingMid);
+
+        assertEq(_script.run({vesting: _vesting, timestamp: _vestingEnd}), 0);
+    }
+
+    function test_run_reverts_on_a_timestamp_in_the_past() public {
+        vm.warp(_vestingMid);
+        uint48 timestamp = _vestingMid - 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ComputeXanVestingTopUpUntil.TimestampInThePast.selector, timestamp, _vestingMid)
+        );
+        _script.run({vesting: _vesting, timestamp: timestamp});
+    }
+}

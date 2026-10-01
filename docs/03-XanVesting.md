@@ -85,21 +85,12 @@ The Anoma Foundation funds the contract with ordinary XAN transfers; the contrac
 
 ### Top-up amount
 
-Two formulas give the XAN to send, with `balance` the XAN balance of the contract. A negative result means that the contract needs no XAN.
+Two scripts compute the XAN to send now, from the live state of `XanVesting` and the XAN token. Both send nothing, return zero when the balance is already enough, and cover the recipients added so far:
 
-**Top up for Δt.** Covers the unlocks until the next top-up, which is `Δt` away:
+- `script/ComputeXanVestingTopUpUntil.s.sol` covers every unlock until a timestamp, usually the time of the next top-up. It reads `totalUnlockableBalance()` at that timestamp. Run it with `just vesting-top-up-until <xan-vesting> <timestamp> <chain>`.
+- `script/ComputeXanVestingTopUpFull.s.sol` covers every present and future unlock. Run it with `just vesting-top-up-full <xan-vesting> <chain>`.
 
-```
-topUp = min(totalLockedBalance(), totalUnlockableBalance() + totalPrincipal() · Δt / (vestingEnd() − vestingStart())) − balance
-```
-
-`totalUnlockableBalance()` is what recipients can unlock now. All principals vest on one schedule, so together they vest `totalPrincipal() · Δt / (vestingEnd() − vestingStart())` in `Δt`. The `min` stops at the amount for full funding. For example, 3,650,000 XAN of principals vest about 3,333 XAN per day, so a 30-day `Δt` adds 100,000 XAN to what recipients can unlock now.
-
-**Top up once.** Covers every present and future unlock, until the owner adds more recipients:
-
-```
-topUp = totalLockedBalance() − balance
-```
+For example, 3,650,000 XAN of principals vest about 3,333 XAN per day, so a top-up until 30 days from now adds about 100,000 XAN to what recipients can unlock now.
 
 ## 7. Voting
 

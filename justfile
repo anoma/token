@@ -137,6 +137,20 @@ deploy-vesting deployer token owner recipients chain *args:
         --sig "run(address,address,string)" {{ token }} {{ owner }} {{ recipients }} \
         --broadcast --verify --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
 
+# Print the XAN that the Anoma Foundation wallet sends to `XanVesting` now so that every unlock until `timestamp`
+# (Unix time) succeeds. Sends nothing.
+vesting-top-up-until xan-vesting timestamp chain *args:
+    forge script script/ComputeXanVestingTopUpUntil.s.sol:ComputeXanVestingTopUpUntil \
+        --sig "run(address,uint48)" {{ xan-vesting }} {{ timestamp }} \
+        --rpc-url {{ chain }} {{ args }}
+
+# Print the XAN that the Anoma Foundation wallet sends to `XanVesting` now so that every present and future unlock
+# succeeds. Sends nothing.
+vesting-top-up-full xan-vesting chain *args:
+    forge script script/ComputeXanVestingTopUpFull.s.sol:ComputeXanVestingTopUpFull \
+        --sig "run(address)" {{ xan-vesting }} \
+        --rpc-url {{ chain }} {{ args }}
+
 # --- Verification ---
 
 # Verify an implementation contract on sourcify (e.g. contract=src/XanV1.sol:XanV1)
