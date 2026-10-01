@@ -120,22 +120,23 @@ upgrade deployer proxy chain *args:
         --sig "run(address)" {{ proxy }} \
         --broadcast --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
 
-# Simulate deploying `XanV2Vesting` with the recipients of a JSON file in `script/input/` (dry-run).
-deploy-vesting-simulate token recipients chain *args:
+# Simulate deploying `XanV2Vesting` with the recipients of a JSON file in `script/input/` (dry-run). `sender` is the
+# address behind the deployer, so the dry run prints the addresses that the broadcast creates.
+deploy-vesting-simulate sender token recipients chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
     forge script script/DeployXanV2Vesting.s.sol:DeployXanV2Vesting \
         --sig "run(address,string)" {{ token }} {{ recipients }} \
-        --rpc-url {{ chain }} {{ args }}
+        --rpc-url {{ chain }} --sender {{ sender }} {{ args }}
 
 # Deploy the `XanV2Vesting` implementation and its UUPS proxy with the recipients of a JSON file in `script/input/`.
 # Verifies both on etherscan with the exact constructor args from the broadcast.
-deploy-vesting deployer token recipients chain *args:
+deploy-vesting deployer sender token recipients chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
     forge script script/DeployXanV2Vesting.s.sol:DeployXanV2Vesting \
         --sig "run(address,string)" {{ token }} {{ recipients }} \
-        --broadcast --verify --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
+        --broadcast --verify --rpc-url {{ chain }} --account {{ deployer }} --sender {{ sender }} {{ args }}
 
 # Print the XAN that the council multisig sends to `XanV2Vesting` now so that every unlock until `timestamp` (Unix time)
 # succeeds. Sends nothing.

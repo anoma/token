@@ -125,6 +125,8 @@ The owner is the council multisig, which funds the contract (see [ADR-10](./adr/
 
 Principals are decimal strings in the smallest unit (18 decimals). Every recipient has proved control of its address beforehand (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanv2vesting)). After the deployment, the council multisig transfers the XAN.
 
+The deployer of the governance stack deploys the implementation and the proxy at the same nonces on Ethereum mainnet and Sepolia, so both networks share their addresses. On these two chains, the script reverts before it broadcasts anything unless the proxy lands at `0x60A149fE74D2f55219f1Abad2911756Da9c67bf4`.
+
 ## 12. Parameters
 
 | Getter           | Source                                       | Mainnet                                                                                                                           |
