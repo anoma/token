@@ -29,13 +29,13 @@ contract XanV2VestingUpgradeTest is XanV2VestingFixture {
         assertEq(UnsafeUpgrades.getImplementationAddress(address(_vesting)), newImpl);
     }
 
-    function test_upgradeToAndCall_keeps_the_principals_and_the_unlocked_balances() public {
+    function test_upgradeToAndCall_keeps_the_principals_and_the_unlocked_amounts() public {
         deal(address(_xan), address(_vesting), _vesting.totalPrincipal());
         vm.warp(_vestingMid);
         _unlockAll();
 
         address owner = _vesting.owner();
-        uint256 unlockedByAlice = _vesting.unlockedBalanceOf(_ALICE);
+        uint256 unlockedByAlice = _vesting.unlockedAmountOf(_ALICE);
         uint256 lockedTotal = _vesting.totalLockedBalance();
 
         address newImpl = address(new XanV2Vesting(_xan));
@@ -44,7 +44,7 @@ contract XanV2VestingUpgradeTest is XanV2VestingFixture {
 
         assertEq(_vesting.owner(), owner);
         assertEq(_vesting.principalOf(_ALICE), _PRINCIPAL);
-        assertEq(_vesting.unlockedBalanceOf(_ALICE), unlockedByAlice);
+        assertEq(_vesting.unlockedAmountOf(_ALICE), unlockedByAlice);
         assertEq(_vesting.totalPrincipal(), _PRINCIPAL + _PRINCIPAL / 3);
         assertEq(_vesting.totalLockedBalance(), lockedTotal);
         assertEq(_vesting.getRecipients().length, 2);

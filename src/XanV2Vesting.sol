@@ -172,8 +172,8 @@ contract XanV2Vesting is IXanV2Vesting, Initializable, OwnableUpgradeable, UUPSU
     }
 
     /// @inheritdoc IXanV2Vesting
-    function unlockedBalanceOf(address account) public view override returns (uint256 unlockedBalance) {
-        unlockedBalance = _getXanV2VestingStorage().unlocked[account];
+    function unlockedAmountOf(address account) public view override returns (uint256 unlockedAmount) {
+        unlockedAmount = _getXanV2VestingStorage().unlocked[account];
     }
 
     /// @inheritdoc IXanV2Vesting

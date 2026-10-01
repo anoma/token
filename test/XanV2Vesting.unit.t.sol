@@ -141,7 +141,7 @@ contract XanV2VestingUnitTest is XanV2Fixture {
         assertEq(_vesting.unlock(), _PRINCIPAL);
     }
 
-    function test_unlock_moves_the_vested_amount_from_the_locked_to_the_unlocked_balance() public {
+    function test_unlock_moves_the_vested_amount_from_the_locked_balance_to_the_unlocked_amount() public {
         vm.warp(_vestingMid);
         assertEq(_vesting.unlockableBalanceOf(_ALICE), _PRINCIPAL / 2);
 
@@ -149,7 +149,7 @@ contract XanV2VestingUnitTest is XanV2Fixture {
         _vesting.unlock();
 
         assertEq(_vesting.unlockableBalanceOf(_ALICE), 0);
-        assertEq(_vesting.unlockedBalanceOf(_ALICE), _PRINCIPAL / 2);
+        assertEq(_vesting.unlockedAmountOf(_ALICE), _PRINCIPAL / 2);
         assertEq(_vesting.lockedBalanceOf(_ALICE), _PRINCIPAL - _PRINCIPAL / 2);
     }
 
