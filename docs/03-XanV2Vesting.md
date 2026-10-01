@@ -86,10 +86,10 @@ The council multisig funds the contract with ordinary XAN transfers; the contrac
 
 ### Top-up amount
 
-Two scripts compute the XAN to send now, from the live state of `XanV2Vesting` and the XAN token. Both send nothing, return zero when the balance is already enough, and cover the recipients added so far:
+Two scripts compute the XAN to send now, from the live state of the `XanV2Vesting` proxy at `0x60A149fE74D2f55219f1Abad2911756Da9c67bf4` and the XAN token. Both send nothing, return zero when the balance is already enough, and cover the recipients added so far:
 
-- `script/ComputeXanV2VestingTopUpUntil.s.sol` covers every unlock until a timestamp, usually the time of the next top-up. It reads `totalUnlockableBalance()` at that timestamp. Run it with `just vesting-top-up-until <xan-v2-vesting> <timestamp> <chain>`.
-- `script/ComputeXanV2VestingTopUpFull.s.sol` covers every present and future unlock. Run it with `just vesting-top-up-full <xan-v2-vesting> <chain>`.
+- `script/ComputeXanV2VestingTopUpUntil.s.sol` covers every unlock until a timestamp, usually the time of the next top-up. It reads `totalUnlockableBalance()` at that timestamp. Run it with `just vesting-top-up-until <timestamp> <chain>`.
+- `script/ComputeXanV2VestingTopUpFull.s.sol` covers every present and future unlock. Run it with `just vesting-top-up-full <chain>`.
 
 For example, 3,650,000 XAN of principals vest about 3,333 XAN per day, so a top-up until 30 days from now adds about 100,000 XAN to what recipients can unlock now.
 
@@ -125,7 +125,7 @@ The owner is the council multisig, which funds the contract (see [ADR-10](./adr/
 
 Principals are decimal strings in the smallest unit (18 decimals). The file stays empty until the recipients are known, and the script reverts on an empty list (`ZeroRecipientsNotAllowed`), so it cannot deploy before the list is filled in. Every recipient has proved control of its address beforehand (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanv2vesting)). After the deployment, the council multisig transfers the XAN.
 
-The deployer of the governance stack deploys the implementation and the proxy at the same nonces on Ethereum mainnet and Sepolia, so both networks share their addresses. On these two chains, the script reverts before it broadcasts anything unless the proxy lands at `0x60A149fE74D2f55219f1Abad2911756Da9c67bf4`.
+The deployer of the governance stack deploys the implementation and the proxy at the same nonces on Ethereum mainnet and Sepolia, so both networks share their addresses. The script reverts before it broadcasts anything unless the proxy lands at `0x60A149fE74D2f55219f1Abad2911756Da9c67bf4`.
 
 ## 12. Parameters
 

@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ComputeXanV2VestingTopUpFull} from "../../script/ComputeXanV2VestingTopUpFull.s.sol";
 import {ComputeXanV2VestingTopUpUntil} from "../../script/ComputeXanV2VestingTopUpUntil.s.sol";
+import {XanV2Vesting} from "../../src/XanV2Vesting.sol";
 import {XanV2VestingFixture} from "../fixtures/XanV2VestingFixture.sol";
 
 contract ComputeXanV2VestingTopUpFullTest is XanV2VestingFixture {
@@ -11,6 +12,12 @@ contract ComputeXanV2VestingTopUpFullTest is XanV2VestingFixture {
     function setUp() public override {
         super.setUp();
         _script = new ComputeXanV2VestingTopUpFull();
+    }
+
+    function test_run_computes_the_top_up_of_the_pinned_proxy() public {
+        XanV2Vesting vesting = _deployPinnedVesting();
+
+        assertEq(_script.run(), vesting.totalLockedBalance(), "an unfunded proxy needs every locked balance");
     }
 
     function test_run_covers_every_remaining_unlock() public {

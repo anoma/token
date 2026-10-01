@@ -2,33 +2,18 @@
 pragma solidity ^0.8.30;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 
 import {IXanV2} from "../src/interfaces/IXanV2.sol";
 import {IXanV2Vesting} from "../src/interfaces/IXanV2Vesting.sol";
 import {XanV2} from "../src/XanV2.sol";
 import {XanV2Vesting} from "../src/XanV2Vesting.sol";
-import {XanV2Fixture} from "./fixtures/XanV2Fixture.sol";
+import {XanV2VestingFixture} from "./fixtures/XanV2VestingFixture.sol";
 
-contract XanV2VestingUnitTest is XanV2Fixture {
-    uint256 internal constant _PRINCIPAL = 1_000_000e18;
-
-    address internal immutable _ALICE = makeAddr("alice");
-    address internal immutable _BOB = makeAddr("bob");
-    address internal immutable _OWNER = makeAddr("owner");
+contract XanV2VestingUnitTest is XanV2VestingFixture {
     address internal immutable _RECEIVER = makeAddr("receiver");
-
-    IERC20 internal _xan;
-    XanV2Vesting internal _implementation;
-    XanV2Vesting internal _vesting;
 
     function setUp() public override {
         super.setUp();
-        _xan = IERC20(address(_xanV2Proxy));
-
-        _implementation = new XanV2Vesting(_xan);
-        _vesting = _deployVesting(_recipients(_ALICE, _PRINCIPAL));
         deal(address(_xan), address(_vesting), _PRINCIPAL);
     }
 
@@ -320,19 +305,8 @@ contract XanV2VestingUnitTest is XanV2Fixture {
         assertLe(total, sum + _vesting.getRecipients().length, "rounding adds at most 1 wei per recipient");
     }
 
-    function _deployVesting(IXanV2Vesting.Recipient[] memory recipients) internal returns (XanV2Vesting vesting) {
-        bytes memory initializerData = abi.encodeCall(XanV2Vesting.initialize, (_OWNER, recipients));
-        vesting = XanV2Vesting(
-            UnsafeUpgrades.deployUUPSProxy({impl: address(_implementation), initializerData: initializerData})
-        );
-    }
-
-    function _recipients(address account, uint256 principal)
-        internal
-        pure
-        returns (IXanV2Vesting.Recipient[] memory recipients)
-    {
-        recipients = new IXanV2Vesting.Recipient[](1);
-        recipients[0] = IXanV2Vesting.Recipient({account: account, principal: principal});
+    /// @dev Starts with Alice only, so that the tests add Bob themselves.
+    function _initialRecipients() internal view override returns (IXanV2Vesting.Recipient[] memory recipients) {
+        recipients = _recipients(_ALICE, _PRINCIPAL);
     }
 }

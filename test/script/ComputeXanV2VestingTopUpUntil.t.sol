@@ -4,7 +4,6 @@ pragma solidity ^0.8.30;
 import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
 import {ComputeXanV2VestingTopUpUntil} from "../../script/ComputeXanV2VestingTopUpUntil.s.sol";
-import {IXanV2Vesting} from "../../src/interfaces/IXanV2Vesting.sol";
 import {XanV2Vesting} from "../../src/XanV2Vesting.sol";
 import {XanV2VestingFixture} from "../fixtures/XanV2VestingFixture.sol";
 
@@ -27,10 +26,14 @@ contract ComputeXanV2VestingTopUpUntilTest is XanV2VestingFixture {
         _unlockAll();
     }
 
+    function test_run_computes_the_top_up_of_the_pinned_proxy() public {
+        XanV2Vesting vesting = _deployPinnedVesting();
+
+        assertEq(_script.run(_vestingEnd), vesting.totalPrincipal(), "an unfunded proxy needs every principal");
+    }
+
     function test_run_returns_exactly_the_unlock_of_a_single_recipient() public {
-        IXanV2Vesting.Recipient[] memory recipients = new IXanV2Vesting.Recipient[](1);
-        recipients[0] = IXanV2Vesting.Recipient({account: _ALICE, principal: _PRINCIPAL});
-        XanV2Vesting vesting = _deployVesting(recipients);
+        XanV2Vesting vesting = _deployVesting(_recipients(_ALICE, _PRINCIPAL));
 
         uint48 topUpTime = _vestingStart + 101;
         uint48 untilTime = topUpTime + 30 days;
