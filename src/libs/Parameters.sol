@@ -60,4 +60,9 @@ library Parameters {
     /// @notice Margin the `XanUpgradeCouncilModule` adds on top of a full voter cancel cycle when sizing its
     /// upgrade delay, giving the voter body time to notice a scheduled upgrade and start cancelling it.
     uint256 internal constant COUNCIL_EXTRA_DELAY = 7 days;
+
+    /* ========== XanVesting ========== */
+
+    /// @notice The council multisig, which owns `XanVesting`. It has the same address on Ethereum mainnet and Sepolia.
+    address internal constant COUNCIL_MULTISIG = 0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116;
 }

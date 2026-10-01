@@ -6,21 +6,21 @@ This document specifies `XanVesting`, the contract that vests XAN for eligible r
 
 The genesis distribution of XAN V1 gave each eligible recipient that submitted an address its locked tranche, through the Merkle `TokenDistributor` and `transferAndLock`. A few eligible recipients did not submit an address, so the distribution does not contain them. `XanV2` vests only the principals that V1 recorded (see section [Vesting](./01-XanV2-upgrade.md#4-vesting)), so it cannot vest their tranches.
 
-The Anoma Foundation holds these tranches. It moves them into `XanVesting`, and each recipient unlocks its tranche there over time, on the same schedule and with the same `unlock()` as the holders in the token. A principal is the locked tranche that the recipient missed; if the recipient was also owed a liquid tranche, the foundation sends that directly with an ordinary transfer.
+The council multisig moves these tranches into `XanVesting`, and each recipient unlocks its tranche there over time, on the same schedule and with the same `unlock()` as the holders in the token. A principal is the locked tranche that the recipient missed; if the recipient was also owed a liquid tranche, the council multisig sends that directly with an ordinary transfer.
 
-**No new tokens.** `XanV2` cannot mint, so the supply stays fixed. `XanVesting` only passes existing XAN from the foundation to the recipients.
+**No new tokens.** `XanV2` cannot mint, so the supply stays fixed. `XanVesting` only passes existing XAN from the council multisig to the recipients.
 
 ## 2. Architecture
 
 ```mermaid
 flowchart LR
-    foundation([Anoma Foundation<br/>wallet, owner])
+    council([Council multisig,<br/>owner])
     recipient([Recipient])
     vesting[XanVesting]
     token[(XanV2 proxy)]
 
-    foundation -->|transfer XAN| vesting
-    foundation -->|addRecipients / withdrawSurplus| vesting
+    council -->|transfer XAN| vesting
+    council -->|addRecipients / withdrawSurplus| vesting
     recipient -->|unlock| vesting
     vesting -->|transfer vested XAN| recipient
     vesting -.->|read schedule| token
@@ -78,10 +78,10 @@ An account can also have a principal in the XAN token. The two principals vest i
 
 ## 6. Funding
 
-The Anoma Foundation funds the contract with ordinary XAN transfers; the contract has no deposit function. The owner can add principals before the XAN arrives, so the contract can hold less than `totalLockedBalance()` for a time. This is accepted:
+The council multisig funds the contract with ordinary XAN transfers; the contract has no deposit function. The owner can add principals before the XAN arrives, so the contract can hold less than `totalLockedBalance()` for a time. This is accepted:
 
 - **Underfunded.** An `unlock()` that needs more XAN than the contract holds reverts `TokenBalanceInsufficient` and records nothing. The recipient keeps its unlockable amount and calls again after the next top-up, so no vesting is lost. While the balance is low, the unlocks that land first are paid first.
-- **Top-ups.** The foundation tops up the contract periodically, so that vesting continues and recipients can unlock (see [Top-up amount](#top-up-amount)).
+- **Top-ups.** The council multisig tops up the contract periodically, so that vesting continues and recipients can unlock (see [Top-up amount](#top-up-amount)).
 - **Surplus.** `withdrawSurplus(receiver, value)` lets the owner take the XAN above `totalLockedBalance()`, for example after an overpayment, and emits `SurplusWithdrawn`. A larger `value` reverts `SurplusInsufficient`, so `withdrawSurplus` cannot take XAN that a locked balance needs.
 
 ### Top-up amount
@@ -103,12 +103,12 @@ A client checks both contracts for an account, because an account can have a pri
 
 ## 9. Ownership
 
-The owner is the Anoma Foundation wallet, which funds the contract (see [ADR-10](./adr/10-the-anoma-foundation-wallet-owns-xanvesting.md)), which the deployment passes as `initialOwner`. The owner can add recipients, withdraw the surplus, and transfer or renounce ownership (`Ownable`). It cannot change or remove a principal, and it cannot unlock for a recipient. The voter body has no power over `XanVesting`. The contract has no proxy, so a change to its code needs a new deployment.
+The owner is the council multisig, which funds the contract (see [ADR-10](./adr/10-the-council-multisig-owns-xanvesting.md)). The deployment script passes it as `initialOwner`, from `Parameters.COUNCIL_MULTISIG`, so the deployer does not enter it. The owner can add recipients, withdraw the surplus, and transfer or renounce ownership (`Ownable`). It cannot change or remove a principal, and it cannot unlock for a recipient. The voter body has no power over `XanVesting`: replacing the council module does not change its owner. The contract has no proxy, so a change to its code needs a new deployment.
 
 ## 10. Trust assumptions
 
-- **The owner adds only eligible recipients with their correct principals.** All principals draw on one XAN balance. A principal that the foundation does not fund, such as an oversized one, takes XAN that backs the other recipients when it unlocks, and it cannot be removed. The owner, the Anoma Foundation wallet, is trusted to add only principals that it funds (see [ADR-10](./adr/10-the-anoma-foundation-wallet-owns-xanvesting.md)); `withdrawSurplus` alone cannot take XAN that a locked balance needs. The contract does not read the principals in the XAN token, so the owner must also make sure that a principal does not repeat a tranche that the account already vests there.
-- **The foundation keeps the contract funded.** Unlocks depend on its top-ups. An underfunded contract delays unlocks but loses no vesting.
+- **The owner adds only eligible recipients with their correct principals.** All principals draw on one XAN balance. A principal that the council multisig does not fund, such as an oversized one, takes XAN that backs the other recipients when it unlocks, and it cannot be removed. The owner, the council multisig, is trusted to add only principals that it funds (see [ADR-10](./adr/10-the-council-multisig-owns-xanvesting.md)); `withdrawSurplus` alone cannot take XAN that a locked balance needs. A captured council can add principals for accounts that it controls; the loss is bounded by the XAN that the contract holds. The contract does not read the principals in the XAN token, so the owner must also make sure that a principal does not repeat a tranche that the account already vests there.
+- **The council multisig keeps the contract funded.** Unlocks depend on its top-ups. An underfunded contract delays unlocks but loses no vesting.
 - **A principal leaves the contract only through `unlock()` by its account.** `withdrawSurplus` cannot take it. A principal for an address that can never call `unlock()`, such as a wrong address or a lost key, stays in the contract. So each recipient proves control of its address before it is added (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanvesting)).
 - **The schedule is fixed at deployment.** A later token upgrade that changes the schedule of the token does not change the schedule of `XanVesting`.
 - **Locked principals do not vote.** See section [Voting](#7-voting).
@@ -116,19 +116,19 @@ The owner is the Anoma Foundation wallet, which funds the contract (see [ADR-10]
 
 ## 11. Deployment
 
-`script/DeployXanVesting.s.sol` (`just deploy-vesting-simulate`, then `just deploy-vesting`) takes the XAN token proxy, the owner, and the path of a JSON file in `script/input/` with the initial recipients:
+`script/DeployXanVesting.s.sol` (`just deploy-vesting-simulate`, then `just deploy-vesting`) takes the XAN token proxy and the path of a JSON file in `script/input/` with the initial recipients:
 
 ```json
 { "recipients": [{ "account": "0x…", "principal": "1000000000000000000" }] }
 ```
 
-Principals are decimal strings in the smallest unit (18 decimals). Every recipient has proved control of its address beforehand (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanvesting)). After the deployment, the foundation transfers the XAN.
+Principals are decimal strings in the smallest unit (18 decimals). Every recipient has proved control of its address beforehand (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanvesting)). After the deployment, the council multisig transfers the XAN.
 
 ## 12. Parameters
 
-| Getter           | Source                       | Mainnet                                                                                         |
-| ---------------- | ---------------------------- | ----------------------------------------------------------------------------------------------- |
-| `XAN_TOKEN()`    | constructor                  | `0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7`                                                    |
-| `vestingStart()` | XAN token, at construction   | `1790683200` (2026-09-29 12:00 UTC)                                                             |
-| `vestingEnd()`   | XAN token, at construction   | `1885291200` (2029-09-28 12:00 UTC)                                                             |
-| `owner()`        | constructor (`initialOwner`) | the Anoma Foundation wallet ([ADR-10](./adr/10-the-anoma-foundation-wallet-owns-xanvesting.md)) |
+| Getter           | Source                                      | Mainnet                                                                                                                         |
+| ---------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `XAN_TOKEN()`    | constructor                                 | `0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7`                                                                                    |
+| `vestingStart()` | XAN token, at construction                  | `1790683200` (2026-09-29 12:00 UTC)                                                                                             |
+| `vestingEnd()`   | XAN token, at construction                  | `1885291200` (2029-09-28 12:00 UTC)                                                                                             |
+| `owner()`        | constructor (`Parameters.COUNCIL_MULTISIG`) | `0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116`, the council multisig ([ADR-10](./adr/10-the-council-multisig-owns-xanvesting.md)) |

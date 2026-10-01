@@ -6,25 +6,25 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Script} from "forge-std/Script.sol";
 
 import {IXanVesting} from "../src/interfaces/IXanVesting.sol";
+import {Parameters} from "../src/libs/Parameters.sol";
 import {XanVesting} from "../src/XanVesting.sol";
 
 /// @notice Deploys `XanVesting` with the recipients of a JSON file.
 contract DeployXanVesting is Script {
-    /// @notice Reads the recipients from a JSON file and deploys `XanVesting` with them.
+    /// @notice Reads the recipients from a JSON file and deploys `XanVesting` with them, owned by the council multisig.
     /// @param xanToken The XAN token proxy.
-    /// @param initialOwner The account that can add more principals and withdraw the surplus.
     /// @param recipientsPath The path of a JSON file in the form `{"recipients": [{"account": "0x…", "principal": "…"}]}`,
     /// with the principals in the smallest unit (18 decimals).
     /// @return vesting The deployed `XanVesting`.
-    function run(address xanToken, address initialOwner, string calldata recipientsPath)
-        public
-        returns (address vesting)
-    {
+    function run(address xanToken, string calldata recipientsPath) public returns (address vesting) {
         IXanVesting.Recipient[] memory recipients = readRecipients(recipientsPath);
 
         vm.startBroadcast(msg.sender);
-        vesting =
-            address(new XanVesting({xanToken: IERC20(xanToken), initialOwner: initialOwner, recipients: recipients}));
+        vesting = address(
+            new XanVesting({
+                xanToken: IERC20(xanToken), initialOwner: Parameters.COUNCIL_MULTISIG, recipients: recipients
+            })
+        );
         vm.stopBroadcast();
     }
 

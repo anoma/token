@@ -125,18 +125,22 @@ Deploys `XanVesting` for the eligible recipients that the V1 genesis distributio
 
 - [ ] **Write the recipient list** into a JSON file in `script/input/`, with the locked tranches as decimal strings in the smallest unit (see section [Deployment](docs/03-XanVesting.md#11-deployment)).
 
-- [ ] **Confirm `<owner>` is the Anoma Foundation wallet.** It owns and funds the contract (see [ADR-10](docs/adr/10-the-anoma-foundation-wallet-owns-xanvesting.md)).
+- [ ] **Confirm the council multisig is still `Parameters.COUNCIL_MULTISIG`** (`0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116`). The deployment script makes it the owner (see [ADR-10](docs/adr/10-the-council-multisig-owns-xanvesting.md)). If this does not print it, update `src/libs/Parameters.sol` first.
+
+  ```bash
+  cast call <council-module> "getCouncil()(address)" --rpc-url <chain>
+  ```
 
 - [ ] **Dry-run.**
 
   ```bash
-  just deploy-vesting-simulate <proxy> <owner> <recipients-json> <chain>
+  just deploy-vesting-simulate <proxy> <recipients-json> <chain>
   ```
 
 - [ ] **Broadcast.**
 
   ```bash
-  just deploy-vesting <deployer> <proxy> <owner> <recipients-json> <chain>
+  just deploy-vesting <deployer> <proxy> <recipients-json> <chain>
   ```
 
 - [ ] **Verify the contract on the explorers.**
@@ -149,7 +153,7 @@ Deploys `XanVesting` for the eligible recipients that the V1 genesis distributio
 
 - [ ] **Send any liquid tranches directly.** `XanVesting` holds only the locked tranches.
 
-- [ ] **Fund it.** The foundation transfers XAN to the contract and tops it up periodically. Before each top-up, this prints the XAN to send now so that every unlock until the next top-up at `<timestamp>` (Unix time) succeeds (see [Top-up amount](docs/03-XanVesting.md#top-up-amount)). `just vesting-top-up-full <xan-vesting> <chain>` prints the XAN that covers every remaining unlock instead.
+- [ ] **Fund it.** The council multisig transfers XAN to the contract and tops it up periodically. Before each top-up, this prints the XAN to send now so that every unlock until the next top-up at `<timestamp>` (Unix time) succeeds (see [Top-up amount](docs/03-XanVesting.md#top-up-amount)). `just vesting-top-up-full <xan-vesting> <chain>` prints the XAN that covers every remaining unlock instead.
 
   ```bash
   just vesting-top-up-until <xan-vesting> <timestamp> <chain>
