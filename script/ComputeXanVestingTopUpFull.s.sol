@@ -7,8 +7,8 @@ import {Script} from "forge-std/Script.sol";
 
 import {IXanVesting} from "../src/interfaces/IXanVesting.sol";
 
-/// @notice Computes the XAN that the Anoma Foundation wallet sends to `XanVesting` now so that every present and future
-/// unlock succeeds. It sends nothing.
+/// @notice Computes the XAN that the council multisig sends to `XanVesting` now so that every present and future unlock
+/// succeeds. It sends nothing.
 contract ComputeXanVestingTopUpFull is Script {
     /// @notice Returns the XAN to send now so that every present and future unlock succeeds, or zero if the balance of
     /// `vesting` is already enough.

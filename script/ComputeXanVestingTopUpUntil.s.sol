@@ -8,8 +8,8 @@ import {Script} from "forge-std/Script.sol";
 
 import {IXanVesting} from "../src/interfaces/IXanVesting.sol";
 
-/// @notice Computes the XAN that the Anoma Foundation wallet sends to `XanVesting` now so that every unlock until a
-/// timestamp succeeds. It sends nothing.
+/// @notice Computes the XAN that the council multisig sends to `XanVesting` now so that every unlock until a timestamp
+/// succeeds. It sends nothing.
 contract ComputeXanVestingTopUpUntil is Script {
     /// @notice Thrown if the timestamp lies before the current block.
     error TimestampInThePast(uint48 timestamp, uint48 currentTimestamp);
