@@ -3,13 +3,13 @@ pragma solidity ^0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/// @title IXanVesting
+/// @title IXanV2Vesting
 /// @author Anoma Foundation, 2026
 /// @notice The interface of the contract vesting the XAN principals that the genesis distribution did not contain.
 /// @dev The contract emits the `IXanV2` events `VestingScheduled`, at deployment and for its own principals, and
 /// `Unlocked`, when it transfers unlocked XAN.
 /// @custom:security-contact security@anoma.foundation
-interface IXanVesting {
+interface IXanV2Vesting {
     /// @notice An account and the principal vesting for it.
     /// @param account The account that can unlock the principal.
     /// @param principal The amount of XAN vesting for the account.

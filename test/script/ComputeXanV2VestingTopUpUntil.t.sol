@@ -3,17 +3,17 @@ pragma solidity ^0.8.30;
 
 import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
-import {ComputeXanVestingTopUpUntil} from "../../script/ComputeXanVestingTopUpUntil.s.sol";
-import {IXanVesting} from "../../src/interfaces/IXanVesting.sol";
-import {XanVesting} from "../../src/XanVesting.sol";
-import {XanVestingFixture} from "../fixtures/XanVestingFixture.sol";
+import {ComputeXanV2VestingTopUpUntil} from "../../script/ComputeXanV2VestingTopUpUntil.s.sol";
+import {IXanV2Vesting} from "../../src/interfaces/IXanV2Vesting.sol";
+import {XanV2Vesting} from "../../src/XanV2Vesting.sol";
+import {XanV2VestingFixture} from "../fixtures/XanV2VestingFixture.sol";
 
-contract ComputeXanVestingTopUpUntilTest is XanVestingFixture {
-    ComputeXanVestingTopUpUntil internal _script;
+contract ComputeXanV2VestingTopUpUntilTest is XanV2VestingFixture {
+    ComputeXanV2VestingTopUpUntil internal _script;
 
     function setUp() public override {
         super.setUp();
-        _script = new ComputeXanVestingTopUpUntil();
+        _script = new ComputeXanV2VestingTopUpUntil();
     }
 
     function testFuzz_run_covers_every_unlock_until_the_timestamp(uint256 topUpTime, uint256 untilTime) public {
@@ -28,9 +28,9 @@ contract ComputeXanVestingTopUpUntilTest is XanVestingFixture {
     }
 
     function test_run_returns_exactly_the_unlock_of_a_single_recipient() public {
-        IXanVesting.Recipient[] memory recipients = new IXanVesting.Recipient[](1);
-        recipients[0] = IXanVesting.Recipient({account: _ALICE, principal: _PRINCIPAL});
-        XanVesting vesting = _deployVesting(recipients);
+        IXanV2Vesting.Recipient[] memory recipients = new IXanV2Vesting.Recipient[](1);
+        recipients[0] = IXanV2Vesting.Recipient({account: _ALICE, principal: _PRINCIPAL});
+        XanV2Vesting vesting = _deployVesting(recipients);
 
         uint48 topUpTime = _vestingStart + 101;
         uint48 untilTime = topUpTime + 30 days;
@@ -64,7 +64,7 @@ contract ComputeXanVestingTopUpUntilTest is XanVestingFixture {
         uint48 timestamp = _vestingMid - 1;
 
         vm.expectRevert(
-            abi.encodeWithSelector(ComputeXanVestingTopUpUntil.TimestampInThePast.selector, timestamp, _vestingMid)
+            abi.encodeWithSelector(ComputeXanV2VestingTopUpUntil.TimestampInThePast.selector, timestamp, _vestingMid)
         );
         _script.run({vesting: _vesting, timestamp: timestamp});
     }
