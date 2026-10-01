@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.30;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 
 import {IXanV2} from "../src/interfaces/IXanV2.sol";
-import {IXanVesting} from "../src/interfaces/IXanVesting.sol";
+import {IXanV2Vesting} from "../src/interfaces/IXanV2Vesting.sol";
 import {XanV2} from "../src/XanV2.sol";
-import {XanVesting} from "../src/XanVesting.sol";
+import {XanV2Vesting} from "../src/XanV2Vesting.sol";
 import {XanV2Fixture} from "./fixtures/XanV2Fixture.sol";
 
-contract XanVestingUnitTest is XanV2Fixture {
+contract XanV2VestingUnitTest is XanV2Fixture {
     uint256 internal constant _PRINCIPAL = 1_000_000e18;
 
     address internal immutable _ALICE = makeAddr("alice");
@@ -19,39 +20,16 @@ contract XanVestingUnitTest is XanV2Fixture {
     address internal immutable _RECEIVER = makeAddr("receiver");
 
     IERC20 internal _xan;
-    XanVesting internal _vesting;
+    XanV2Vesting internal _implementation;
+    XanV2Vesting internal _vesting;
 
     function setUp() public override {
         super.setUp();
         _xan = IERC20(address(_xanV2Proxy));
 
+        _implementation = new XanV2Vesting(_xan);
         _vesting = _deployVesting(_recipients(_ALICE, _PRINCIPAL));
         deal(address(_xan), address(_vesting), _PRINCIPAL);
-    }
-
-    function test_constructor_emits_the_VestingScheduled_and_PrincipalAdded_events() public {
-        vm.expectEmit();
-        emit IXanV2.VestingScheduled({start: _vestingStart, duration: _vestingEnd - _vestingStart});
-        vm.expectEmit();
-        emit IXanVesting.PrincipalAdded({account: _ALICE, principal: _PRINCIPAL});
-
-        _deployVesting(_recipients(_ALICE, _PRINCIPAL));
-    }
-
-    function test_constructor_reverts_on_the_zero_token() public {
-        vm.expectRevert(XanVesting.ZeroTokenNotAllowed.selector);
-        new XanVesting({
-            xanToken: IERC20(address(0)), initialOwner: _OWNER, recipients: _recipients(_ALICE, _PRINCIPAL)
-        });
-    }
-
-    function test_constructor_reverts_on_an_account_listed_twice() public {
-        IXanVesting.Recipient[] memory recipients = new IXanVesting.Recipient[](2);
-        recipients[0] = IXanVesting.Recipient({account: _BOB, principal: _PRINCIPAL});
-        recipients[1] = IXanVesting.Recipient({account: _BOB, principal: _PRINCIPAL});
-
-        vm.expectRevert(abi.encodeWithSelector(XanVesting.PrincipalAlreadySet.selector, _BOB, _PRINCIPAL));
-        _deployVesting(recipients);
     }
 
     function test_addRecipients_adds_the_principals() public {
@@ -73,20 +51,20 @@ contract XanVestingUnitTest is XanV2Fixture {
 
     function test_addRecipients_emits_the_PrincipalAdded_event() public {
         vm.expectEmit(address(_vesting));
-        emit IXanVesting.PrincipalAdded({account: _BOB, principal: _PRINCIPAL});
+        emit IXanV2Vesting.PrincipalAdded({account: _BOB, principal: _PRINCIPAL});
 
         vm.prank(_OWNER);
         _vesting.addRecipients(_recipients(_BOB, _PRINCIPAL));
     }
 
     function test_addRecipients_reverts_if_the_caller_is_not_the_owner() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _BOB));
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, _BOB));
         vm.prank(_BOB);
         _vesting.addRecipients(_recipients(_BOB, _PRINCIPAL));
     }
 
     function test_addRecipients_reverts_on_an_account_that_already_has_a_principal() public {
-        vm.expectRevert(abi.encodeWithSelector(XanVesting.PrincipalAlreadySet.selector, _ALICE, _PRINCIPAL));
+        vm.expectRevert(abi.encodeWithSelector(XanV2Vesting.PrincipalAlreadySet.selector, _ALICE, _PRINCIPAL));
         vm.prank(_OWNER);
         _vesting.addRecipients(_recipients(_ALICE, _PRINCIPAL));
     }
@@ -101,25 +79,25 @@ contract XanVestingUnitTest is XanV2Fixture {
     }
 
     function test_addRecipients_reverts_on_the_zero_account() public {
-        vm.expectRevert(XanVesting.ZeroAccountNotAllowed.selector);
+        vm.expectRevert(XanV2Vesting.ZeroAccountNotAllowed.selector);
         vm.prank(_OWNER);
         _vesting.addRecipients(_recipients(address(0), _PRINCIPAL));
     }
 
     function test_addRecipients_reverts_when_the_recipient_is_the_vesting_contract() public {
-        vm.expectRevert(XanVesting.SelfRecipientNotAllowed.selector);
+        vm.expectRevert(XanV2Vesting.SelfRecipientNotAllowed.selector);
         vm.prank(_OWNER);
         _vesting.addRecipients(_recipients(address(_vesting), _PRINCIPAL));
     }
 
     function test_addRecipients_reverts_when_the_recipient_is_the_token() public {
-        vm.expectRevert(XanVesting.TokenRecipientNotAllowed.selector);
+        vm.expectRevert(XanV2Vesting.TokenRecipientNotAllowed.selector);
         vm.prank(_OWNER);
         _vesting.addRecipients(_recipients(address(_xan), _PRINCIPAL));
     }
 
     function test_addRecipients_reverts_on_the_zero_principal() public {
-        vm.expectRevert(XanVesting.ZeroPrincipalNotAllowed.selector);
+        vm.expectRevert(XanV2Vesting.ZeroPrincipalNotAllowed.selector);
         vm.prank(_OWNER);
         _vesting.addRecipients(_recipients(_BOB, 0));
     }
@@ -130,7 +108,7 @@ contract XanVestingUnitTest is XanV2Fixture {
         vm.prank(_OWNER);
         _vesting.addRecipients(_recipients(_BOB, principalOfBob));
 
-        IXanVesting.Recipient[] memory recipients = _vesting.getRecipients();
+        IXanV2Vesting.Recipient[] memory recipients = _vesting.getRecipients();
         assertEq(recipients.length, 2);
         assertEq(recipients[0].account, _ALICE);
         assertEq(recipients[0].principal, _PRINCIPAL);
@@ -215,7 +193,7 @@ contract XanVestingUnitTest is XanV2Fixture {
         _vesting.unlock();
         assertEq(_xan.balanceOf(address(_vesting)), 0, "the unlock of alice must use up the balance");
 
-        vm.expectRevert(abi.encodeWithSelector(XanVesting.TokenBalanceInsufficient.selector, 0, _PRINCIPAL));
+        vm.expectRevert(abi.encodeWithSelector(XanV2Vesting.TokenBalanceInsufficient.selector, 0, _PRINCIPAL));
         vm.prank(_BOB);
         _vesting.unlock();
     }
@@ -250,7 +228,7 @@ contract XanVestingUnitTest is XanV2Fixture {
         deal(address(_xan), address(_vesting), _PRINCIPAL + surplus);
 
         vm.expectEmit(address(_vesting));
-        emit IXanVesting.SurplusWithdrawn({receiver: _RECEIVER, value: surplus});
+        emit IXanV2Vesting.SurplusWithdrawn({receiver: _RECEIVER, value: surplus});
 
         vm.prank(_OWNER);
         _vesting.withdrawSurplus({receiver: _RECEIVER, value: surplus});
@@ -260,7 +238,7 @@ contract XanVestingUnitTest is XanV2Fixture {
         uint256 surplus = _PRINCIPAL / 4;
         deal(address(_xan), address(_vesting), _PRINCIPAL + surplus);
 
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _BOB));
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, _BOB));
         vm.prank(_BOB);
         _vesting.withdrawSurplus({receiver: _BOB, value: surplus});
     }
@@ -269,7 +247,7 @@ contract XanVestingUnitTest is XanV2Fixture {
         uint256 surplus = _PRINCIPAL / 4;
         deal(address(_xan), address(_vesting), _PRINCIPAL + surplus);
 
-        vm.expectRevert(abi.encodeWithSelector(XanVesting.SurplusInsufficient.selector, surplus, surplus + 1));
+        vm.expectRevert(abi.encodeWithSelector(XanV2Vesting.SurplusInsufficient.selector, surplus, surplus + 1));
         vm.prank(_OWNER);
         _vesting.withdrawSurplus({receiver: _RECEIVER, value: surplus + 1});
     }
@@ -278,7 +256,7 @@ contract XanVestingUnitTest is XanV2Fixture {
         deal(address(_xan), address(_vesting), _PRINCIPAL / 2);
         assertLt(_xan.balanceOf(address(_vesting)), _vesting.totalLockedBalance(), "the balance must be too low");
 
-        vm.expectRevert(abi.encodeWithSelector(XanVesting.SurplusInsufficient.selector, 0, 1));
+        vm.expectRevert(abi.encodeWithSelector(XanV2Vesting.SurplusInsufficient.selector, 0, 1));
         vm.prank(_OWNER);
         _vesting.withdrawSurplus({receiver: _RECEIVER, value: 1});
     }
@@ -342,31 +320,19 @@ contract XanVestingUnitTest is XanV2Fixture {
         assertLe(total, sum + _vesting.getRecipients().length, "rounding adds at most 1 wei per recipient");
     }
 
-    function test_constructor_copies_the_vesting_schedule_of_the_token() public view {
-        assertEq(_vesting.vestingStart(), _xanV2Proxy.vestingStart());
-        assertEq(_vesting.vestingEnd(), _xanV2Proxy.vestingEnd());
-    }
-
-    function test_constructor_binds_the_token_and_the_owner() public view {
-        assertEq(address(_vesting.XAN_TOKEN()), address(_xanV2Proxy));
-        assertEq(_vesting.owner(), _OWNER);
-    }
-
-    function test_constructor_adds_the_initial_principals() public view {
-        assertEq(_vesting.principalOf(_ALICE), _PRINCIPAL);
-        assertEq(_vesting.totalPrincipal(), _PRINCIPAL);
-    }
-
-    function _deployVesting(IXanVesting.Recipient[] memory recipients) internal returns (XanVesting vesting) {
-        vesting = new XanVesting({xanToken: _xan, initialOwner: _OWNER, recipients: recipients});
+    function _deployVesting(IXanV2Vesting.Recipient[] memory recipients) internal returns (XanV2Vesting vesting) {
+        bytes memory initializerData = abi.encodeCall(XanV2Vesting.initialize, (_OWNER, recipients));
+        vesting = XanV2Vesting(
+            UnsafeUpgrades.deployUUPSProxy({impl: address(_implementation), initializerData: initializerData})
+        );
     }
 
     function _recipients(address account, uint256 principal)
         internal
         pure
-        returns (IXanVesting.Recipient[] memory recipients)
+        returns (IXanV2Vesting.Recipient[] memory recipients)
     {
-        recipients = new IXanVesting.Recipient[](1);
-        recipients[0] = IXanVesting.Recipient({account: account, principal: principal});
+        recipients = new IXanV2Vesting.Recipient[](1);
+        recipients[0] = IXanV2Vesting.Recipient({account: account, principal: principal});
     }
 }

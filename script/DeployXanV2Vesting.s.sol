@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+pragma solidity ^0.8.30;
+
+import {Upgrades, Options} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
+import {Script} from "forge-std/Script.sol";
+
+import {IXanV2Vesting} from "../src/interfaces/IXanV2Vesting.sol";
+import {Parameters} from "../src/libs/Parameters.sol";
+import {XanV2Vesting} from "../src/XanV2Vesting.sol";
+
+/// @notice Deploys `XanV2Vesting` behind a UUPS proxy with the recipients of a JSON file.
+contract DeployXanV2Vesting is Script {
+    /// @notice Reads the recipients from a JSON file, deploys the `XanV2Vesting` implementation and its proxy, and
+    /// initializes the proxy with the council multisig as the owner and with the recipients.
+    /// @param xanToken The XAN token proxy.
+    /// @param recipientsPath The path of a JSON file in the form `{"recipients": [{"account": "0x…", "principal": "…"}]}`,
+    /// with the principals in the smallest unit (18 decimals).
+    /// @return proxy The `XanV2Vesting` proxy.
+    /// @return implementation The `XanV2Vesting` implementation.
+    function run(address xanToken, string calldata recipientsPath)
+        public
+        returns (address proxy, address implementation)
+    {
+        IXanV2Vesting.Recipient[] memory recipients = readRecipients(recipientsPath);
+
+        Options memory opts;
+        opts.constructorData = abi.encode(xanToken);
+
+        vm.startBroadcast(msg.sender);
+        proxy = Upgrades.deployUUPSProxy({
+            contractName: "XanV2Vesting.sol:XanV2Vesting",
+            initializerData: abi.encodeCall(XanV2Vesting.initialize, (Parameters.COUNCIL_MULTISIG, recipients)),
+            opts: opts
+        });
+        vm.stopBroadcast();
+
+        implementation = Upgrades.getImplementationAddress(proxy);
+    }
+
+    /// @notice Reads the recipients from a JSON file.
+    /// @param path The path of the JSON file, in the form that `run` describes.
+    /// @return recipients The accounts and the principals vesting for them.
+    function readRecipients(string calldata path) public view returns (IXanV2Vesting.Recipient[] memory recipients) {
+        // NOTE: The `fs_permissions` of `foundry.toml` allow only reads, and only from the listed folders.
+        // forge-lint: disable-next-line(unsafe-cheatcode)
+        string memory json = vm.readFile(path);
+        recipients = abi.decode(
+            vm.parseJsonTypeArray(json, ".recipients", "Recipient(address account,uint256 principal)"),
+            (IXanV2Vesting.Recipient[])
+        );
+    }
+}

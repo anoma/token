@@ -1,6 +1,6 @@
 # Deployment Checklist
 
-Step 1 deploys both networks; steps 2 and 3 are then run on Sepolia first and on mainnet once the rehearsal has completed. The token spec is [`docs/01-XanV2-upgrade.md`](docs/01-XanV2-upgrade.md) and the governance spec is [`docs/02-XanV2-governance.md`](docs/02-XanV2-governance.md). Section 5 deploys `XanVesting` (see [`docs/03-XanVesting.md`](docs/03-XanVesting.md)).
+Step 1 deploys both networks; steps 2 and 3 are then run on Sepolia first and on mainnet once the rehearsal has completed. The token spec is [`docs/01-XanV2-upgrade.md`](docs/01-XanV2-upgrade.md) and the governance spec is [`docs/02-XanV2-governance.md`](docs/02-XanV2-governance.md). Section 5 deploys `XanV2Vesting` (see [`docs/03-XanV2Vesting.md`](docs/03-XanV2Vesting.md)).
 
 ## 1. Before you start
 
@@ -115,17 +115,17 @@ The alternative V1 path is the voter-body quorum — hold `castVote(implementati
   cast call <proxy> "owner()(address)" --rpc-url <chain>
   ```
 
-## 5. XanVesting
+## 5. XanV2Vesting
 
-Deploys `XanVesting` for the eligible recipients that the V1 genesis distribution did not contain. Run on Sepolia first; repeat on mainnet once the rehearsal has completed.
+Deploys the `XanV2Vesting` implementation and its UUPS proxy for the eligible recipients that the V1 genesis distribution did not contain. Run on Sepolia first; repeat on mainnet once the rehearsal has completed.
 
 - [ ] **Pick a deployer other than the wallet of section 1**, which must be used for nothing else.
 
-- [ ] **Check every address.** Each recipient signs a message with its address, and the team checks and records the signature before the address goes into the recipient list. A principal for an address that can never unlock stays in the contract (see [Trust assumptions](docs/03-XanVesting.md#10-trust-assumptions)).
+- [ ] **Check every address.** Each recipient signs a message with its address, and the team checks and records the signature before the address goes into the recipient list. A principal for an address that can never unlock stays in the contract (see [Trust assumptions](docs/03-XanV2Vesting.md#10-trust-assumptions)).
 
-- [ ] **Write the recipient list** into a JSON file in `script/input/`, with the locked tranches as decimal strings in the smallest unit (see section [Deployment](docs/03-XanVesting.md#11-deployment)).
+- [ ] **Write the recipient list** into a JSON file in `script/input/`, with the locked tranches as decimal strings in the smallest unit (see section [Deployment](docs/03-XanV2Vesting.md#11-deployment)).
 
-- [ ] **Confirm the council multisig is still `Parameters.COUNCIL_MULTISIG`** (`0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116`). The deployment script makes it the owner (see [ADR-10](docs/adr/10-the-council-multisig-owns-xanvesting.md)). If this does not print it, update `src/libs/Parameters.sol` first.
+- [ ] **Confirm the council multisig is still `Parameters.COUNCIL_MULTISIG`** (`0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116`). The deployment script makes it the owner (see [ADR-10](docs/adr/10-the-council-multisig-owns-xanv2vesting.md)). If this does not print it, update `src/libs/Parameters.sol` first.
 
   ```bash
   cast call <council-module> "getCouncil()(address)" --rpc-url <chain>
@@ -143,18 +143,18 @@ Deploys `XanVesting` for the eligible recipients that the V1 genesis distributio
   just deploy-vesting <deployer> <proxy> <recipients-json> <chain>
   ```
 
-- [ ] **Verify the contract on the explorers.**
+- [ ] **Verify the implementation on the explorers.** `just deploy-vesting` already verifies both contracts on Etherscan.
 
   ```bash
-  just verify-impl <xan-vesting> src/XanVesting.sol:XanVesting <chain>
+  just verify-impl <implementation> src/XanV2Vesting.sol:XanV2Vesting <chain>
   ```
 
-- [ ] **Record the address** in [README.md](README.md#deployed-contracts).
+- [ ] **Record the proxy and implementation addresses** in [README.md](README.md#deployed-contracts).
 
-- [ ] **Send any liquid tranches directly.** `XanVesting` holds only the locked tranches.
+- [ ] **Send any liquid tranches directly.** `XanV2Vesting` holds only the locked tranches.
 
-- [ ] **Fund it.** The council multisig transfers XAN to the contract and tops it up periodically. Before each top-up, this prints the XAN to send now so that every unlock until the next top-up at `<timestamp>` (Unix time) succeeds (see [Top-up amount](docs/03-XanVesting.md#top-up-amount)). `just vesting-top-up-full <xan-vesting> <chain>` prints the XAN that covers every remaining unlock instead.
+- [ ] **Fund it.** The council multisig transfers XAN to the contract and tops it up periodically. Before each top-up, this prints the XAN to send now so that every unlock until the next top-up at `<timestamp>` (Unix time) succeeds (see [Top-up amount](docs/03-XanV2Vesting.md#top-up-amount)). `just vesting-top-up-full <xan-v2-vesting> <chain>` prints the XAN that covers every remaining unlock instead.
 
   ```bash
-  just vesting-top-up-until <xan-vesting> <timestamp> <chain>
+  just vesting-top-up-until <xan-v2-vesting> <timestamp> <chain>
   ```

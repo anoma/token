@@ -61,8 +61,9 @@ library Parameters {
     /// upgrade delay, giving the voter body time to notice a scheduled upgrade and start cancelling it.
     uint256 internal constant COUNCIL_EXTRA_DELAY = 7 days;
 
-    /* ========== XanVesting ========== */
+    /* ========== XanV2Vesting ========== */
 
-    /// @notice The council multisig, which owns `XanVesting`. It has the same address on Ethereum mainnet and Sepolia.
+    /// @notice The council multisig, which owns `XanV2Vesting`. It has the same address on Ethereum mainnet and
+    /// Sepolia.
     address internal constant COUNCIL_MULTISIG = 0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116;
 }

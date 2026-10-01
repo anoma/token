@@ -2,9 +2,9 @@
 
 The Anoma token (XAN) is an upgradeable ERC-20 token.
 
-This repository contains both implementations and the upgrade from V1 to V2. **V1** gates upgrades with an in-token meta-governance mechanism based on quorum approval voting and a fast-track council. **V2** removes the in-token governance in favor of a single owner, vests the formerly locked balances linearly, and adds `ERC20Votes` vote delegation on a timestamp clock. The V2 owner is an external governance stack — the `XanGovernor` DAO, its `TimelockController`, and the `XanUpgradeCouncilModule` backup upgrade path. `XanVesting` vests XAN for the eligible recipients that the V1 genesis distribution did not contain, on the V2 schedule.
+This repository contains both implementations and the upgrade from V1 to V2. **V1** gates upgrades with an in-token meta-governance mechanism based on quorum approval voting and a fast-track council. **V2** removes the in-token governance in favor of a single owner, vests the formerly locked balances linearly, and adds `ERC20Votes` vote delegation on a timestamp clock. The V2 owner is an external governance stack — the `XanGovernor` DAO, its `TimelockController`, and the `XanUpgradeCouncilModule` backup upgrade path. `XanV2Vesting` vests XAN for the eligible recipients that the V1 genesis distribution did not contain, on the V2 schedule.
 
-Conceptual orientation lives in [`CONTEXT.md`](./CONTEXT.md). The audit-facing specifications are [`docs/01-XanV2-upgrade.md`](./docs/01-XanV2-upgrade.md) (token), [`docs/02-XanV2-governance.md`](./docs/02-XanV2-governance.md) (governance layer), and [`docs/03-XanVesting.md`](./docs/03-XanVesting.md) (`XanVesting`); design decisions are recorded in [`docs/adr/`](./docs/adr/).
+Conceptual orientation lives in [`CONTEXT.md`](./CONTEXT.md). The audit-facing specifications are [`docs/01-XanV2-upgrade.md`](./docs/01-XanV2-upgrade.md) (token), [`docs/02-XanV2-governance.md`](./docs/02-XanV2-governance.md) (governance layer), and [`docs/03-XanV2Vesting.md`](./docs/03-XanV2Vesting.md) (`XanV2Vesting`); design decisions are recorded in [`docs/adr/`](./docs/adr/).
 
 ## Deployed Contracts
 

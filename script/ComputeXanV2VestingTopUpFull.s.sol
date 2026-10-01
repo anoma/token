@@ -5,16 +5,16 @@ pragma solidity ^0.8.30;
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Script} from "forge-std/Script.sol";
 
-import {IXanVesting} from "../src/interfaces/IXanVesting.sol";
+import {IXanV2Vesting} from "../src/interfaces/IXanV2Vesting.sol";
 
-/// @notice Computes the XAN that the council multisig sends to `XanVesting` now so that every present and future unlock
-/// succeeds. It sends nothing.
-contract ComputeXanVestingTopUpFull is Script {
+/// @notice Computes the XAN that the council multisig sends to `XanV2Vesting` now so that every present and future
+/// unlock succeeds. It sends nothing.
+contract ComputeXanV2VestingTopUpFull is Script {
     /// @notice Returns the XAN to send now so that every present and future unlock succeeds, or zero if the balance of
     /// `vesting` is already enough.
-    /// @param vesting The `XanVesting` contract.
+    /// @param vesting The `XanV2Vesting` contract.
     /// @return topUp The XAN to send, in the smallest unit.
-    function run(IXanVesting vesting) public view returns (uint256 topUp) {
+    function run(IXanV2Vesting vesting) public view returns (uint256 topUp) {
         topUp = Math.saturatingSub(vesting.totalLockedBalance(), vesting.XAN_TOKEN().balanceOf(address(vesting)));
     }
 }
