@@ -9,8 +9,11 @@ import {IXanV2Vesting} from "../src/interfaces/IXanV2Vesting.sol";
 import {Parameters} from "../src/libs/Parameters.sol";
 import {XanV2Vesting} from "../src/XanV2Vesting.sol";
 
-/// @notice Deploys `XanV2Vesting` behind a UUPS proxy with the recipients of a JSON file.
+/// @notice Deploys `XanV2Vesting` behind a UUPS proxy with the recipients of `script/xan-v2-vesting-recipients.json`.
 contract DeployXanV2Vesting is Script {
+    /// @notice The file with the initial recipients. It stays empty until the recipients are known.
+    string public constant RECIPIENTS_PATH = "script/xan-v2-vesting-recipients.json";
+
     /// @notice The address at which the proxy must land on Ethereum mainnet and Sepolia.
     /// @dev The two chains share the addresses of the token and the governance stack, and they must share those of
     /// `XanV2Vesting` too. The deployer of the governance stack, `0xc461247a7375cF7c70a576d636aA3dd38ff3bb2f`, is at
@@ -25,14 +28,24 @@ contract DeployXanV2Vesting is Script {
     /// @notice Thrown if the proxy would not land at `EXPECTED_PROXY`.
     error UnexpectedProxyAddress(address expected, address predicted);
 
-    /// @notice Reads the recipients from a JSON file, deploys the `XanV2Vesting` implementation and its proxy, and
-    /// initializes the proxy with the council multisig as the owner and with the recipients.
+    /// @notice Thrown if the recipient list is empty, for example because the recipient file has not been filled in.
+    error ZeroRecipientsNotAllowed();
+
+    /// @notice Deploys `XanV2Vesting` with the recipients of `RECIPIENTS_PATH`.
     /// @param xanToken The XAN token proxy.
-    /// @param recipientsPath The path of a JSON file in the form `{"recipients": [{"account": "0x…", "principal": "…"}]}`,
-    /// with the principals in the smallest unit (18 decimals).
     /// @return proxy The `XanV2Vesting` proxy.
     /// @return implementation The `XanV2Vesting` implementation.
-    function run(address xanToken, string calldata recipientsPath)
+    function run(address xanToken) public returns (address proxy, address implementation) {
+        (proxy, implementation) = deploy({xanToken: xanToken, recipients: readRecipients(RECIPIENTS_PATH)});
+    }
+
+    /// @notice Deploys the `XanV2Vesting` implementation and its proxy, and initializes the proxy with the council
+    /// multisig as the owner and with the recipients.
+    /// @param xanToken The XAN token proxy.
+    /// @param recipients The initial accounts and the principals vesting for them.
+    /// @return proxy The `XanV2Vesting` proxy.
+    /// @return implementation The `XanV2Vesting` implementation.
+    function deploy(address xanToken, IXanV2Vesting.Recipient[] memory recipients)
         public
         returns (address proxy, address implementation)
     {
@@ -43,7 +56,8 @@ contract DeployXanV2Vesting is Script {
             requireExpectedProxy(msg.sender);
         }
 
-        IXanV2Vesting.Recipient[] memory recipients = readRecipients(recipientsPath);
+        // An empty list means that the recipient file has not been filled in, so nothing is deployed.
+        require(recipients.length != 0, ZeroRecipientsNotAllowed());
 
         Options memory opts;
         opts.constructorData = abi.encode(xanToken);
@@ -71,9 +85,10 @@ contract DeployXanV2Vesting is Script {
     }
 
     /// @notice Reads the recipients from a JSON file.
-    /// @param path The path of the JSON file, in the form that `run` describes.
+    /// @param path The path of a JSON file in the form `{"recipients": [{"account": "0x…", "principal": "…"}]}`, with
+    /// the principals in the smallest unit (18 decimals).
     /// @return recipients The accounts and the principals vesting for them.
-    function readRecipients(string calldata path) public view returns (IXanV2Vesting.Recipient[] memory recipients) {
+    function readRecipients(string memory path) public view returns (IXanV2Vesting.Recipient[] memory recipients) {
         // NOTE: The `fs_permissions` of `foundry.toml` allow only reads, and only from the listed folders.
         // forge-lint: disable-next-line(unsafe-cheatcode)
         string memory json = vm.readFile(path);

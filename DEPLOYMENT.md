@@ -129,7 +129,7 @@ Deploys the `XanV2Vesting` implementation and its UUPS proxy for the eligible re
 
 - [ ] **Check every address.** Each recipient signs a message with its address, and the team checks and records the signature before the address goes into the recipient list. A principal for an address that can never unlock stays in the contract (see [Trust assumptions](docs/03-XanV2Vesting.md#10-trust-assumptions)).
 
-- [ ] **Write the recipient list** into a JSON file in `script/input/`, with the locked tranches as decimal strings in the smallest unit (see section [Deployment](docs/03-XanV2Vesting.md#11-deployment)).
+- [ ] **Write the recipient list** into `script/xan-v2-vesting-recipients.json`, with the locked tranches as decimal strings in the smallest unit (see section [Deployment](docs/03-XanV2Vesting.md#11-deployment)). The deploy script reverts while the list is empty.
 
 - [ ] **Confirm the council multisig is still `Parameters.COUNCIL_MULTISIG`** (`0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116`). The deployment script makes it the owner (see [ADR-10](docs/adr/10-the-council-multisig-owns-xanv2vesting.md)). If this does not print it, update `src/libs/Parameters.sol` first.
 
@@ -140,13 +140,13 @@ Deploys the `XanV2Vesting` implementation and its UUPS proxy for the eligible re
 - [ ] **Dry-run.** The printed `proxy` and `implementation` must be the addresses of the first step.
 
   ```bash
-  just deploy-vesting-simulate <sender> <proxy> <recipients-json> <chain>
+  just deploy-vesting-simulate <sender> <proxy> <chain>
   ```
 
 - [ ] **Broadcast.**
 
   ```bash
-  just deploy-vesting <deployer> <sender> <proxy> <recipients-json> <chain>
+  just deploy-vesting <deployer> <sender> <proxy> <chain>
   ```
 
 - [ ] **Verify the implementation on the explorers.** `just deploy-vesting` already verifies both contracts on Etherscan.
