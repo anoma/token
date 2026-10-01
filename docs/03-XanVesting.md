@@ -101,8 +101,6 @@ topUp = min(totalLockedBalance(), totalUnlockableBalance() + totalPrincipal() ·
 topUp = totalLockedBalance() − balance
 ```
 
-A principal that the foundation leaves unfunded (see section [Trust assumptions](#10-trust-assumptions)) lowers both amounts: subtract its `unlockableBalanceOf` plus `principalOf · Δt / (vestingEnd() − vestingStart())` from the first, and its `lockedBalanceOf` from the second.
-
 ## 7. Voting
 
 `XanVesting` holds the locked XAN and cannot delegate it, so a locked principal has no voting power. This differs from `XanV2`, where voting power includes the locked principal (see [ADR-03](./adr/03-voting-power-tracks-full-balance.md)). A recipient votes only with XAN that it has unlocked and delegated. The XAN in `XanVesting` still counts toward the total supply that sets the quorum (see section [XanGovernor](./02-XanV2-governance.md#3-xangovernor)), but no one can cast its votes. This is accepted (see [ADR-09](./adr/09-locked-xanvesting-principals-carry-no-voting-power.md)).
@@ -119,7 +117,7 @@ The owner is the Anoma Foundation wallet, which funds the contract (see [ADR-10]
 
 - **The owner adds only eligible recipients with their correct principals.** All principals draw on one XAN balance. A principal that the foundation does not fund, such as an oversized one, takes XAN that backs the other recipients when it unlocks, and it cannot be removed. The owner, the Anoma Foundation wallet, is trusted to add only principals that it funds (see [ADR-10](./adr/10-the-anoma-foundation-wallet-owns-xanvesting.md)); `withdrawSurplus` alone cannot take XAN that a locked balance needs. The contract does not read the principals in the XAN token, so the owner must also make sure that a principal does not repeat a tranche that the account already vests there.
 - **The foundation keeps the contract funded.** Unlocks depend on its top-ups. An underfunded contract delays unlocks but loses no vesting.
-- **A principal leaves the contract only through `unlock()` by its account.** `withdrawSurplus` cannot take it. A principal for an address that can never call `unlock()`, such as a wrong address or a lost key, stays in the contract. So each recipient proves control of its address before it is added (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanvesting)). If a dead principal is found later, the foundation does not fund it: unlocks check only the balance, so the other recipients can still unlock in full, and `totalLockedBalance()` and `totalUnlockableBalance()` then overstate what is owed by that principal.
+- **A principal leaves the contract only through `unlock()` by its account.** `withdrawSurplus` cannot take it. A principal for an address that can never call `unlock()`, such as a wrong address or a lost key, stays in the contract. So each recipient proves control of its address before it is added (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanvesting)).
 - **The schedule is fixed at deployment.** A later token upgrade that changes the schedule of the token does not change the schedule of `XanVesting`.
 - **Locked principals do not vote.** See section [Voting](#7-voting).
 - **No external audit.** `XanVesting` relies on its tests, an internal security review, and the linters; unlike the other contracts in this repository, no external auditor has reviewed it.
