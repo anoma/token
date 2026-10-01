@@ -69,6 +69,7 @@ A recipient added after `vestingStart` can unlock the part that has already vest
 The constructor adds the initial recipients, and the owner adds more in batches with `addRecipients(Recipient[])`. A `Recipient` is an `account` and its `principal`. The list is append-only: a principal cannot change and cannot be removed. An entry reverts the whole batch if:
 
 - the account is the zero address (`ZeroAccountNotAllowed`), or the principal is zero (`ZeroPrincipalNotAllowed`);
+- the account is `XanVesting` itself (`SelfRecipientNotAllowed`) or the XAN token (`TokenRecipientNotAllowed`), neither of which can call `unlock()`;
 - the account already has a principal here (`PrincipalAlreadySet`).
 
 Each added principal emits `PrincipalAdded`. `getRecipients()` returns all recipients with their principals, in the order of addition.
@@ -85,23 +86,12 @@ The Anoma Foundation funds the contract with ordinary XAN transfers; the contrac
 
 ### Top-up amount
 
-Two formulas give the XAN to send, with `balance` the XAN balance of the contract. A negative result means that the contract needs no XAN.
+Two scripts compute the XAN to send now, from the live state of `XanVesting` and the XAN token. Both send nothing, return zero when the balance is already enough, and cover the recipients added so far:
 
-**Top up for Δt.** Covers the unlocks until the next top-up, which is `Δt` away:
+- `script/ComputeXanVestingTopUpUntil.s.sol` covers every unlock until a timestamp, usually the time of the next top-up. It reads `totalUnlockableBalance()` at that timestamp. Run it with `just vesting-top-up-until <xan-vesting> <timestamp> <chain>`.
+- `script/ComputeXanVestingTopUpFull.s.sol` covers every present and future unlock. Run it with `just vesting-top-up-full <xan-vesting> <chain>`.
 
-```
-topUp = min(totalLockedBalance(), totalUnlockableBalance() + totalPrincipal() · Δt / (vestingEnd() − vestingStart())) − balance
-```
-
-`totalUnlockableBalance()` is what recipients can unlock now. All principals vest on one schedule, so together they vest `totalPrincipal() · Δt / (vestingEnd() − vestingStart())` in `Δt`. The `min` stops at the amount for full funding. For example, 3,650,000 XAN of principals vest about 3,333 XAN per day, so a 30-day `Δt` adds 100,000 XAN to what recipients can unlock now.
-
-**Top up once.** Covers every present and future unlock, until the owner adds more recipients:
-
-```
-topUp = totalLockedBalance() − balance
-```
-
-A principal that the foundation leaves unfunded (see section [Trust assumptions](#10-trust-assumptions)) lowers both amounts: subtract its `unlockableBalanceOf` plus `principalOf · Δt / (vestingEnd() − vestingStart())` from the first, and its `lockedBalanceOf` from the second.
+For example, 3,650,000 XAN of principals vest about 3,333 XAN per day, so a top-up until 30 days from now adds about 100,000 XAN to what recipients can unlock now.
 
 ## 7. Voting
 
@@ -119,7 +109,7 @@ The owner is the Anoma Foundation wallet, which funds the contract (see [ADR-10]
 
 - **The owner adds only eligible recipients with their correct principals.** All principals draw on one XAN balance. A principal that the foundation does not fund, such as an oversized one, takes XAN that backs the other recipients when it unlocks, and it cannot be removed. The owner, the Anoma Foundation wallet, is trusted to add only principals that it funds (see [ADR-10](./adr/10-the-anoma-foundation-wallet-owns-xanvesting.md)); `withdrawSurplus` alone cannot take XAN that a locked balance needs. The contract does not read the principals in the XAN token, so the owner must also make sure that a principal does not repeat a tranche that the account already vests there.
 - **The foundation keeps the contract funded.** Unlocks depend on its top-ups. An underfunded contract delays unlocks but loses no vesting.
-- **A principal leaves the contract only through `unlock()` by its account.** `withdrawSurplus` cannot take it. A principal for an address that can never call `unlock()`, such as a wrong address or a lost key, stays in the contract. So each recipient proves control of its address before it is added (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanvesting)). If a dead principal is found later, the foundation does not fund it: unlocks check only the balance, so the other recipients can still unlock in full, and `totalLockedBalance()` and `totalUnlockableBalance()` then overstate what is owed by that principal.
+- **A principal leaves the contract only through `unlock()` by its account.** `withdrawSurplus` cannot take it. A principal for an address that can never call `unlock()`, such as a wrong address or a lost key, stays in the contract. So each recipient proves control of its address before it is added (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanvesting)).
 - **The schedule is fixed at deployment.** A later token upgrade that changes the schedule of the token does not change the schedule of `XanVesting`.
 - **Locked principals do not vote.** See section [Voting](#7-voting).
 - **No external audit.** `XanVesting` relies on its tests, an internal security review, and the linters; unlike the other contracts in this repository, no external auditor has reviewed it.

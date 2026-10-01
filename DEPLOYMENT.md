@@ -149,8 +149,8 @@ Deploys `XanVesting` for the eligible recipients that the V1 genesis distributio
 
 - [ ] **Send any liquid tranches directly.** `XanVesting` holds only the locked tranches.
 
-- [ ] **Fund it.** The foundation transfers XAN to the contract and tops it up periodically. Before each top-up, this prints the XAN that the contract must hold now; add the XAN that vests until the next top-up:
+- [ ] **Fund it.** The foundation transfers XAN to the contract and tops it up periodically. Before each top-up, this prints the XAN to send now so that every unlock until the next top-up at `<timestamp>` (Unix time) succeeds (see [Top-up amount](docs/03-XanVesting.md#top-up-amount)). `just vesting-top-up-full <xan-vesting> <chain>` prints the XAN that covers every remaining unlock instead.
 
   ```bash
-  cast call <xan-vesting> "totalUnlockableBalance()(uint256)" --rpc-url <chain>
+  just vesting-top-up-until <xan-vesting> <timestamp> <chain>
   ```
