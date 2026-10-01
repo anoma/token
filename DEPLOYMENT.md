@@ -4,7 +4,7 @@ Step 1 deploys both networks; steps 2 and 3 are then run on Sepolia first and on
 
 ## 1. Before you start
 
-- [x] **Create a fresh deployer wallet.** It must never have sent a transaction on any chain, and must be used for nothing else afterwards.
+- [x] **Create a fresh deployer wallet.** It must never have sent a transaction on any chain, and must be used for nothing else afterwards, except to deploy `XanV2Vesting` in [section 5](#5-xanv2vesting).
 
   Deployer wallet: `0xc461247a7375cF7c70a576d636aA3dd38ff3bb2f` ([mainnet](https://etherscan.io/address/0xc461247a7375cF7c70a576d636aA3dd38ff3bb2f), [sepolia](https://sepolia.etherscan.io/address/0xc461247a7375cF7c70a576d636aA3dd38ff3bb2f))
 
@@ -117,9 +117,15 @@ The alternative V1 path is the voter-body quorum — hold `castVote(implementati
 
 ## 5. XanV2Vesting
 
-Deploys the `XanV2Vesting` implementation and its UUPS proxy for the eligible recipients that the V1 genesis distribution did not contain. Run on Sepolia first; repeat on mainnet once the rehearsal has completed.
+Deploys the `XanV2Vesting` implementation and its UUPS proxy for the eligible recipients that the V1 genesis distribution did not contain. The deployer of section 1 deploys both at the same nonces on both chains, so both networks share the addresses. Run on Sepolia first; repeat on mainnet once the rehearsal has completed.
 
-- [ ] **Pick a deployer other than the wallet of section 1**, which must be used for nothing else.
+- [ ] **Confirm the deployer of section 1 is at the same nonce on both chains.** Both commands must print the same number, and the wallet must send nothing else on either chain until both deployments are done. The implementation lands at the address for this nonce and the proxy at the address for the next one: at nonce 11, `0xA4b1B4032c30Ba42a44c3616D3AB95d10170De55` and `0x60A149fE74D2f55219f1Abad2911756Da9c67bf4`. On both chains, the deploy script reverts before it broadcasts anything if the proxy would land elsewhere.
+
+  ```bash
+  cast nonce <sender> --rpc-url sepolia
+  cast nonce <sender> --rpc-url mainnet
+  cast compute-address <sender> --nonce <nonce>
+  ```
 
 - [ ] **Check every address.** Each recipient signs a message with its address, and the team checks and records the signature before the address goes into the recipient list. A principal for an address that can never unlock stays in the contract (see [Trust assumptions](docs/03-XanV2Vesting.md#10-trust-assumptions)).
 
@@ -131,16 +137,16 @@ Deploys the `XanV2Vesting` implementation and its UUPS proxy for the eligible re
   cast call <council-module> "getCouncil()(address)" --rpc-url <chain>
   ```
 
-- [ ] **Dry-run.**
+- [ ] **Dry-run.** The printed `proxy` and `implementation` must be the addresses of the first step.
 
   ```bash
-  just deploy-vesting-simulate <proxy> <recipients-json> <chain>
+  just deploy-vesting-simulate <sender> <proxy> <recipients-json> <chain>
   ```
 
 - [ ] **Broadcast.**
 
   ```bash
-  just deploy-vesting <deployer> <proxy> <recipients-json> <chain>
+  just deploy-vesting <deployer> <sender> <proxy> <recipients-json> <chain>
   ```
 
 - [ ] **Verify the implementation on the explorers.** `just deploy-vesting` already verifies both contracts on Etherscan.
@@ -157,4 +163,13 @@ Deploys the `XanV2Vesting` implementation and its UUPS proxy for the eligible re
 
   ```bash
   just vesting-top-up-until <xan-v2-vesting> <timestamp> <chain>
+  ```
+
+Once both chains are done:
+
+- [ ] **Confirm the two implementation deployments are byte-identical.** Both commands must print the same hash. The constructor argument, the XAN token proxy, has the same address on both chains.
+
+  ```bash
+  cast keccak $(cast code <implementation> --rpc-url sepolia)
+  cast keccak $(cast code <implementation> --rpc-url mainnet)
   ```
