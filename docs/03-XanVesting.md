@@ -69,6 +69,7 @@ A recipient added after `vestingStart` can unlock the part that has already vest
 The constructor adds the initial recipients, and the owner adds more in batches with `addRecipients(Recipient[])`. A `Recipient` is an `account` and its `principal`. The list is append-only: a principal cannot change and cannot be removed. An entry reverts the whole batch if:
 
 - the account is the zero address (`ZeroAccountNotAllowed`), or the principal is zero (`ZeroPrincipalNotAllowed`);
+- the account is `XanVesting` itself (`SelfRecipientNotAllowed`) or the XAN token (`TokenRecipientNotAllowed`), neither of which can call `unlock()`;
 - the account already has a principal here (`PrincipalAlreadySet`).
 
 Each added principal emits `PrincipalAdded`. `getRecipients()` returns all recipients with their principals, in the order of addition.
