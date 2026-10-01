@@ -117,13 +117,13 @@ The owner is the council multisig, which funds the contract (see [ADR-10](./adr/
 
 ## 11. Deployment
 
-`script/DeployXanV2Vesting.s.sol` (`just deploy-vesting-simulate`, then `just deploy-vesting`) deploys the implementation and an `ERC1967Proxy` that calls `initialize`, after the OpenZeppelin upgrades plugin has validated the implementation. It takes the XAN token proxy and the path of a JSON file in `script/input/` with the initial recipients:
+`script/DeployXanV2Vesting.s.sol` (`just deploy-vesting-simulate`, then `just deploy-vesting`) deploys the implementation and an `ERC1967Proxy` that calls `initialize`, after the OpenZeppelin upgrades plugin has validated the implementation. It takes the XAN token proxy and reads the initial recipients from `script/xan-v2-vesting-recipients.json`:
 
 ```json
 { "recipients": [{ "account": "0x…", "principal": "1000000000000000000" }] }
 ```
 
-Principals are decimal strings in the smallest unit (18 decimals). Every recipient has proved control of its address beforehand (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanv2vesting)). After the deployment, the council multisig transfers the XAN.
+Principals are decimal strings in the smallest unit (18 decimals). The file stays empty until the recipients are known, and the script reverts on an empty list (`ZeroRecipientsNotAllowed`), so it cannot deploy before the list is filled in. Every recipient has proved control of its address beforehand (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanv2vesting)). After the deployment, the council multisig transfers the XAN.
 
 The deployer of the governance stack deploys the implementation and the proxy at the same nonces on Ethereum mainnet and Sepolia, so both networks share their addresses. On these two chains, the script reverts before it broadcasts anything unless the proxy lands at `0x60A149fE74D2f55219f1Abad2911756Da9c67bf4`.
 
