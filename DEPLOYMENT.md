@@ -140,13 +140,13 @@ Deploys the `XanV2Vesting` implementation and its UUPS proxy for the eligible re
 - [ ] **Dry-run.** The printed `proxy` and `implementation` must be the addresses of the first step.
 
   ```bash
-  just deploy-vesting-simulate <sender> <proxy> <chain>
+  just deploy-vesting-simulate <sender> <chain>
   ```
 
 - [ ] **Broadcast.**
 
   ```bash
-  just deploy-vesting <deployer> <sender> <proxy> <chain>
+  just deploy-vesting <deployer> <sender> <chain>
   ```
 
 - [ ] **Verify the implementation on the explorers.** `just deploy-vesting` already verifies both contracts on Etherscan.
@@ -159,10 +159,10 @@ Deploys the `XanV2Vesting` implementation and its UUPS proxy for the eligible re
 
 - [ ] **Send any liquid tranches directly.** `XanV2Vesting` holds only the locked tranches.
 
-- [ ] **Fund it.** The council multisig transfers XAN to the contract and tops it up periodically. Before each top-up, this prints the XAN to send now so that every unlock until the next top-up at `<timestamp>` (Unix time) succeeds (see [Top-up amount](docs/03-XanV2Vesting.md#top-up-amount)). `just vesting-top-up-full <xan-v2-vesting> <chain>` prints the XAN that covers every remaining unlock instead.
+- [ ] **Fund it.** The council multisig transfers XAN to the contract and tops it up periodically. Before each top-up, this prints the XAN to send now so that every unlock until the next top-up at `<timestamp>` (Unix time) succeeds (see [Top-up amount](docs/03-XanV2Vesting.md#top-up-amount)). `just vesting-top-up-full <chain>` prints the XAN that covers every remaining unlock instead.
 
   ```bash
-  just vesting-top-up-until <xan-v2-vesting> <timestamp> <chain>
+  just vesting-top-up-until <timestamp> <chain>
   ```
 
 Once both chains are done:

@@ -122,35 +122,35 @@ upgrade deployer proxy chain *args:
 
 # Simulate deploying `XanV2Vesting` with the recipients of `script/xan-v2-vesting-recipients.json` (dry-run). `sender`
 # is the address behind the deployer, so the dry run prints the addresses that the broadcast creates.
-deploy-vesting-simulate sender token chain *args:
+deploy-vesting-simulate sender chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
     forge script script/DeployXanV2Vesting.s.sol:DeployXanV2Vesting \
-        --sig "run(address)" {{ token }} \
+        --sig "run()" \
         --rpc-url {{ chain }} --sender {{ sender }} {{ args }}
 
 # Deploy the `XanV2Vesting` implementation and its UUPS proxy with the recipients of
 # `script/xan-v2-vesting-recipients.json`. Verifies both on etherscan with the exact constructor args from the
 # broadcast.
-deploy-vesting deployer sender token chain *args:
+deploy-vesting deployer sender chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
     forge script script/DeployXanV2Vesting.s.sol:DeployXanV2Vesting \
-        --sig "run(address)" {{ token }} \
+        --sig "run()" \
         --broadcast --verify --rpc-url {{ chain }} --account {{ deployer }} --sender {{ sender }} {{ args }}
 
 # Print the XAN that the council multisig sends to `XanV2Vesting` now so that every unlock until `timestamp` (Unix time)
 # succeeds. Sends nothing.
-vesting-top-up-until xan-v2-vesting timestamp chain *args:
+vesting-top-up-until timestamp chain *args:
     forge script script/ComputeXanV2VestingTopUpUntil.s.sol:ComputeXanV2VestingTopUpUntil \
-        --sig "run(address,uint48)" {{ xan-v2-vesting }} {{ timestamp }} \
+        --sig "run(uint48)" {{ timestamp }} \
         --rpc-url {{ chain }} {{ args }}
 
 # Print the XAN that the council multisig sends to `XanV2Vesting` now so that every present and future unlock succeeds.
 # Sends nothing.
-vesting-top-up-full xan-v2-vesting chain *args:
+vesting-top-up-full chain *args:
     forge script script/ComputeXanV2VestingTopUpFull.s.sol:ComputeXanV2VestingTopUpFull \
-        --sig "run(address)" {{ xan-v2-vesting }} \
+        --sig "run()" \
         --rpc-url {{ chain }} {{ args }}
 
 # --- Verification ---

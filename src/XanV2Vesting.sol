@@ -6,6 +6,7 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 
 import {IXanV2} from "./interfaces/IXanV2.sol";
@@ -20,6 +21,7 @@ import {XanV2} from "./XanV2.sol";
 /// balance, which this contract has already transferred to it. The owner can upgrade the implementation (UUPS).
 /// @custom:security-contact security@anoma.foundation
 contract XanV2Vesting is IXanV2Vesting, Initializable, OwnableUpgradeable, UUPSUpgradeable {
+    using Math for uint256;
     using SafeERC20 for IERC20;
 
     /// @notice The [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) storage of the `XanV2Vesting` contract.
@@ -116,24 +118,14 @@ contract XanV2Vesting is IXanV2Vesting, Initializable, OwnableUpgradeable, UUPSU
 
     /// @inheritdoc IXanV2Vesting
     function unlock() external override returns (uint256 value) {
-        XanV2VestingStorage storage xanV2VestingStorage = _getXanV2VestingStorage();
-
-        uint256 vested = _vestedAmount(xanV2VestingStorage.principals[msg.sender]);
-        uint256 alreadyUnlocked = xanV2VestingStorage.unlocked[msg.sender];
-
-        // `vested` is monotonically non-decreasing in time and capped at the principal, so it can never drop below
-        // `alreadyUnlocked`. Revert instead of emitting a no-op unlock.
-        require(vested > alreadyUnlocked, XanV2.NothingToUnlock({account: msg.sender}));
-
-        unchecked {
-            // Safe: checked `vested > alreadyUnlocked` above.
-            value = vested - alreadyUnlocked;
-        }
+        value = unlockableBalanceOf(msg.sender);
+        require(value != 0, XanV2.NothingToUnlock({account: msg.sender}));
 
         uint256 tokenBalance = XAN_TOKEN.balanceOf(address(this));
         require(value < tokenBalance + 1, TokenBalanceInsufficient({tokenBalance: tokenBalance, value: value}));
 
-        xanV2VestingStorage.unlocked[msg.sender] = vested;
+        XanV2VestingStorage storage xanV2VestingStorage = _getXanV2VestingStorage();
+        xanV2VestingStorage.unlocked[msg.sender] += value;
         xanV2VestingStorage.totalUnlocked += value;
 
         emit IXanV2.Unlocked({account: msg.sender, value: value});
@@ -148,9 +140,7 @@ contract XanV2Vesting is IXanV2Vesting, Initializable, OwnableUpgradeable, UUPSU
 
     /// @inheritdoc IXanV2Vesting
     function withdrawSurplus(address receiver, uint256 value) external override onlyOwner {
-        uint256 lockedBalance = totalLockedBalance();
-        uint256 tokenBalance = XAN_TOKEN.balanceOf(address(this));
-        uint256 surplus = tokenBalance > lockedBalance ? tokenBalance - lockedBalance : 0;
+        uint256 surplus = XAN_TOKEN.balanceOf(address(this)).saturatingSub(totalLockedBalance());
 
         require(value < surplus + 1, SurplusInsufficient({surplus: surplus, value: value}));
 
@@ -214,10 +204,8 @@ contract XanV2Vesting is IXanV2Vesting, Initializable, OwnableUpgradeable, UUPSU
     function unlockableBalanceOf(address account) public view override returns (uint256 value) {
         XanV2VestingStorage storage xanV2VestingStorage = _getXanV2VestingStorage();
 
-        uint256 vested = _vestedAmount(xanV2VestingStorage.principals[account]);
-        uint256 alreadyUnlocked = xanV2VestingStorage.unlocked[account];
-
-        value = vested > alreadyUnlocked ? vested - alreadyUnlocked : 0;
+        value =
+            _vestedAmount(xanV2VestingStorage.principals[account]).saturatingSub(xanV2VestingStorage.unlocked[account]);
     }
 
     /// @inheritdoc IXanV2Vesting
@@ -234,20 +222,14 @@ contract XanV2Vesting is IXanV2Vesting, Initializable, OwnableUpgradeable, UUPSU
     /// @param recipients The accounts and the principals vesting for them.
     function _addRecipients(Recipient[] calldata recipients) internal {
         uint256 count = recipients.length;
-        uint256 addedPrincipal = 0;
         for (uint256 i = 0; i < count; ++i) {
             _addRecipient({account: recipients[i].account, principal: recipients[i].principal});
-            addedPrincipal += recipients[i].principal;
         }
-        // NOTE: The `PrincipalAdded` event of each entry reports its part of this change.
-        // slither-disable-next-line events-maths
-        _getXanV2VestingStorage().totalPrincipal += addedPrincipal;
     }
 
     /// @notice Adds the principal of an account that has no principal here yet.
     /// @param account The account the principal vests for.
     /// @param principal The amount of XAN vesting for the account.
-    /// @dev The caller must add `principal` to `totalPrincipal`.
     function _addRecipient(address account, uint256 principal) internal {
         require(account != address(0), ZeroAccountNotAllowed());
         require(account != address(this), SelfRecipientNotAllowed());
@@ -260,6 +242,7 @@ contract XanV2Vesting is IXanV2Vesting, Initializable, OwnableUpgradeable, UUPSU
         require(existingPrincipal == 0, PrincipalAlreadySet({account: account, principal: existingPrincipal}));
 
         xanV2VestingStorage.principals[account] = principal;
+        xanV2VestingStorage.totalPrincipal += principal;
         xanV2VestingStorage.accounts.push(account);
 
         emit PrincipalAdded({account: account, principal: principal});
