@@ -49,9 +49,10 @@ interface IXanV2Vesting {
     function unlockableBalanceOf(address account) external view returns (uint256 value);
 
     /// @notice Returns the amount of the principal of an account that this contract has already transferred to it.
+    /// @dev Not a balance: the transferred XAN counts in the balance of the account in the XAN token.
     /// @param account The account to query.
-    /// @return unlockedBalance The unlocked balance.
-    function unlockedBalanceOf(address account) external view returns (uint256 unlockedBalance);
+    /// @return unlockedAmount The unlocked amount.
+    function unlockedAmountOf(address account) external view returns (uint256 unlockedAmount);
 
     /// @notice Returns the part of the principal of an account that it has not unlocked yet.
     /// @param account The account to query.

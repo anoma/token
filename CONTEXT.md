@@ -64,7 +64,9 @@ flowchart LR
 
 **Locked balance** (`lockedBalanceOf`): The still-locked, non-transferable part of an account's principal: `principal − unlocked`. Reaches zero once the principal has fully vested and been unlocked.
 
-**Unlocked balance** (`unlockedBalanceOf`): The spendable part of an account's balance: `balanceOf − lockedBalance`. Only this part may be transferred. In `XanV2Vesting`, it is the amount that the contract has transferred to the account so far.
+**Unlocked balance** (`unlockedBalanceOf`): The spendable part of an account's balance: `balanceOf − lockedBalance`. Only this part may be transferred.
+
+**Unlocked amount** (`unlockedAmountOf`): The part of a `XanV2Vesting` principal that the contract has transferred to the account so far. It is not a balance: the transferred XAN counts in the balance of the account in the token.
 
 **Vested amount**: The portion of an account's principal that has vested by a given time — `0` before the start, the full principal at or after the end, and linear in between. A function of time alone, independent of what has been unlocked.
 

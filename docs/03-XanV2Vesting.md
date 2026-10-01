@@ -28,7 +28,7 @@ flowchart LR
 
 `XanV2Vesting` is a UUPS proxy (`ERC1967Proxy`) with OpenZeppelin `OwnableUpgradeable`, and it keeps its state in the ERC-7201 namespace `anoma.storage.XanV2Vesting`. It holds its XAN like any other account, and `unlock()` pays recipients with ordinary token transfers. Besides its own balance, it reads only the vesting schedule from the XAN token, once, when the implementation is constructed.
 
-It exposes the vesting interface of `IXanV2` except `implementation()` and `initialOwner()`, and it reuses the `VestingScheduled` and `Unlocked` events of `IXanV2` and the `NothingToUnlock` error of `XanV2`.
+It exposes the vesting interface of `IXanV2` except `implementation()` and `initialOwner()`, with `unlockedAmountOf` in place of `unlockedBalanceOf` (see section [Domain model & balances](#3-domain-model--balances)). It reuses the `VestingScheduled` and `Unlocked` events of `IXanV2` and the `NothingToUnlock` error of `XanV2`.
 
 ## 3. Domain model & balances
 
@@ -36,11 +36,11 @@ The relationships mirror those of `XanV2` (see section [Domain model & balances]
 
 - `principalOf` — the principal that the owner added; fixed once added
 - `lockedBalanceOf = principal − unlocked[account]` — the part of the principal not unlocked yet
-- `unlockedBalanceOf = unlocked[account]` — the part that the contract has transferred to the account
+- `unlockedAmountOf = unlocked[account]` — the part that the contract has transferred to the account
 - `unlockableBalanceOf = max(0, vested(principal) − unlocked[account])` — what `unlock()` would transfer now
-- `principalOf = lockedBalanceOf + unlockedBalanceOf`
+- `principalOf = lockedBalanceOf + unlockedAmountOf`
 
-**`unlockedBalanceOf` differs from `XanV2`.** In `XanV2`, it is the spendable balance, `balanceOf − lockedBalanceOf`. `XanV2Vesting` holds no balance per account, because unlocked XAN leaves the contract, so it returns the amount transferred so far. The transferred XAN is freely transferable in the token, like any XAN that an account receives.
+**`unlockedAmountOf` is not a balance.** In `XanV2`, `unlockedBalanceOf` is the spendable balance, `balanceOf − lockedBalanceOf`. `XanV2Vesting` holds no balance per account, because unlocked XAN leaves the contract. `unlockedAmountOf` returns the amount transferred so far, which counts in the balance of the account in the token, where it is freely transferable.
 
 Three totals cover all recipients:
 
@@ -99,7 +99,7 @@ For example, 3,650,000 XAN of principals vest about 3,333 XAN per day, so a top-
 
 ## 8. Integration
 
-A client checks both contracts for an account, because an account can have a principal in each (see section [Recipients](#5-recipients)). If `principalOf(account)` on `XanV2Vesting` is non-zero, it calls `unlock()` and the views on `XanV2Vesting`; if `principalOf(account)` on the XAN token proxy is non-zero, it calls them on the proxy. Only `unlockedBalanceOf` means something different on the two contracts (see section [Domain model & balances](#3-domain-model--balances)).
+A client checks both contracts for an account, because an account can have a principal in each (see section [Recipients](#5-recipients)). If `principalOf(account)` on `XanV2Vesting` is non-zero, it calls `unlock()` and the views on `XanV2Vesting`; if `principalOf(account)` on the XAN token proxy is non-zero, it calls them on the proxy. The views that both contracts have mean the same on both. The spendable XAN is `unlockedBalanceOf` on the token alone, because it already includes the XAN that `unlockedAmountOf` reports (see section [Domain model & balances](#3-domain-model--balances)).
 
 ## 9. Ownership
 
