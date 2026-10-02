@@ -1,10 +1,10 @@
-# XanV2 Upgrade — Deployment Checklist
+# Deployment Checklist
 
-Step 1 deploys both networks; steps 2 and 3 are then run on Sepolia first and on mainnet once the rehearsal has completed. The token spec is [`docs/01-XanV2-upgrade.md`](docs/01-XanV2-upgrade.md) and the governance spec is [`docs/02-XanV2-governance.md`](docs/02-XanV2-governance.md).
+Step 1 deploys both networks; steps 2 and 3 are then run on Sepolia first and on mainnet once the rehearsal has completed. The token spec is [`docs/01-XanV2-upgrade.md`](docs/01-XanV2-upgrade.md) and the governance spec is [`docs/02-XanV2-governance.md`](docs/02-XanV2-governance.md). Section 5 deploys `XanV2Vesting` (see [`docs/03-XanV2Vesting.md`](docs/03-XanV2Vesting.md)).
 
 ## 1. Before you start
 
-- [x] **Create a fresh deployer wallet.** It must never have sent a transaction on any chain, and must be used for nothing else afterwards.
+- [x] **Create a fresh deployer wallet.** It must never have sent a transaction on any chain, and must be used for nothing else afterwards, except to deploy `XanV2Vesting` in [section 5](#5-xanv2vesting).
 
   Deployer wallet: `0xc461247a7375cF7c70a576d636aA3dd38ff3bb2f` ([mainnet](https://etherscan.io/address/0xc461247a7375cF7c70a576d636aA3dd38ff3bb2f), [sepolia](https://sepolia.etherscan.io/address/0xc461247a7375cF7c70a576d636aA3dd38ff3bb2f))
 
@@ -113,4 +113,63 @@ The alternative V1 path is the voter-body quorum — hold `castVote(implementati
 
   ```bash
   cast call <proxy> "owner()(address)" --rpc-url <chain>
+  ```
+
+## 5. XanV2Vesting
+
+Deploys the `XanV2Vesting` implementation and its UUPS proxy for the eligible recipients that the V1 genesis distribution did not contain. The deployer of section 1 deploys both at the same nonces on both chains, so both networks share the addresses. Run on Sepolia first; repeat on mainnet once the rehearsal has completed.
+
+- [ ] **Confirm the deployer of section 1 is at the same nonce on both chains.** Both commands must print the same number, and the wallet must send nothing else on either chain until both deployments are done. The implementation lands at the address for this nonce and the proxy at the address for the next one: at nonce 11, `0xA4b1B4032c30Ba42a44c3616D3AB95d10170De55` and `0x60A149fE74D2f55219f1Abad2911756Da9c67bf4`. On both chains, the deploy script reverts before it broadcasts anything if the proxy would land elsewhere.
+
+  ```bash
+  cast nonce <sender> --rpc-url sepolia
+  cast nonce <sender> --rpc-url mainnet
+  cast compute-address <sender> --nonce <nonce>
+  ```
+
+- [ ] **Check every address.** Each recipient signs a message with its address, and the team checks and records the signature before the address goes into the recipient list. A principal for an address that can never unlock stays in the contract (see [Trust assumptions](docs/03-XanV2Vesting.md#10-trust-assumptions)).
+
+- [ ] **Write the recipient list** into `script/xan-v2-vesting-recipients.json`, with the locked tranches as decimal strings in the smallest unit (see section [Deployment](docs/03-XanV2Vesting.md#11-deployment)). The deploy script reverts while the list is empty.
+
+- [ ] **Confirm the council multisig is still `Parameters.COUNCIL_MULTISIG`** (`0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116`). The deployment script makes it the owner (see [ADR-10](docs/adr/10-the-council-multisig-owns-xanv2vesting.md)). If this does not print it, update `src/libs/Parameters.sol` first.
+
+  ```bash
+  cast call <council-module> "getCouncil()(address)" --rpc-url <chain>
+  ```
+
+- [ ] **Dry-run.** The printed `proxy` and `implementation` must be the addresses of the first step.
+
+  ```bash
+  just deploy-vesting-simulate <sender> <chain>
+  ```
+
+- [ ] **Broadcast.**
+
+  ```bash
+  just deploy-vesting <deployer> <sender> <chain>
+  ```
+
+- [ ] **Verify the implementation on the explorers.** `just deploy-vesting` already verifies both contracts on Etherscan.
+
+  ```bash
+  just verify-impl <implementation> src/XanV2Vesting.sol:XanV2Vesting <chain>
+  ```
+
+- [ ] **Record the proxy and implementation addresses** in [README.md](README.md#deployed-contracts).
+
+- [ ] **Send any liquid tranches directly.** `XanV2Vesting` holds only the locked tranches.
+
+- [ ] **Fund it.** The council multisig transfers XAN to the contract and tops it up periodically. Before each top-up, this prints the XAN to send now so that every unlock until the next top-up at `<timestamp>` (Unix time) succeeds (see [Top-up amount](docs/03-XanV2Vesting.md#top-up-amount)). `just vesting-top-up-full <chain>` prints the XAN that covers every remaining unlock instead.
+
+  ```bash
+  just vesting-top-up-until <timestamp> <chain>
+  ```
+
+Once both chains are done:
+
+- [ ] **Confirm the two implementation deployments are byte-identical.** Both commands must print the same hash. The constructor argument, the XAN token proxy, has the same address on both chains.
+
+  ```bash
+  cast keccak $(cast code <implementation> --rpc-url sepolia)
+  cast keccak $(cast code <implementation> --rpc-url mainnet)
   ```
