@@ -99,21 +99,12 @@ contract XanV2Vesting is IXanV2Vesting, Initializable, OwnableUpgradeable, UUPSU
         _disableInitializers();
     }
 
-    /// @notice Initializes the proxy with its owner and the initial principals, and emits the vesting schedule.
-    /// @param initialOwner The account that can add more principals, withdraw the surplus, and upgrade this contract.
-    /// @param recipients The initial accounts and the principals vesting for them.
-    function initialize( /* solhint-disable-line comprehensive-interface*/
-        address initialOwner,
-        Recipient[] calldata recipients
-    )
-        external
-        initializer
-    {
+    /// @notice Initializes the proxy with its owner and emits the vesting schedule.
+    /// @param initialOwner The account that can add principals, withdraw the surplus, and upgrade this contract.
+    function initialize(address initialOwner) external initializer /* solhint-disable-line comprehensive-interface */  {
         __Ownable_init({initialOwner: initialOwner});
 
         emit IXanV2.VestingScheduled({start: _VESTING_START, duration: _VESTING_DURATION});
-
-        _addRecipients(recipients);
     }
 
     /// @inheritdoc IXanV2Vesting
@@ -135,7 +126,10 @@ contract XanV2Vesting is IXanV2Vesting, Initializable, OwnableUpgradeable, UUPSU
 
     /// @inheritdoc IXanV2Vesting
     function addRecipients(Recipient[] calldata recipients) external override onlyOwner {
-        _addRecipients(recipients);
+        uint256 count = recipients.length;
+        for (uint256 i = 0; i < count; ++i) {
+            _addRecipient({account: recipients[i].account, principal: recipients[i].principal});
+        }
     }
 
     /// @inheritdoc IXanV2Vesting
@@ -216,15 +210,6 @@ contract XanV2Vesting is IXanV2Vesting, Initializable, OwnableUpgradeable, UUPSU
     /// @inheritdoc IXanV2Vesting
     function vestingEnd() public view override returns (uint48 end) {
         end = _VESTING_START + _VESTING_DURATION;
-    }
-
-    /// @notice Adds the principals of accounts that have no principal here yet.
-    /// @param recipients The accounts and the principals vesting for them.
-    function _addRecipients(Recipient[] calldata recipients) internal {
-        uint256 count = recipients.length;
-        for (uint256 i = 0; i < count; ++i) {
-            _addRecipient({account: recipients[i].account, principal: recipients[i].principal});
-        }
     }
 
     /// @notice Adds the principal of an account that has no principal here yet.
