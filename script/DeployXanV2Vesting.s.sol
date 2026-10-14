@@ -15,11 +15,11 @@ import {XanV2Vesting} from "../src/XanV2Vesting.sol";
 /// the deployer and its nonce, so this one address pins both, and with them the address of the implementation.
 address constant XAN_V2_VESTING_PROXY = 0x60A149fE74D2f55219f1Abad2911756Da9c67bf4;
 
+/// @dev The XAN token proxy, which has the same address on Ethereum mainnet and Sepolia.
+address constant XAN_TOKEN = 0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7;
+
 /// @notice Deploys `XanV2Vesting` behind a UUPS proxy without recipients.
 contract DeployXanV2Vesting is Script {
-    /// @notice The XAN token proxy, which has the same address on Ethereum mainnet and Sepolia.
-    address public constant XAN_TOKEN = 0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7;
-
     /// @notice Thrown if the deployer would not create the proxy at `XAN_V2_VESTING_PROXY`.
     error UnexpectedProxyAddress(address expected, address predicted);
 
