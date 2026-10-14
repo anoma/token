@@ -5,14 +5,11 @@ import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {DeployXanV2Vesting, XAN_V2_VESTING_PROXY} from "../../script/DeployXanV2Vesting.s.sol";
-import {IXanV2Vesting} from "../../src/interfaces/IXanV2Vesting.sol";
 import {Parameters} from "../../src/libs/Parameters.sol";
 import {XanV2} from "../../src/XanV2.sol";
 import {XanV2Vesting} from "../../src/XanV2Vesting.sol";
 
 contract DeployXanV2VestingTest is Test {
-    string internal constant _RECIPIENTS_PATH = "test/fixtures/xan-v2-vesting-recipients.json";
-
     /// @dev The deployer of the governance stack and its nonce on Ethereum mainnet and Sepolia.
     address internal constant _DEPLOYER = 0xc461247a7375cF7c70a576d636aA3dd38ff3bb2f;
     uint64 internal constant _DEPLOYER_NONCE = 11;
@@ -32,10 +29,8 @@ contract DeployXanV2VestingTest is Test {
         vm.setNonce(_DEPLOYER, _DEPLOYER_NONCE);
     }
 
-    function test_deploy_deploys_at_the_pinned_addresses_with_the_schedule_and_the_recipients() public {
-        IXanV2Vesting.Recipient[] memory recipients = _script.readRecipients(_RECIPIENTS_PATH);
-
-        (address proxy, address implementation) = _script.deploy({deployer: _DEPLOYER, recipients: recipients});
+    function test_deploy_deploys_at_the_pinned_addresses_with_the_schedule_and_the_owner() public {
+        (address proxy, address implementation) = _script.deploy({deployer: _DEPLOYER});
         XanV2Vesting vesting = XanV2Vesting(proxy);
 
         assertEq(proxy, XAN_V2_VESTING_PROXY);
@@ -45,13 +40,6 @@ contract DeployXanV2VestingTest is Test {
         assertEq(vesting.vestingStart(), Parameters.XAN_VESTING_START);
         assertEq(vesting.vestingEnd(), Parameters.XAN_VESTING_START + Parameters.XAN_VESTING_DURATION);
         assertEq(vesting.owner(), Parameters.COUNCIL_MULTISIG);
-
-        IXanV2Vesting.Recipient[] memory added = vesting.getRecipients();
-        assertEq(added.length, recipients.length);
-        for (uint256 i = 0; i < recipients.length; ++i) {
-            assertEq(added[i].account, recipients[i].account);
-            assertEq(added[i].principal, recipients[i].principal);
-        }
     }
 
     function test_deploy_reverts_if_the_proxy_would_land_at_another_address() public {
@@ -63,26 +51,11 @@ contract DeployXanV2VestingTest is Test {
                 DeployXanV2Vesting.UnexpectedProxyAddress.selector, XAN_V2_VESTING_PROXY, predictedProxy
             )
         );
-        _script.deploy({deployer: _DEPLOYER, recipients: _script.readRecipients(_RECIPIENTS_PATH)});
-    }
-
-    function test_deploy_reverts_on_an_empty_recipient_list() public {
-        vm.expectRevert(DeployXanV2Vesting.ZeroRecipientsNotAllowed.selector);
-        _script.deploy({deployer: _DEPLOYER, recipients: new IXanV2Vesting.Recipient[](0)});
+        _script.deploy({deployer: _DEPLOYER});
     }
 
     function test_run_reverts_unless_the_sender_is_the_deployer_at_its_nonce() public {
         vm.expectPartialRevert(DeployXanV2Vesting.UnexpectedProxyAddress.selector);
         _script.run();
-    }
-
-    function test_readRecipients_reads_the_accounts_and_the_exact_principals_of_the_file() public view {
-        IXanV2Vesting.Recipient[] memory recipients = _script.readRecipients(_RECIPIENTS_PATH);
-
-        assertEq(recipients.length, 2);
-        assertEq(recipients[0].account, 0x1111111111111111111111111111111111111111);
-        assertEq(recipients[0].principal, 123_456_789_123_456_789_123_456_789);
-        assertEq(recipients[1].account, 0x2222222222222222222222222222222222222222);
-        assertEq(recipients[1].principal, 1e18);
     }
 }

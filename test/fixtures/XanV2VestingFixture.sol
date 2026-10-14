@@ -29,20 +29,25 @@ abstract contract XanV2VestingFixture is XanV2Fixture {
 
     function _deployVesting(IXanV2Vesting.Recipient[] memory recipients) internal returns (XanV2Vesting vesting) {
         vesting = XanV2Vesting(
-            UnsafeUpgrades.deployUUPSProxy({
-                impl: address(new XanV2Vesting(_xan)), initializerData: _initData(recipients)
-            })
+            UnsafeUpgrades.deployUUPSProxy({impl: address(new XanV2Vesting(_xan)), initializerData: _initData()})
         );
+        _addRecipients(vesting, recipients);
     }
 
     /// @dev Deploys a proxy with the recipients of `_initialRecipients` at the address of Ethereum mainnet and Sepolia.
     function _deployPinnedVesting() internal returns (XanV2Vesting vesting) {
         deployCodeTo({
             what: "ERC1967Proxy.sol:ERC1967Proxy",
-            args: abi.encode(address(new XanV2Vesting(_xan)), _initData(_initialRecipients())),
+            args: abi.encode(address(new XanV2Vesting(_xan)), _initData()),
             where: XAN_V2_VESTING_PROXY
         });
         vesting = XanV2Vesting(XAN_V2_VESTING_PROXY);
+        _addRecipients(vesting, _initialRecipients());
+    }
+
+    function _addRecipients(XanV2Vesting vesting, IXanV2Vesting.Recipient[] memory recipients) internal {
+        vm.prank(_OWNER);
+        vesting.addRecipients(recipients);
     }
 
     /// @dev Unlocks for both recipients and checks that each receives its whole unlockable balance.
@@ -64,8 +69,8 @@ abstract contract XanV2VestingFixture is XanV2Fixture {
         recipients[1] = IXanV2Vesting.Recipient({account: _BOB, principal: _PRINCIPAL / 3});
     }
 
-    function _initData(IXanV2Vesting.Recipient[] memory recipients) internal view returns (bytes memory data) {
-        data = abi.encodeCall(XanV2Vesting.initialize, (_OWNER, recipients));
+    function _initData() internal view returns (bytes memory data) {
+        data = abi.encodeCall(XanV2Vesting.initialize, (_OWNER));
     }
 
     function _recipients(address account, uint256 principal)

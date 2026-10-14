@@ -10,7 +10,6 @@ extra_output = ["storageLayout"]
 fs_permissions = [
     { access = "read", path = "./out" },
     { access = "read", path = "./script/xan-v2-vesting-recipients.json" },
-    { access = "read", path = "./test/fixtures" },
 ]
 
 remappings = [

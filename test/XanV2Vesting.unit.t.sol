@@ -54,6 +54,16 @@ contract XanV2VestingUnitTest is XanV2VestingFixture {
         _vesting.addRecipients(_recipients(_ALICE, _PRINCIPAL));
     }
 
+    function test_addRecipients_reverts_on_an_account_listed_twice() public {
+        IXanV2Vesting.Recipient[] memory recipients = new IXanV2Vesting.Recipient[](2);
+        recipients[0] = IXanV2Vesting.Recipient({account: _BOB, principal: _PRINCIPAL});
+        recipients[1] = IXanV2Vesting.Recipient({account: _BOB, principal: _PRINCIPAL});
+
+        vm.expectRevert(abi.encodeWithSelector(XanV2Vesting.PrincipalAlreadySet.selector, _BOB, _PRINCIPAL));
+        vm.prank(_OWNER);
+        _vesting.addRecipients(recipients);
+    }
+
     function test_addRecipients_adds_an_account_with_a_principal_in_the_token() public {
         assertGt(_xanV2Proxy.principalOf(_defaultSender), 0, "the default sender must have a principal in the token");
 

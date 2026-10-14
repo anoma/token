@@ -6,7 +6,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SlotDerivation} from "@openzeppelin/contracts/utils/SlotDerivation.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {IXanV2Vesting} from "../src/interfaces/IXanV2Vesting.sol";
 import {XanV2} from "../src/XanV2.sol";
 import {XanV2Vesting} from "../src/XanV2Vesting.sol";
 
@@ -35,7 +34,7 @@ contract XanV2VestingConstructorTest is Test {
 
     function test_constructor_disables_initializers_on_the_implementation() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector, address(_impl));
-        _impl.initialize({initialOwner: makeAddr("owner"), recipients: new IXanV2Vesting.Recipient[](0)});
+        _impl.initialize({initialOwner: makeAddr("owner")});
     }
 
     function test_constructor_reverts_if_the_token_is_the_zero_address() public {
