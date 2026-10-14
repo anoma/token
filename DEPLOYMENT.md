@@ -153,8 +153,6 @@ Deploys the `XanV2Vesting` implementation and its UUPS proxy for the eligible re
 
 - [ ] **Record the proxy and implementation addresses** in [README.md](README.md#deployed-contracts).
 
-- [ ] **Check every address.** Each recipient signs a message with its address, and the team checks and records the signature before the address goes into the recipient list. A principal for an address that can never unlock stays in the contract (see [Trust assumptions](docs/03-XanV2Vesting.md#10-trust-assumptions)).
-
 - [ ] **Add the recipients.** The council multisig calls `addRecipients` on the proxy with the checked addresses and their locked tranches, in the smallest unit (18 decimals). An invalid entry reverts its whole batch (see [Recipients](docs/03-XanV2Vesting.md#5-recipients)).
 
 - [ ] **Send any liquid tranches directly.** `XanV2Vesting` holds only the locked tranches.
