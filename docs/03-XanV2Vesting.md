@@ -121,6 +121,17 @@ The owner is the council multisig, which funds the contract (see [ADR-10](./adr/
 
 The proxy starts without recipients. After the deployment, the council multisig adds them with `addRecipients` and transfers the XAN. The team checks every address before the council multisig adds it.
 
+`script/GenerateXanV2VestingRecipientsPayload.s.sol` (`just vesting-recipients-payload`) reads the recipients from `script/xan-v2-vesting-recipients.json`:
+
+```json
+{
+  "totalPrincipal": "1000000000000000000",
+  "recipients": [{ "account": "0x…", "principal": "1000000000000000000" }]
+}
+```
+
+The principals and `totalPrincipal`, their sum, are decimal strings in the smallest unit (18 decimals). The script stops if the list is empty, if an account is the zero address, the proxy, or the XAN token, or occurs twice, if a principal is zero, or if the principals do not add up to `totalPrincipal`. It does not read the proxy, so it cannot detect an account that already has a principal there. It writes the `addRecipients` call to `safe-payloads/addRecipients_to_xanV2Vesting.json`, and a signer of the council multisig creates the Safe transaction from it by hand. CI fails if the payload is out of date. Until the recipients are known, the file holds a placeholder, `address(1)` with 1 XAN, whose payload must not be submitted.
+
 The deployer of the governance stack deploys the implementation and the proxy at the same nonces on Ethereum mainnet and Sepolia, so both networks share their addresses. The script reverts before it broadcasts anything unless the proxy lands at `0x60A149fE74D2f55219f1Abad2911756Da9c67bf4`.
 
 ## 12. Parameters
