@@ -138,6 +138,12 @@ deploy-vesting deployer sender chain *args:
         --sig "run()" \
         --broadcast --verify --rpc-url {{ chain }} --account {{ deployer }} --sender {{ sender }} {{ args }}
 
+# Check the recipients of `script/xan-v2-vesting-recipients.json` and write the `addRecipients` transaction of the
+# council multisig to `safe-payloads/addRecipients_to_xanV2Vesting.json`. Sends nothing.
+vesting-recipients-payload:
+    forge script script/GenerateXanV2VestingRecipientsPayload.s.sol:GenerateXanV2VestingRecipientsPayload \
+        --sig "run()"
+
 # Print the XAN that the council multisig sends to `XanV2Vesting` now so that every unlock until `timestamp` (Unix time)
 # succeeds. Sends nothing.
 vesting-top-up-until timestamp chain *args:
