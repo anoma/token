@@ -66,7 +66,7 @@ A recipient added after `vestingStart` can unlock the part that has already vest
 
 ## 5. Recipients
 
-`initialize(initialOwner, recipients)` adds the initial recipients, and the owner adds more in batches with `addRecipients(Recipient[])`. A `Recipient` is an `account` and its `principal`. The list is append-only: a principal cannot change and cannot be removed. An entry reverts the whole batch if:
+The proxy starts without recipients, and the owner adds them in batches with `addRecipients(Recipient[])`. A `Recipient` is an `account` and its `principal`, in the smallest unit (18 decimals). The list is append-only: a principal cannot change and cannot be removed. An entry reverts the whole batch if:
 
 - the account is the zero address (`ZeroAccountNotAllowed`), or the principal is zero (`ZeroPrincipalNotAllowed`);
 - the account is `XanV2Vesting` itself (`SelfRecipientNotAllowed`) or the XAN token (`TokenRecipientNotAllowed`), neither of which can call `unlock()`;
@@ -117,13 +117,9 @@ The owner is the council multisig, which funds the contract (see [ADR-10](./adr/
 
 ## 11. Deployment
 
-`script/DeployXanV2Vesting.s.sol` (`just deploy-vesting-simulate`, then `just deploy-vesting`) deploys the implementation and an `ERC1967Proxy` that calls `initialize`, after the OpenZeppelin upgrades plugin has validated the implementation. It binds the XAN token proxy `0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7`, which has the same address on Ethereum mainnet and Sepolia, and reads the initial recipients from `script/xan-v2-vesting-recipients.json`:
+`script/DeployXanV2Vesting.s.sol` (`just deploy-vesting-simulate`, then `just deploy-vesting`) deploys the implementation and an `ERC1967Proxy` that calls `initialize`, after the OpenZeppelin upgrades plugin has validated the implementation. It binds the XAN token proxy `0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7`, which has the same address on Ethereum mainnet and Sepolia.
 
-```json
-{ "recipients": [{ "account": "0x…", "principal": "1000000000000000000" }] }
-```
-
-Principals are decimal strings in the smallest unit (18 decimals). The file stays empty until the recipients are known, and the script reverts on an empty list (`ZeroRecipientsNotAllowed`), so it cannot deploy before the list is filled in. Every recipient has proved control of its address beforehand (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanv2vesting)). After the deployment, the council multisig transfers the XAN.
+The proxy starts without recipients. After the deployment, the council multisig adds them with `addRecipients` and transfers the XAN. Every recipient proves control of its address before it is added (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanv2vesting)).
 
 The deployer of the governance stack deploys the implementation and the proxy at the same nonces on Ethereum mainnet and Sepolia, so both networks share their addresses. The script reverts before it broadcasts anything unless the proxy lands at `0x60A149fE74D2f55219f1Abad2911756Da9c67bf4`.
 

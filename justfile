@@ -120,8 +120,8 @@ upgrade deployer proxy chain *args:
         --sig "run(address)" {{ proxy }} \
         --broadcast --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
 
-# Simulate deploying `XanV2Vesting` with the recipients of `script/xan-v2-vesting-recipients.json` (dry-run). `sender`
-# is the address behind the deployer, so the dry run prints the addresses that the broadcast creates.
+# Simulate deploying `XanV2Vesting` (dry-run). `sender` is the address behind the deployer, so the dry run prints the
+# addresses that the broadcast creates.
 deploy-vesting-simulate sender chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
@@ -129,9 +129,8 @@ deploy-vesting-simulate sender chain *args:
         --sig "run()" \
         --rpc-url {{ chain }} --sender {{ sender }} {{ args }}
 
-# Deploy the `XanV2Vesting` implementation and its UUPS proxy with the recipients of
-# `script/xan-v2-vesting-recipients.json`. Verifies both on etherscan with the exact constructor args from the
-# broadcast.
+# Deploy the `XanV2Vesting` implementation and its UUPS proxy. Verifies both on etherscan with the exact constructor
+# args from the broadcast.
 deploy-vesting deployer sender chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
