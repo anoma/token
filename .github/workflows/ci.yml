@@ -67,3 +67,7 @@ jobs:
         id: test
         env:
           ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}
+
+      - name: Check the XanV2Vesting recipients payload
+        run: just vesting-recipients-payload-check
+        id: vesting-recipients-payload
