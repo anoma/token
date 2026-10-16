@@ -1,7 +1,4 @@
 {
-  "_comment": "Placeholder: replace the recipients and totalPrincipal with the real list before the council multisig adds them.",
-  "totalPrincipal": "1000000000000000000",
-  "recipients": [
-    { "account": "0x0000000000000000000000000000000000000001", "principal": "1000000000000000000" }
-  ]
+  "totalPrincipal": "0",
+  "recipients": []
 }
