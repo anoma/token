@@ -26,11 +26,6 @@ contract GenerateXanV2VestingRecipientsPayloadTest is XanV2VestingFixture {
         assertEq(vm.readFile(_script.PAYLOAD_PATH()), payload, "run `just vesting-recipients-payload`");
     }
 
-    function test_check_reverts_on_an_empty_list() public {
-        vm.expectRevert(GenerateXanV2VestingRecipientsPayload.ZeroRecipientsNotAllowed.selector);
-        _script.check({recipients: new IXanV2Vesting.Recipient[](0), totalPrincipal: 0});
-    }
-
     function test_check_reverts_on_the_zero_account() public {
         vm.expectRevert(abi.encodeWithSelector(GenerateXanV2VestingRecipientsPayload.ZeroAccountNotAllowed.selector, 1));
         _script.check({recipients: _aliceAnd(address(0), _PRINCIPAL), totalPrincipal: 2 * _PRINCIPAL});

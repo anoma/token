@@ -16,9 +16,6 @@ contract GenerateXanV2VestingRecipientsPayload is Script {
     /// @notice The Safe transaction that adds the recipients.
     string public constant PAYLOAD_PATH = "safe-payloads/addRecipients_to_xanV2Vesting.json";
 
-    /// @notice Thrown if the recipient list is empty.
-    error ZeroRecipientsNotAllowed();
-
     /// @notice Thrown if the recipient at `index` is the zero address.
     error ZeroAccountNotAllowed(uint256 index);
 
@@ -95,8 +92,6 @@ contract GenerateXanV2VestingRecipientsPayload is Script {
     /// @param totalPrincipal The expected sum of the principals.
     function check(IXanV2Vesting.Recipient[] memory recipients, uint256 totalPrincipal) public pure {
         uint256 count = recipients.length;
-        require(count != 0, ZeroRecipientsNotAllowed());
-
         uint256 sum = 0;
         for (uint256 i = 0; i < count; ++i) {
             address account = recipients[i].account;

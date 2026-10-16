@@ -153,7 +153,7 @@ Deploys the `XanV2Vesting` implementation and its UUPS proxy for the eligible re
 
 - [ ] **Record the proxy and implementation addresses** in [README.md](README.md#deployed-contracts).
 
-- [ ] **Write the recipients** into `script/xan-v2-vesting-recipients.json` in place of the placeholder: the checked addresses with their locked tranches, and `totalPrincipal`, their sum (see section [Deployment](docs/03-XanV2Vesting.md#11-deployment)). Generate the payload and commit both files. The script stops on an entry that `addRecipients` rejects and on a sum that differs from `totalPrincipal`, and CI fails while the payload is out of date.
+- [ ] **Write the recipients** into the empty list of `script/xan-v2-vesting-recipients.json`: the checked addresses with their locked tranches, and `totalPrincipal`, their sum (see section [Deployment](docs/03-XanV2Vesting.md#11-deployment)). Generate the payload and commit both files. The script stops on an entry that `addRecipients` rejects and on a sum that differs from `totalPrincipal`, and CI fails while the payload is out of date.
 
   ```bash
   just vesting-recipients-payload
