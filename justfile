@@ -64,6 +64,8 @@ check:
     @just build
     @echo "==> Testing..."
     @just test
+    @echo "==> Checking the XanV2Vesting recipients payload..."
+    @just vesting-recipients-payload-check
 
 # --- Deployment ---
 
@@ -137,6 +139,21 @@ deploy-vesting deployer sender chain *args:
     forge script script/DeployXanV2Vesting.s.sol:DeployXanV2Vesting \
         --sig "run()" \
         --broadcast --verify --rpc-url {{ chain }} --account {{ deployer }} --sender {{ sender }} {{ args }}
+
+# Check the recipients of `script/xan-v2-vesting-recipients.json` and write the `addRecipients` transaction of the
+# council multisig to `safe-payloads/addRecipients_to_xanV2Vesting.json`. Sends nothing.
+vesting-recipients-payload:
+    forge script script/GenerateXanV2VestingRecipientsPayload.s.sol:GenerateXanV2VestingRecipientsPayload \
+        --sig "run()"
+
+# Fail if `safe-payloads/` differs from what `vesting-recipients-payload` writes for the committed recipients.
+vesting-recipients-payload-check: vesting-recipients-payload
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! git diff --exit-code -- safe-payloads/ || [ -n "$(git status --porcelain -- safe-payloads/)" ]; then
+        echo "safe-payloads/ is out of date: run 'just vesting-recipients-payload' and commit the result." >&2
+        exit 1
+    fi
 
 # Print the XAN that the council multisig sends to `XanV2Vesting` now so that every unlock until `timestamp` (Unix time)
 # succeeds. Sends nothing.

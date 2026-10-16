@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {DeployXanV2Vesting, XAN_V2_VESTING_PROXY} from "../../script/DeployXanV2Vesting.s.sol";
+import {DeployXanV2Vesting, XAN_TOKEN, XAN_V2_VESTING_PROXY} from "../../script/DeployXanV2Vesting.s.sol";
 import {Parameters} from "../../src/libs/Parameters.sol";
 import {XanV2} from "../../src/XanV2.sol";
 import {XanV2Vesting} from "../../src/XanV2Vesting.sol";
@@ -24,7 +24,7 @@ contract DeployXanV2VestingTest is Test {
         // The constructor of the implementation reads only the schedule of the pinned token, so the code of a `XanV2`
         // implementation with the production schedule stands in for the proxy.
         XanV2 token = new XanV2(makeAddr("owner"), Parameters.XAN_VESTING_START, Parameters.XAN_VESTING_DURATION);
-        vm.etch(_script.XAN_TOKEN(), address(token).code);
+        vm.etch(XAN_TOKEN, address(token).code);
 
         vm.setNonce(_DEPLOYER, _DEPLOYER_NONCE);
     }
@@ -36,7 +36,7 @@ contract DeployXanV2VestingTest is Test {
         assertEq(proxy, XAN_V2_VESTING_PROXY);
         assertEq(implementation, _IMPLEMENTATION);
         assertEq(UnsafeUpgrades.getImplementationAddress(proxy), implementation);
-        assertEq(address(vesting.XAN_TOKEN()), _script.XAN_TOKEN());
+        assertEq(address(vesting.XAN_TOKEN()), XAN_TOKEN);
         assertEq(vesting.vestingStart(), Parameters.XAN_VESTING_START);
         assertEq(vesting.vestingEnd(), Parameters.XAN_VESTING_START + Parameters.XAN_VESTING_DURATION);
         assertEq(vesting.owner(), Parameters.COUNCIL_MULTISIG);

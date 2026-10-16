@@ -110,7 +110,7 @@ The owner is the council multisig, which funds the contract (see [ADR-10](./adr/
 - **The owner adds only eligible recipients with their correct principals.** All principals draw on one XAN balance. A principal that the council multisig does not fund, such as an oversized one, takes XAN that backs the other recipients when it unlocks, and it cannot be removed. The owner, the council multisig, is trusted to add only principals that it funds (see [ADR-10](./adr/10-the-council-multisig-owns-xanv2vesting.md)); `withdrawSurplus` alone cannot take XAN that a locked balance needs. The contract does not read the principals in the XAN token, so the owner must also make sure that a principal does not repeat a tranche that the account already vests there.
 - **The council multisig keeps the contract funded.** Unlocks depend on its top-ups. An underfunded contract delays unlocks but loses no vesting.
 - **The owner upgrades only to reviewed implementations.** An upgrade can change the schedule and the principals, and it can transfer all XAN that the contract holds. A captured council multisig can take that XAN at once (see [ADR-10](./adr/10-the-council-multisig-owns-xanv2vesting.md)).
-- **Without an upgrade, a principal leaves the contract only through `unlock()` by its account.** `withdrawSurplus` cannot take it. A principal for an address that can never call `unlock()`, such as a wrong address or a lost key, stays in the contract. So each recipient proves control of its address before it is added (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanv2vesting)).
+- **Without an upgrade, a principal leaves the contract only through `unlock()` by its account.** `withdrawSurplus` cannot take it. A principal for an address that can never call `unlock()`, such as a wrong address or a lost key, stays in the contract. So the team checks each address before it is added.
 - **The schedule is fixed in the implementation.** Each implementation copies the schedule of the token when it is constructed. A token upgrade that changes the schedule does not change `XanV2Vesting` until the owner upgrades it to an implementation constructed after that change.
 - **Locked principals do not vote.** See section [Voting](#7-voting).
 - **No external audit.** `XanV2Vesting` relies on its tests, an internal security review, and the linters; unlike the other contracts in this repository, no external auditor has reviewed it.
@@ -119,7 +119,18 @@ The owner is the council multisig, which funds the contract (see [ADR-10](./adr/
 
 `script/DeployXanV2Vesting.s.sol` (`just deploy-vesting-simulate`, then `just deploy-vesting`) deploys the implementation and an `ERC1967Proxy` that calls `initialize`, after the OpenZeppelin upgrades plugin has validated the implementation. It binds the XAN token proxy `0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7`, which has the same address on Ethereum mainnet and Sepolia.
 
-The proxy starts without recipients. After the deployment, the council multisig adds them with `addRecipients` and transfers the XAN. Every recipient proves control of its address before it is added (see [DEPLOYMENT.md](../DEPLOYMENT.md#5-xanv2vesting)).
+The proxy starts without recipients. After the deployment, the council multisig adds them with `addRecipients` and transfers the XAN. The team checks every address before the council multisig adds it.
+
+`script/GenerateXanV2VestingRecipientsPayload.s.sol` (`just vesting-recipients-payload`) reads the recipients from `script/xan-v2-vesting-recipients.json`:
+
+```json
+{
+  "totalPrincipal": "1000000000000000000",
+  "recipients": [{ "account": "0x…", "principal": "1000000000000000000" }]
+}
+```
+
+The principals and `totalPrincipal`, their sum, are decimal strings in the smallest unit (18 decimals). The script stops if the list is empty, if an account is the zero address, the proxy, or the XAN token, or occurs twice, if a principal is zero, or if the principals do not add up to `totalPrincipal`. It does not read the proxy, so it cannot detect an account that already has a principal there. It writes the `addRecipients` call to `safe-payloads/addRecipients_to_xanV2Vesting.json`, and a signer of the council multisig creates the Safe transaction from it by hand. CI fails if the payload is out of date. Until the recipients are known, the file holds a placeholder, `address(1)` with 1 XAN, whose payload must not be submitted.
 
 The deployer of the governance stack deploys the implementation and the proxy at the same nonces on Ethereum mainnet and Sepolia, so both networks share their addresses. The script reverts before it broadcasts anything unless the proxy lands at `0x60A149fE74D2f55219f1Abad2911756Da9c67bf4`.
 

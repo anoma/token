@@ -153,9 +153,13 @@ Deploys the `XanV2Vesting` implementation and its UUPS proxy for the eligible re
 
 - [ ] **Record the proxy and implementation addresses** in [README.md](README.md#deployed-contracts).
 
-- [ ] **Check every address.** Each recipient signs a message with its address, and the team checks and records the signature before the address goes into the recipient list. A principal for an address that can never unlock stays in the contract (see [Trust assumptions](docs/03-XanV2Vesting.md#10-trust-assumptions)).
+- [ ] **Write the recipients** into `script/xan-v2-vesting-recipients.json` in place of the placeholder: the checked addresses with their locked tranches, and `totalPrincipal`, their sum (see section [Deployment](docs/03-XanV2Vesting.md#11-deployment)). Generate the payload and commit both files. The script stops on an entry that `addRecipients` rejects and on a sum that differs from `totalPrincipal`, and CI fails while the payload is out of date.
 
-- [ ] **Add the recipients.** The council multisig calls `addRecipients` on the proxy with the checked addresses and their locked tranches, in the smallest unit (18 decimals). An invalid entry reverts its whole batch (see [Recipients](docs/03-XanV2Vesting.md#5-recipients)).
+  ```bash
+  just vesting-recipients-payload
+  ```
+
+- [ ] **Add the recipients.** A signer of the council multisig creates the transaction of [safe-payloads/addRecipients_to_xanV2Vesting.json](safe-payloads/addRecipients_to_xanV2Vesting.json) in the Safe app, as its `_instruction` says. Before signing, each signer checks `recipientCount` and `totalPrincipal` against the reviewed recipient file. An invalid entry reverts its whole batch (see [Recipients](docs/03-XanV2Vesting.md#5-recipients)).
 
 - [ ] **Send any liquid tranches directly.** `XanV2Vesting` holds only the locked tranches.
 
