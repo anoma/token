@@ -1,8 +1,0 @@
-{
-  "_instruction": "Create this transaction from the council multisig 0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116, on Sepolia first and then on Ethereum mainnet. In the Safe app, open the Transaction Builder, turn on custom data, and enter to, value, and data. Before you sign, check that recipientCount and totalPrincipal match the reviewed script/xan-v2-vesting-recipients.json.",
-  "data": "0x5aa9372b00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000",
-  "recipientCount": 0,
-  "to": "0x60A149fE74D2f55219f1Abad2911756Da9c67bf4",
-  "totalPrincipal": "0",
-  "value": "0"
-}
