@@ -29,8 +29,9 @@ fmt *args:
 fmt-check:
     forge fmt --check
 
-# Lint contracts (solhint)
+# Lint contracts (forge lint + solhint)
 lint:
+    forge lint --deny notes
     bunx --bun solhint --config .solhint.json 'src/**/*.sol'
     bunx --bun solhint --config .solhint.other.json 'test/**/*.sol'
     bunx --bun solhint --config .solhint.other.json 'script/**/*.sol'
@@ -63,6 +64,8 @@ check:
     @just build
     @echo "==> Testing..."
     @just test
+    @echo "==> Checking the XanV2Vesting recipients payload..."
+    @just vesting-recipients-payload-check
 
 # --- Deployment ---
 
@@ -118,6 +121,53 @@ upgrade deployer proxy chain *args:
     forge script script/ExecuteXanV2Upgrade.s.sol:ExecuteXanV2Upgrade \
         --sig "run(address)" {{ proxy }} \
         --broadcast --rpc-url {{ chain }} --account {{ deployer }} {{ args }}
+
+# Simulate deploying `XanV2Vesting` (dry-run). `sender` is the address behind the deployer, so the dry run prints the
+# addresses that the broadcast creates.
+deploy-vesting-simulate sender chain *args:
+    @echo "Cleaning contracts to ensure reproducible build..."
+    @just clean
+    forge script script/DeployXanV2Vesting.s.sol:DeployXanV2Vesting \
+        --sig "run()" \
+        --rpc-url {{ chain }} --sender {{ sender }} {{ args }}
+
+# Deploy the `XanV2Vesting` implementation and its UUPS proxy. Verifies both on etherscan with the exact constructor
+# args from the broadcast.
+deploy-vesting deployer sender chain *args:
+    @echo "Cleaning contracts to ensure reproducible build..."
+    @just clean
+    forge script script/DeployXanV2Vesting.s.sol:DeployXanV2Vesting \
+        --sig "run()" \
+        --broadcast --verify --rpc-url {{ chain }} --account {{ deployer }} --sender {{ sender }} {{ args }}
+
+# Check the recipients of `script/xan-v2-vesting-recipients.json` and write the `addRecipients` transaction of the
+# council multisig to `safe-payloads/addRecipients_to_xanV2Vesting.json`. Sends nothing.
+vesting-recipients-payload:
+    forge script script/GenerateXanV2VestingRecipientsPayload.s.sol:GenerateXanV2VestingRecipientsPayload \
+        --sig "run()"
+
+# Fail if `safe-payloads/` differs from what `vesting-recipients-payload` writes for the committed recipients.
+vesting-recipients-payload-check: vesting-recipients-payload
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! git diff --exit-code -- safe-payloads/ || [ -n "$(git status --porcelain -- safe-payloads/)" ]; then
+        echo "safe-payloads/ is out of date: run 'just vesting-recipients-payload' and commit the result." >&2
+        exit 1
+    fi
+
+# Print the XAN that the council multisig sends to `XanV2Vesting` now so that every unlock until `timestamp` (Unix time)
+# succeeds. Sends nothing.
+vesting-top-up-until timestamp chain *args:
+    forge script script/ComputeXanV2VestingTopUpUntil.s.sol:ComputeXanV2VestingTopUpUntil \
+        --sig "run(uint48)" {{ timestamp }} \
+        --rpc-url {{ chain }} {{ args }}
+
+# Print the XAN that the council multisig sends to `XanV2Vesting` now so that every present and future unlock succeeds.
+# Sends nothing.
+vesting-top-up-full chain *args:
+    forge script script/ComputeXanV2VestingTopUpFull.s.sol:ComputeXanV2VestingTopUpFull \
+        --sig "run()" \
+        --rpc-url {{ chain }} {{ args }}
 
 # --- Verification ---
 
