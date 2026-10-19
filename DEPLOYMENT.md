@@ -153,13 +153,23 @@ Deploys the `XanV2Vesting` implementation and its UUPS proxy for the eligible re
 
 - [ ] **Record the proxy and implementation addresses** in [README.md](README.md#deployed-contracts).
 
-- [ ] **Write the recipients** into the empty list of `script/xan-v2-vesting-recipients.json`: the checked addresses with their locked tranches, and `totalPrincipal`, their sum (see section [Deployment](docs/03-XanV2Vesting.md#11-deployment)). Generate the payload and commit both files. The script stops on an entry that `addRecipients` rejects and on a sum that differs from `totalPrincipal`, and CI fails while the payload is out of date.
+- [ ] **Write the recipients** into the empty list of `script/xan-v2-vesting-recipients.json`: the checked addresses with their locked tranches, and `totalPrincipal`, their sum (see section [Deployment](docs/03-XanV2Vesting.md#11-deployment)). Generate the payloads and commit them with the recipient file. The script stops on an entry that `addRecipients` rejects and on a sum that differs from `totalPrincipal`, and CI fails while a payload is out of date.
 
   ```bash
   just vesting-recipients-payload
   ```
 
-- [ ] **Add the recipients.** A signer of the council multisig creates the transaction of [safe-payloads/addRecipients_to_xanV2Vesting.json](safe-payloads/addRecipients_to_xanV2Vesting.json) in the Safe app, as its `_instruction` says. Before signing, each signer checks `recipientCount` and `totalPrincipal` against the reviewed recipient file. An invalid entry reverts its whole batch (see [Recipients](docs/03-XanV2Vesting.md#5-recipients)).
+- [ ] **Add the recipients** with the payload of the chain:
+  - [ ] [safe-payloads/addRecipients_to_xanV2Vesting_sepolia.json](safe-payloads/addRecipients_to_xanV2Vesting_sepolia.json)
+  - [ ] [safe-payloads/addRecipients_to_xanV2Vesting_mainnet.json](safe-payloads/addRecipients_to_xanV2Vesting_mainnet.json)
+
+  One signer of the council multisig puts the transaction in the queue:
+
+  1. In the Safe app of the council multisig, open the Transaction Builder.
+  2. Drag the payload file into the Transaction Builder.
+  3. Create the batch and send it.
+
+  Each signer compares the data of the queued transaction with `data` in the payload file. A signer signs only if the two are the same.
 
 - [ ] **Send any liquid tranches directly.** `XanV2Vesting` holds only the locked tranches.
 
