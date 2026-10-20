@@ -51,6 +51,15 @@ contract GenerateXanV2VestingRecipientsPayload is Script {
         "script/xan-v2-vesting-recipients.json. Recipient count: <count>. Total principal: <totalPrincipal> (smallest "
         "unit, 18 decimals).";
 
+    /// @notice Thrown if the text of the account at `index` is not its EIP-55 checksum form.
+    error AccountNotChecksummed(uint256 index);
+
+    /// @notice Thrown if the text of the principal at `index` is not its value in decimal digits.
+    error PrincipalNotDecimal(uint256 index);
+
+    /// @notice Thrown if the text of the total principal is not its value in decimal digits.
+    error TotalPrincipalNotDecimal();
+
     /// @notice Thrown if the recipient at `index` is the zero address.
     error ZeroAccountNotAllowed(uint256 index);
 
@@ -93,8 +102,8 @@ contract GenerateXanV2VestingRecipientsPayload is Script {
 
     /// @notice Reads the recipients and the expected sum of their principals from the text of a recipients file.
     /// @param json The text in the form
-    /// `{"totalPrincipal": "…", "recipients": [{"account": "0x…", "principal": "…"}]}`, with decimal strings in the
-    /// smallest unit (18 decimals).
+    /// `{"totalPrincipal": "…", "recipients": [{"account": "0x…", "principal": "…"}]}`, with each account in its EIP-55
+    /// checksum form and each amount as a string of decimal digits in the smallest unit (18 decimals).
     /// @return recipients The accounts and the principals vesting for them.
     /// @return totalPrincipal The expected sum of the principals.
     function parseRecipients(string memory json)
@@ -107,6 +116,19 @@ contract GenerateXanV2VestingRecipientsPayload is Script {
             (IXanV2Vesting.Recipient[])
         );
         totalPrincipal = vm.parseJsonUint(json, ".totalPrincipal");
+
+        // The cheatcodes above also read an address without its checksum and an amount in other forms.
+        for (uint256 i = 0; i < recipients.length; ++i) {
+            string memory key = string.concat(".recipients[", vm.toString(i), "]");
+            string memory account = vm.toString(recipients[i].account);
+            string memory principal = vm.toString(recipients[i].principal);
+            require(_equal(vm.parseJsonString(json, string.concat(key, ".account")), account), AccountNotChecksummed(i));
+            require(
+                _equal(vm.parseJsonString(json, string.concat(key, ".principal")), principal), PrincipalNotDecimal(i)
+            );
+        }
+        string memory total = vm.toString(totalPrincipal);
+        require(_equal(vm.parseJsonString(json, ".totalPrincipal"), total), TotalPrincipalNotDecimal());
     }
 
     /// @notice Returns the Transaction Builder batch file that adds the recipients on a chain.
@@ -168,5 +190,13 @@ contract GenerateXanV2VestingRecipientsPayload is Script {
         filled = vm.replace(filled, "<description>", description);
         filled = vm.replace(filled, "<to>", vm.toString(XAN_V2_VESTING_PROXY));
         filled = vm.replace(filled, "<data>", vm.toString(data));
+    }
+
+    /// @notice Returns whether two strings are the same.
+    /// @param left The first string.
+    /// @param right The second string.
+    /// @return equal Whether `left` and `right` have the same bytes.
+    function _equal(string memory left, string memory right) internal pure returns (bool equal) {
+        equal = keccak256(bytes(left)) == keccak256(bytes(right));
     }
 }
