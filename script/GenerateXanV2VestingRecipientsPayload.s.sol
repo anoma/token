@@ -72,7 +72,10 @@ contract GenerateXanV2VestingRecipientsPayload is Script {
     /// @notice Checks the recipients of `RECIPIENTS_PATH` and writes their batch files to `MAINNET_PAYLOAD_PATH` and
     /// `SEPOLIA_PAYLOAD_PATH`.
     function run() public {
-        (IXanV2Vesting.Recipient[] memory recipients, uint256 totalPrincipal) = readRecipients(RECIPIENTS_PATH);
+        // NOTE: The `fs_permissions` of `foundry.toml` allow reads only from the listed paths.
+        // forge-lint: disable-next-line(unsafe-cheatcode)
+        string memory json = vm.readFile(RECIPIENTS_PATH);
+        (IXanV2Vesting.Recipient[] memory recipients, uint256 totalPrincipal) = parseRecipients(json);
         check({recipients: recipients, totalPrincipal: totalPrincipal});
 
         // NOTE: The `fs_permissions` of `foundry.toml` allow writes only to the two batch files.
@@ -88,20 +91,17 @@ contract GenerateXanV2VestingRecipientsPayload is Script {
         });
     }
 
-    /// @notice Reads the recipients and the expected sum of their principals from a JSON file.
-    /// @param path A JSON file in the form
+    /// @notice Reads the recipients and the expected sum of their principals from the text of a recipients file.
+    /// @param json The text in the form
     /// `{"totalPrincipal": "…", "recipients": [{"account": "0x…", "principal": "…"}]}`, with decimal strings in the
     /// smallest unit (18 decimals).
     /// @return recipients The accounts and the principals vesting for them.
     /// @return totalPrincipal The expected sum of the principals.
-    function readRecipients(string memory path)
+    function parseRecipients(string memory json)
         public
-        view
+        pure
         returns (IXanV2Vesting.Recipient[] memory recipients, uint256 totalPrincipal)
     {
-        // NOTE: The `fs_permissions` of `foundry.toml` allow reads only from the listed paths.
-        // forge-lint: disable-next-line(unsafe-cheatcode)
-        string memory json = vm.readFile(path);
         recipients = abi.decode(
             vm.parseJsonTypeArray(json, ".recipients", "Recipient(address account,uint256 principal)"),
             (IXanV2Vesting.Recipient[])

@@ -72,7 +72,7 @@ contract GenerateXanV2VestingRecipientsPayloadTest is XanV2VestingFixture {
 
     function test_batchFile_adds_the_recipients_when_the_owner_submits_its_transaction() public {
         (IXanV2Vesting.Recipient[] memory recipients, uint256 totalPrincipal) =
-            _script.readRecipients(_RECIPIENTS_FIXTURE_PATH);
+            _script.parseRecipients(vm.readFile(_RECIPIENTS_FIXTURE_PATH));
         string memory json = _script.batchFile({
             chainId: _script.MAINNET_CHAIN_ID(), recipients: recipients, totalPrincipal: totalPrincipal
         });
@@ -96,9 +96,9 @@ contract GenerateXanV2VestingRecipientsPayloadTest is XanV2VestingFixture {
         assertEq(vesting.totalPrincipal(), totalPrincipal);
     }
 
-    function test_readRecipients_reads_the_exact_principals_and_the_total_principal_of_a_file() public view {
+    function test_parseRecipients_reads_the_exact_principals_and_the_total_principal() public view {
         (IXanV2Vesting.Recipient[] memory recipients, uint256 totalPrincipal) =
-            _script.readRecipients(_RECIPIENTS_FIXTURE_PATH);
+            _script.parseRecipients(vm.readFile(_RECIPIENTS_FIXTURE_PATH));
 
         assertEq(recipients.length, 2);
         assertEq(recipients[0].account, 0x1111111111111111111111111111111111111111);
@@ -110,14 +110,14 @@ contract GenerateXanV2VestingRecipientsPayloadTest is XanV2VestingFixture {
 
     function test_check_accepts_the_recipients_file() public view {
         (IXanV2Vesting.Recipient[] memory recipients, uint256 totalPrincipal) =
-            _script.readRecipients(_script.RECIPIENTS_PATH());
+            _script.parseRecipients(vm.readFile(_script.RECIPIENTS_PATH()));
 
         _script.check({recipients: recipients, totalPrincipal: totalPrincipal});
     }
 
     function test_batchFile_has_the_checksum_that_the_transaction_builder_computes() public view {
         (IXanV2Vesting.Recipient[] memory recipients, uint256 totalPrincipal) =
-            _script.readRecipients(_RECIPIENTS_FIXTURE_PATH);
+            _script.parseRecipients(vm.readFile(_RECIPIENTS_FIXTURE_PATH));
         string memory mainnet = _script.batchFile({
             chainId: _script.MAINNET_CHAIN_ID(), recipients: recipients, totalPrincipal: totalPrincipal
         });
