@@ -12,9 +12,9 @@ import {XanV2Vesting} from "../../src/XanV2Vesting.sol";
 contract DeployXanV2VestingTest is Test {
     /// @dev The deployer of the governance stack and its nonce on Ethereum mainnet and Sepolia.
     address internal constant _DEPLOYER = 0xc461247a7375cF7c70a576d636aA3dd38ff3bb2f;
-    uint64 internal constant _DEPLOYER_NONCE = 11;
+    uint64 internal constant _DEPLOYER_NONCE = 13;
 
-    address internal constant _IMPLEMENTATION = 0xA4b1B4032c30Ba42a44c3616D3AB95d10170De55;
+    address internal constant _IMPLEMENTATION = 0x999b1a6641555816bb9a24692626963D7abe62D7;
 
     DeployXanV2Vesting internal _script;
 

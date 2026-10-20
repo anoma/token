@@ -119,7 +119,7 @@ The alternative V1 path is the voter-body quorum — hold `castVote(implementati
 
 Deploys the `XanV2Vesting` implementation and its UUPS proxy for the eligible recipients that the V1 genesis distribution did not contain. The deployer of section 1 deploys both at the same nonces on both chains, so both networks share the addresses. Run on Sepolia first; repeat on mainnet once the rehearsal has completed.
 
-- [ ] **Confirm the deployer of section 1 is at the same nonce on both chains.** Both commands must print the same number, and the wallet must send nothing else on either chain until both deployments are done. The implementation lands at the address for this nonce and the proxy at the address for the next one: at nonce 11, `0xA4b1B4032c30Ba42a44c3616D3AB95d10170De55` and `0x60A149fE74D2f55219f1Abad2911756Da9c67bf4`. On both chains, the deploy script reverts before it broadcasts anything if the proxy would land elsewhere.
+- [ ] **Confirm the deployer of section 1 is at nonce 13 on both chains.** Both commands must print 13, and the wallet must send nothing else on either chain until both deployments are done. If a chain prints a lower nonce, raise it with transactions that send 0 ETH from the deployer to itself. A failed transaction also uses its nonce. The implementation lands at the address for nonce 13 and the proxy at the address for nonce 14: `0x999b1a6641555816bb9a24692626963D7abe62D7` and `0xe1F1599b47cbF5ca681109f8129f289FD29cfD49`. On both chains, the deploy script reverts before it broadcasts anything if the proxy would land elsewhere.
 
   ```bash
   cast nonce <sender> --rpc-url sepolia

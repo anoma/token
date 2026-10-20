@@ -86,7 +86,7 @@ The council multisig funds the contract with ordinary XAN transfers; the contrac
 
 ### Top-up amount
 
-Two scripts compute the XAN to send now, from the live state of the `XanV2Vesting` proxy at `0x60A149fE74D2f55219f1Abad2911756Da9c67bf4` and the XAN token. Both send nothing, return zero when the balance is already enough, and cover the recipients added so far:
+Two scripts compute the XAN to send now, from the live state of the `XanV2Vesting` proxy at `0xe1F1599b47cbF5ca681109f8129f289FD29cfD49` and the XAN token. Both send nothing, return zero when the balance is already enough, and cover the recipients added so far:
 
 - `script/ComputeXanV2VestingTopUpUntil.s.sol` covers every unlock until a timestamp, usually the time of the next top-up. It reads `totalUnlockableBalance()` at that timestamp. Run it with `just vesting-top-up-until <timestamp> <chain>`.
 - `script/ComputeXanV2VestingTopUpFull.s.sol` covers every present and future unlock. Run it with `just vesting-top-up-full <chain>`.
@@ -132,7 +132,7 @@ The proxy starts without recipients. After the deployment, the council multisig 
 
 The principals and `totalPrincipal`, their sum, are decimal strings in the smallest unit (18 decimals). The script stops if an account is the zero address, the proxy, or the XAN token, or occurs twice, if a principal is zero, or if the principals do not add up to `totalPrincipal`. It does not read the proxy, so it cannot detect an account that already has a principal there. It writes the `addRecipients` call as a batch file of the Safe Transaction Builder for each chain, `safe-payloads/addRecipients_to_xanV2Vesting_mainnet.json` and `safe-payloads/addRecipients_to_xanV2Vesting_sepolia.json`, with the checksum that the Transaction Builder checks on import. A signer of the council multisig imports the file of the chain into the Transaction Builder. CI fails if a payload is out of date. Until the recipients are known, the list is empty, and its payloads add nothing.
 
-The deployer of the governance stack deploys the implementation and the proxy at the same nonces on Ethereum mainnet and Sepolia, so both networks share their addresses. The script reverts before it broadcasts anything unless the proxy lands at `0x60A149fE74D2f55219f1Abad2911756Da9c67bf4`.
+The deployer of the governance stack deploys the implementation and the proxy at the same nonces on Ethereum mainnet and Sepolia, so both networks share their addresses. The script reverts before it broadcasts anything unless the proxy lands at `0xe1F1599b47cbF5ca681109f8129f289FD29cfD49`.
 
 ## 12. Parameters
 
