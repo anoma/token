@@ -28,6 +28,70 @@ contract GenerateXanV2VestingRecipientsPayloadTest is XanV2VestingFixture {
         assertEq(vm.readFile(_script.SEPOLIA_PAYLOAD_PATH()), sepolia, "run `just vesting-recipients-payload`");
     }
 
+    function test_parseRecipients_reverts_on_an_account_that_is_not_in_its_checksum_form() public {
+        string memory lowercase = vm.toLowercase(vm.toString(_BOB));
+        assertNotEq(lowercase, vm.toString(_BOB), "the checksum form of the address of Bob has upper-case letters");
+        string memory json = _fixtureWith({from: "0x2222222222222222222222222222222222222222", to: lowercase});
+
+        vm.expectRevert(abi.encodeWithSelector(GenerateXanV2VestingRecipientsPayload.AccountNotChecksummed.selector, 1));
+        _script.parseRecipients(json);
+    }
+
+    function test_parseRecipients_reverts_on_a_principal_that_is_not_in_decimal_form() public {
+        // The principal at index 1 of the fixture.
+        uint256 principal = 1e18;
+        string memory json = _fixtureWith({from: vm.toString(principal), to: vm.toString(bytes32(principal))});
+
+        vm.expectRevert(abi.encodeWithSelector(GenerateXanV2VestingRecipientsPayload.PrincipalNotDecimal.selector, 1));
+        _script.parseRecipients(json);
+    }
+
+    function test_parseRecipients_reverts_on_a_total_principal_that_is_not_in_decimal_form() public {
+        // The total principal of the fixture.
+        uint256 totalPrincipal = 123_456_789_123_456_789_123_456_789 + 1e18;
+        string memory json = _fixtureWith({from: vm.toString(totalPrincipal), to: vm.toString(bytes32(totalPrincipal))});
+
+        vm.expectRevert(GenerateXanV2VestingRecipientsPayload.TotalPrincipalNotDecimal.selector);
+        _script.parseRecipients(json);
+    }
+
+    function test_parseRecipients_reverts_on_a_repeated_key() public {
+        string memory json = _fixtureWith({
+            from: "\"principal\": \"1000000000000000000\"",
+            to: "\"principal\": \"1000000000000000000\", \"principal\": \"2000000000000000000\""
+        });
+        assertEq(
+            vm.parseJsonUint(json, ".recipients[1].principal"), 2e18, "JSON keeps the last value of a repeated key"
+        );
+
+        vm.expectRevert(GenerateXanV2VestingRecipientsPayload.RecipientsFileNotCanonical.selector);
+        _script.parseRecipients(json);
+    }
+
+    function test_parseRecipients_reverts_on_a_repeated_key_that_an_escape_hides() public {
+        // `\u0070` is the letter p.
+        string memory json = _fixtureWith({
+            from: "\"principal\": \"1000000000000000000\"",
+            to: "\"principal\": \"1000000000000000000\", \"\\u0070rincipal\": \"2000000000000000000\""
+        });
+        assertEq(vm.parseJsonUint(json, ".recipients[1].principal"), 2e18, "JSON reads the escaped key as principal");
+
+        vm.expectRevert(GenerateXanV2VestingRecipientsPayload.RecipientsFileNotCanonical.selector);
+        _script.parseRecipients(json);
+    }
+
+    function test_parseRecipients_reverts_on_a_principal_that_is_a_number() public {
+        string memory json = _fixtureWith({from: "\"1000000000000000000\"", to: "1000000000000000000"});
+        assertEq(
+            vm.parseJsonString(json, ".recipients[1].principal"),
+            "1000000000000000000",
+            "forge reads a number as its decimal string"
+        );
+
+        vm.expectRevert(GenerateXanV2VestingRecipientsPayload.RecipientsFileNotCanonical.selector);
+        _script.parseRecipients(json);
+    }
+
     function test_check_reverts_on_the_zero_account() public {
         vm.expectRevert(abi.encodeWithSelector(GenerateXanV2VestingRecipientsPayload.ZeroAccountNotAllowed.selector, 1));
         _script.check({recipients: _aliceAnd(address(0), _PRINCIPAL), totalPrincipal: 2 * _PRINCIPAL});
@@ -72,7 +136,7 @@ contract GenerateXanV2VestingRecipientsPayloadTest is XanV2VestingFixture {
 
     function test_batchFile_adds_the_recipients_when_the_owner_submits_its_transaction() public {
         (IXanV2Vesting.Recipient[] memory recipients, uint256 totalPrincipal) =
-            _script.readRecipients(_RECIPIENTS_FIXTURE_PATH);
+            _script.parseRecipients(vm.readFile(_RECIPIENTS_FIXTURE_PATH));
         string memory json = _script.batchFile({
             chainId: _script.MAINNET_CHAIN_ID(), recipients: recipients, totalPrincipal: totalPrincipal
         });
@@ -96,9 +160,9 @@ contract GenerateXanV2VestingRecipientsPayloadTest is XanV2VestingFixture {
         assertEq(vesting.totalPrincipal(), totalPrincipal);
     }
 
-    function test_readRecipients_reads_the_exact_principals_and_the_total_principal_of_a_file() public view {
+    function test_parseRecipients_reads_the_exact_principals_and_the_total_principal() public view {
         (IXanV2Vesting.Recipient[] memory recipients, uint256 totalPrincipal) =
-            _script.readRecipients(_RECIPIENTS_FIXTURE_PATH);
+            _script.parseRecipients(vm.readFile(_RECIPIENTS_FIXTURE_PATH));
 
         assertEq(recipients.length, 2);
         assertEq(recipients[0].account, 0x1111111111111111111111111111111111111111);
@@ -110,14 +174,14 @@ contract GenerateXanV2VestingRecipientsPayloadTest is XanV2VestingFixture {
 
     function test_check_accepts_the_recipients_file() public view {
         (IXanV2Vesting.Recipient[] memory recipients, uint256 totalPrincipal) =
-            _script.readRecipients(_script.RECIPIENTS_PATH());
+            _script.parseRecipients(vm.readFile(_script.RECIPIENTS_PATH()));
 
         _script.check({recipients: recipients, totalPrincipal: totalPrincipal});
     }
 
     function test_batchFile_has_the_checksum_that_the_transaction_builder_computes() public view {
         (IXanV2Vesting.Recipient[] memory recipients, uint256 totalPrincipal) =
-            _script.readRecipients(_RECIPIENTS_FIXTURE_PATH);
+            _script.parseRecipients(vm.readFile(_RECIPIENTS_FIXTURE_PATH));
         string memory mainnet = _script.batchFile({
             chainId: _script.MAINNET_CHAIN_ID(), recipients: recipients, totalPrincipal: totalPrincipal
         });
@@ -168,6 +232,13 @@ contract GenerateXanV2VestingRecipientsPayloadTest is XanV2VestingFixture {
         recipients = new IXanV2Vesting.Recipient[](2);
         recipients[0] = IXanV2Vesting.Recipient({account: _ALICE, principal: _PRINCIPAL});
         recipients[1] = IXanV2Vesting.Recipient({account: account, principal: principal});
+    }
+
+    /// @dev Returns the text of the recipients fixture with its one occurrence of `from` replaced by `to`.
+    function _fixtureWith(string memory from, string memory to) internal view returns (string memory json) {
+        string memory fixture = vm.readFile(_RECIPIENTS_FIXTURE_PATH);
+        assertEq(vm.split(fixture, from).length, 2, "the fixture contains the text to replace once");
+        json = vm.replace(fixture, from, to);
     }
 
     /// @dev Starts the proxies without recipients, so that a batch adds every recipient of the vesting contract.

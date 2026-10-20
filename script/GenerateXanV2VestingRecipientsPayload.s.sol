@@ -51,6 +51,27 @@ contract GenerateXanV2VestingRecipientsPayload is Script {
         "script/xan-v2-vesting-recipients.json. Recipient count: <count>. Total principal: <totalPrincipal> (smallest "
         "unit, 18 decimals).";
 
+    /// @notice The only text without whitespace that `parseRecipients` accepts for the values that it reads.
+    string internal constant _RECIPIENTS_FILE =
+        "{\"totalPrincipal\":\"<totalPrincipal>\",\"recipients\":[<recipients>]}";
+
+    /// @notice One recipient of `_RECIPIENTS_FILE`, which separates them with commas.
+    string internal constant _RECIPIENT = "{\"account\":\"<account>\",\"principal\":\"<principal>\"}";
+
+    /// @notice Thrown if the text of the account at `index` is not its EIP-55 checksum form.
+    error AccountNotChecksummed(uint256 index);
+
+    /// @notice Thrown if the text of the principal at `index` is not its value in decimal digits.
+    error PrincipalNotDecimal(uint256 index);
+
+    /// @notice Thrown if the text of the total principal is not its value in decimal digits.
+    error TotalPrincipalNotDecimal();
+
+    /// @notice Thrown if the recipients file without whitespace is not `_RECIPIENTS_FILE` with the values that the
+    /// script reads. JSON keeps only the last value of a repeated key, so other text can show a value that the payload
+    /// does not contain.
+    error RecipientsFileNotCanonical();
+
     /// @notice Thrown if the recipient at `index` is the zero address.
     error ZeroAccountNotAllowed(uint256 index);
 
@@ -72,7 +93,10 @@ contract GenerateXanV2VestingRecipientsPayload is Script {
     /// @notice Checks the recipients of `RECIPIENTS_PATH` and writes their batch files to `MAINNET_PAYLOAD_PATH` and
     /// `SEPOLIA_PAYLOAD_PATH`.
     function run() public {
-        (IXanV2Vesting.Recipient[] memory recipients, uint256 totalPrincipal) = readRecipients(RECIPIENTS_PATH);
+        // NOTE: The `fs_permissions` of `foundry.toml` allow reads only from the listed paths.
+        // forge-lint: disable-next-line(unsafe-cheatcode)
+        string memory json = vm.readFile(RECIPIENTS_PATH);
+        (IXanV2Vesting.Recipient[] memory recipients, uint256 totalPrincipal) = parseRecipients(json);
         check({recipients: recipients, totalPrincipal: totalPrincipal});
 
         // NOTE: The `fs_permissions` of `foundry.toml` allow writes only to the two batch files.
@@ -88,25 +112,43 @@ contract GenerateXanV2VestingRecipientsPayload is Script {
         });
     }
 
-    /// @notice Reads the recipients and the expected sum of their principals from a JSON file.
-    /// @param path A JSON file in the form
-    /// `{"totalPrincipal": "…", "recipients": [{"account": "0x…", "principal": "…"}]}`, with decimal strings in the
-    /// smallest unit (18 decimals).
+    /// @notice Reads the recipients and the expected sum of their principals from the text of a recipients file.
+    /// @param json The text in the form
+    /// `{"totalPrincipal": "…", "recipients": [{"account": "0x…", "principal": "…"}]}`, with each account in its EIP-55
+    /// checksum form and each amount as a string of decimal digits in the smallest unit (18 decimals).
     /// @return recipients The accounts and the principals vesting for them.
     /// @return totalPrincipal The expected sum of the principals.
-    function readRecipients(string memory path)
+    function parseRecipients(string memory json)
         public
-        view
+        pure
         returns (IXanV2Vesting.Recipient[] memory recipients, uint256 totalPrincipal)
     {
-        // NOTE: The `fs_permissions` of `foundry.toml` allow reads only from the listed paths.
-        // forge-lint: disable-next-line(unsafe-cheatcode)
-        string memory json = vm.readFile(path);
         recipients = abi.decode(
             vm.parseJsonTypeArray(json, ".recipients", "Recipient(address account,uint256 principal)"),
             (IXanV2Vesting.Recipient[])
         );
         totalPrincipal = vm.parseJsonUint(json, ".totalPrincipal");
+
+        // The cheatcodes above also read an address without its checksum and an amount in other forms.
+        string memory entries = "";
+        for (uint256 i = 0; i < recipients.length; ++i) {
+            string memory key = string.concat(".recipients[", vm.toString(i), "]");
+            string memory account = vm.toString(recipients[i].account);
+            string memory principal = vm.toString(recipients[i].principal);
+            require(_equal(vm.parseJsonString(json, string.concat(key, ".account")), account), AccountNotChecksummed(i));
+            require(
+                _equal(vm.parseJsonString(json, string.concat(key, ".principal")), principal), PrincipalNotDecimal(i)
+            );
+            string memory entry = vm.replace(_RECIPIENT, "<account>", account);
+            entry = vm.replace(entry, "<principal>", principal);
+            entries = i == 0 ? entry : string.concat(entries, ",", entry);
+        }
+        string memory total = vm.toString(totalPrincipal);
+        require(_equal(vm.parseJsonString(json, ".totalPrincipal"), total), TotalPrincipalNotDecimal());
+
+        string memory canonical = vm.replace(_RECIPIENTS_FILE, "<totalPrincipal>", total);
+        canonical = vm.replace(canonical, "<recipients>", entries);
+        require(_equal(_withoutWhitespace(json), canonical), RecipientsFileNotCanonical());
     }
 
     /// @notice Returns the Transaction Builder batch file that adds the recipients on a chain.
@@ -168,5 +210,23 @@ contract GenerateXanV2VestingRecipientsPayload is Script {
         filled = vm.replace(filled, "<description>", description);
         filled = vm.replace(filled, "<to>", vm.toString(XAN_V2_VESTING_PROXY));
         filled = vm.replace(filled, "<data>", vm.toString(data));
+    }
+
+    /// @notice Returns whether two strings are the same.
+    /// @param left The first string.
+    /// @param right The second string.
+    /// @return equal Whether `left` and `right` have the same bytes.
+    function _equal(string memory left, string memory right) internal pure returns (bool equal) {
+        equal = keccak256(bytes(left)) == keccak256(bytes(right));
+    }
+
+    /// @notice Removes the characters that JSON allows as whitespace.
+    /// @param text A JSON text.
+    /// @return compact `text` without spaces, tabs, line feeds, and carriage returns.
+    function _withoutWhitespace(string memory text) internal pure returns (string memory compact) {
+        compact = vm.replace(text, " ", "");
+        compact = vm.replace(compact, "\t", "");
+        compact = vm.replace(compact, "\n", "");
+        compact = vm.replace(compact, "\r", "");
     }
 }

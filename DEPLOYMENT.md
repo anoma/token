@@ -153,7 +153,7 @@ Deploys the `XanV2Vesting` implementation and its UUPS proxy for the eligible re
 
 - [ ] **Record the proxy and implementation addresses** in [README.md](README.md#deployed-contracts).
 
-- [ ] **Write the recipients** into the empty list of `script/xan-v2-vesting-recipients.json`: the checked addresses with their locked tranches, and `totalPrincipal`, their sum (see section [Deployment](docs/03-XanV2Vesting.md#11-deployment)). Generate the payloads and commit them with the recipient file. The script stops on an entry that `addRecipients` rejects and on a sum that differs from `totalPrincipal`, and CI fails while a payload is out of date.
+- [ ] **Write the recipients** into the empty list of `script/xan-v2-vesting-recipients.json`: the checked addresses with their locked tranches, and `totalPrincipal`, their sum (see section [Deployment](docs/03-XanV2Vesting.md#11-deployment)). Generate the payloads and commit them with the recipient file. The script stops on a file that breaks a rule of that section, and CI fails while a payload is out of date.
 
   ```bash
   just vesting-recipients-payload
@@ -169,7 +169,29 @@ Deploys the `XanV2Vesting` implementation and its UUPS proxy for the eligible re
   2. Drag the payload file into the Transaction Builder.
   3. Create the batch and send it.
 
-  Each signer compares the data of the queued transaction with `data` in the payload file. A signer signs only if the two are the same.
+  Each signer checks the queued transaction before they sign it. In the Safe app, it must have these values:
+
+  | Field                              | Value                                                                  |
+  | ---------------------------------- | ---------------------------------------------------------------------- |
+  | Operation                          | `0` (call)                                                             |
+  | To                                 | `0xe1F1599b47cbF5ca681109f8129f289FD29cfD49`, the `XanV2Vesting` proxy |
+  | Value                              | `0`                                                                    |
+  | Data                               | `data` of the payload file                                             |
+  | `safeTxGas`, `baseGas`, `gasPrice` | `0`                                                                    |
+  | `gasToken`, `refundReceiver`       | `0x0000000000000000000000000000000000000000`                           |
+
+  A delegate call (operation `1`) runs the code at `To` with the rights of the council multisig, and a gas price above 0 pays a refund from the council multisig to the executor. The Safe app can also show other values than those that it sends to the hardware wallet. So each signer computes the hashes of these values at the nonce of the transaction:
+
+  ```bash
+  cast call 0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116 \
+    "encodeTransactionData(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,uint256)(bytes)" \
+    0xe1F1599b47cbF5ca681109f8129f289FD29cfD49 0 \
+    "$(jq -r '.transactions[0].data' safe-payloads/addRecipients_to_xanV2Vesting_<chain>.json)" \
+    0 0 0 0 0x0000000000000000000000000000000000000000 0x0000000000000000000000000000000000000000 <nonce> \
+    --rpc-url <chain>
+  ```
+
+  The command prints `0x1901`, then the domain hash and the message hash, with 64 hex digits each. A signer signs only if the transaction has the values of the table and the hardware wallet shows the same domain hash and message hash.
 
 - [ ] **Send any liquid tranches directly.** `XanV2Vesting` holds only the locked tranches.
 
