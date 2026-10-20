@@ -2,9 +2,9 @@
 
 The Anoma token (XAN) is an upgradeable ERC-20 token.
 
-This repository contains both implementations and the upgrade from V1 to V2. **V1** gates upgrades with an in-token meta-governance mechanism based on quorum approval voting and a fast-track council. **V2** removes the in-token governance in favor of a single owner, vests the formerly locked balances linearly, and adds `ERC20Votes` vote delegation on a timestamp clock. The V2 owner is an external governance stack — the `XanGovernor` DAO, its `TimelockController`, and the `XanUpgradeCouncilModule` backup upgrade path.
+This repository contains both implementations and the upgrade from V1 to V2. **V1** gates upgrades with an in-token meta-governance mechanism based on quorum approval voting and a fast-track council. **V2** removes the in-token governance in favor of a single owner, vests the formerly locked balances linearly, and adds `ERC20Votes` vote delegation on a timestamp clock. The V2 owner is an external governance stack — the `XanGovernor` DAO, its `TimelockController`, and the `XanUpgradeCouncilModule` backup upgrade path. `XanV2Vesting` vests XAN for the eligible recipients that the V1 genesis distribution did not contain, on the V2 schedule.
 
-Conceptual orientation lives in [`CONTEXT.md`](./CONTEXT.md). The audit-facing specifications are [`docs/01-XanV2-upgrade.md`](./docs/01-XanV2-upgrade.md) (token) and [`docs/02-XanV2-governance.md`](./docs/02-XanV2-governance.md) (governance layer); design decisions are recorded in [`docs/adr/`](./docs/adr/).
+Conceptual orientation lives in [`CONTEXT.md`](./CONTEXT.md). The audit-facing specifications are [`docs/01-XanV2-upgrade.md`](./docs/01-XanV2-upgrade.md) (token), [`docs/02-XanV2-governance.md`](./docs/02-XanV2-governance.md) (governance layer), and [`docs/03-XanV2Vesting.md`](./docs/03-XanV2Vesting.md) (`XanV2Vesting`); design decisions are recorded in [`docs/adr/`](./docs/adr/).
 
 ## Deployed Contracts
 
@@ -18,6 +18,9 @@ Conceptual orientation lives in [`CONTEXT.md`](./CONTEXT.md). The audit-facing s
 | OZ Governor (`XanGovernor`)                        | [`0xe774470B7115242157a15841Bce246cf21335A83`](https://etherscan.io/address/0xe774470B7115242157a15841Bce246cf21335A83) | [`0xe774470B7115242157a15841Bce246cf21335A83`](https://sepolia.etherscan.io/address/0xe774470B7115242157a15841Bce246cf21335A83) |
 | Upgrade Council Module (`XanUpgradeCouncilModule`) | [`0x748C04a1C0762FBA0DB25346a41e55CC33F39461`](https://etherscan.io/address/0x748C04a1C0762FBA0DB25346a41e55CC33F39461) | [`0x748C04a1C0762FBA0DB25346a41e55CC33F39461`](https://sepolia.etherscan.io/address/0x748C04a1C0762FBA0DB25346a41e55CC33F39461) |
 | OZ Timelock (`TimelockController`)                 | [`0xcE935C8A47D4414eF2613d0786D65e1c91Ae3149`](https://etherscan.io/address/0xcE935C8A47D4414eF2613d0786D65e1c91Ae3149) | [`0xcE935C8A47D4414eF2613d0786D65e1c91Ae3149`](https://sepolia.etherscan.io/address/0xcE935C8A47D4414eF2613d0786D65e1c91Ae3149) |
+|                                                    |                                                                                                                         |
+| XAN V2 Vesting (`ERC1967Proxy`)                    | [`0xe1F1599b47cbF5ca681109f8129f289FD29cfD49`](https://etherscan.io/address/0xe1F1599b47cbF5ca681109f8129f289FD29cfD49) | [`0xe1F1599b47cbF5ca681109f8129f289FD29cfD49`](https://sepolia.etherscan.io/address/0xe1F1599b47cbF5ca681109f8129f289FD29cfD49) |
+| XAN V2 Vesting Implementation (`XanV2Vesting`)     | [`0x999b1a6641555816bb9a24692626963D7abe62D7`](https://etherscan.io/address/0x999b1a6641555816bb9a24692626963D7abe62D7) | [`0x999b1a6641555816bb9a24692626963D7abe62D7`](https://sepolia.etherscan.io/address/0x999b1a6641555816bb9a24692626963D7abe62D7) |
 |                                                    |                                                                                                                         |
 | Council multisig (`SafeProxy`)                     | [`0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116`](https://etherscan.io/address/0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116) | [`0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116`](https://sepolia.etherscan.io/address/0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116) |
 

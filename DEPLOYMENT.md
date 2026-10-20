@@ -1,10 +1,10 @@
-# XanV2 Upgrade — Deployment Checklist
+# Deployment Checklist
 
-Step 1 deploys both networks; steps 2 and 3 are then run on Sepolia first and on mainnet once the rehearsal has completed. The token spec is [`docs/01-XanV2-upgrade.md`](docs/01-XanV2-upgrade.md) and the governance spec is [`docs/02-XanV2-governance.md`](docs/02-XanV2-governance.md).
+Step 1 deploys both networks; steps 2 and 3 are then run on Sepolia first and on mainnet once the rehearsal has completed. The token spec is [`docs/01-XanV2-upgrade.md`](docs/01-XanV2-upgrade.md) and the governance spec is [`docs/02-XanV2-governance.md`](docs/02-XanV2-governance.md). Section 5 deploys `XanV2Vesting` (see [`docs/03-XanV2Vesting.md`](docs/03-XanV2Vesting.md)).
 
 ## 1. Before you start
 
-- [x] **Create a fresh deployer wallet.** It must never have sent a transaction on any chain, and must be used for nothing else afterwards.
+- [x] **Create a fresh deployer wallet.** It must never have sent a transaction on any chain, and must be used for nothing else afterwards, except to deploy `XanV2Vesting` in [section 5](#5-xanv2vesting).
 
   Deployer wallet: `0xc461247a7375cF7c70a576d636aA3dd38ff3bb2f` ([mainnet](https://etherscan.io/address/0xc461247a7375cF7c70a576d636aA3dd38ff3bb2f), [sepolia](https://sepolia.etherscan.io/address/0xc461247a7375cF7c70a576d636aA3dd38ff3bb2f))
 
@@ -113,4 +113,99 @@ The alternative V1 path is the voter-body quorum — hold `castVote(implementati
 
   ```bash
   cast call <proxy> "owner()(address)" --rpc-url <chain>
+  ```
+
+## 5. XanV2Vesting
+
+Deploys the `XanV2Vesting` implementation and its UUPS proxy for the eligible recipients that the V1 genesis distribution did not contain. The deployer of section 1 deploys both at the same nonces on both chains, so both networks share the addresses. Run on Sepolia first; repeat on mainnet once the rehearsal has completed.
+
+- [ ] **Confirm the deployer of section 1 is at nonce 13 on both chains.** Both commands must print 13, and the wallet must send nothing else on either chain until both deployments are done. If a chain prints a lower nonce, raise it with transactions that send 0 ETH from the deployer to itself. A failed transaction also uses its nonce. The implementation lands at the address for nonce 13 and the proxy at the address for nonce 14: `0x999b1a6641555816bb9a24692626963D7abe62D7` and `0xe1F1599b47cbF5ca681109f8129f289FD29cfD49`. On both chains, the deploy script reverts before it broadcasts anything if the proxy would land elsewhere.
+
+  ```bash
+  cast nonce <sender> --rpc-url sepolia
+  cast nonce <sender> --rpc-url mainnet
+  cast compute-address <sender> --nonce <nonce>
+  ```
+
+- [ ] **Confirm the council multisig is still `Parameters.COUNCIL_MULTISIG`** (`0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116`). The deployment script makes it the owner (see [ADR-10](docs/adr/10-the-council-multisig-owns-xanv2vesting.md)). If this does not print it, update `src/libs/Parameters.sol` first.
+
+  ```bash
+  cast call <council-module> "getCouncil()(address)" --rpc-url <chain>
+  ```
+
+- [ ] **Dry-run.** The printed `proxy` and `implementation` must be the addresses of the first step.
+
+  ```bash
+  just deploy-vesting-simulate <sender> <chain>
+  ```
+
+- [ ] **Broadcast.**
+
+  ```bash
+  just deploy-vesting <deployer> <sender> <chain>
+  ```
+
+- [ ] **Verify the implementation on the explorers.** `just deploy-vesting` already verifies both contracts on Etherscan.
+
+  ```bash
+  just verify-impl <implementation> src/XanV2Vesting.sol:XanV2Vesting <chain>
+  ```
+
+- [ ] **Record the proxy and implementation addresses** in [README.md](README.md#deployed-contracts).
+
+- [ ] **Write the recipients** into the empty list of `script/xan-v2-vesting-recipients.json`: the checked addresses with their locked tranches, and `totalPrincipal`, their sum (see section [Deployment](docs/03-XanV2Vesting.md#11-deployment)). Generate the payloads and commit them with the recipient file. The script stops on a file that breaks a rule of that section, and CI fails while a payload is out of date.
+
+  ```bash
+  just vesting-recipients-payload
+  ```
+
+- [ ] **Add the recipients** with the payload of the chain:
+  - [ ] [safe-payloads/addRecipients_to_xanV2Vesting_sepolia.json](safe-payloads/addRecipients_to_xanV2Vesting_sepolia.json)
+  - [ ] [safe-payloads/addRecipients_to_xanV2Vesting_mainnet.json](safe-payloads/addRecipients_to_xanV2Vesting_mainnet.json)
+
+  One signer of the council multisig puts the transaction in the queue:
+
+  1. In the Safe app of the council multisig, open the Transaction Builder.
+  2. Drag the payload file into the Transaction Builder.
+  3. Create the batch and send it.
+
+  Each signer checks the queued transaction before they sign it. In the Safe app, it must have these values:
+
+  | Field                              | Value                                                                  |
+  | ---------------------------------- | ---------------------------------------------------------------------- |
+  | Operation                          | `0` (call)                                                             |
+  | To                                 | `0xe1F1599b47cbF5ca681109f8129f289FD29cfD49`, the `XanV2Vesting` proxy |
+  | Value                              | `0`                                                                    |
+  | Data                               | `data` of the payload file                                             |
+  | `safeTxGas`, `baseGas`, `gasPrice` | `0`                                                                    |
+  | `gasToken`, `refundReceiver`       | `0x0000000000000000000000000000000000000000`                           |
+
+  A delegate call (operation `1`) runs the code at `To` with the rights of the council multisig, and a gas price above 0 pays a refund from the council multisig to the executor. The Safe app can also show other values than those that it sends to the hardware wallet. So each signer computes the hashes of these values at the nonce of the transaction:
+
+  ```bash
+  cast call 0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116 \
+    "encodeTransactionData(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,uint256)(bytes)" \
+    0xe1F1599b47cbF5ca681109f8129f289FD29cfD49 0 \
+    "$(jq -r '.transactions[0].data' safe-payloads/addRecipients_to_xanV2Vesting_<chain>.json)" \
+    0 0 0 0 0x0000000000000000000000000000000000000000 0x0000000000000000000000000000000000000000 <nonce> \
+    --rpc-url <chain>
+  ```
+
+  The command prints `0x1901`, then the domain hash and the message hash, with 64 hex digits each. A signer signs only if the transaction has the values of the table and the hardware wallet shows the same domain hash and message hash.
+
+- [ ] **Send any liquid tranches directly.** `XanV2Vesting` holds only the locked tranches.
+
+- [ ] **Fund it.** The council multisig transfers XAN to the contract and tops it up periodically. Before each top-up, this prints the XAN to send now so that every unlock until the next top-up at `<timestamp>` (Unix time) succeeds (see [Top-up amount](docs/03-XanV2Vesting.md#top-up-amount)). `just vesting-top-up-full <chain>` prints the XAN that covers every remaining unlock instead.
+
+  ```bash
+  just vesting-top-up-until <timestamp> <chain>
+  ```
+
+Once both chains are done:
+
+- [ ] **Confirm the two implementation deployments are byte-identical.** Both commands must print the same hash. The constructor argument, the XAN token proxy, has the same address on both chains.
+
+  ```bash
+  cast keccak $(cast code <implementation> --rpc-url sepolia)
+  cast keccak $(cast code <implementation> --rpc-url mainnet)
   ```

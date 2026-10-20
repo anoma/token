@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "chainId": "1",
+  "createdAt": 0,
+  "meta": {
+    "name": "Add XanV2Vesting recipients",
+    "description": "Calls addRecipients on XanV2Vesting with the recipients of script/xan-v2-vesting-recipients.json. Recipient count: 0. Total principal: 0 (smallest unit, 18 decimals).",
+    "txBuilderVersion": "2.1.0",
+    "createdFromSafeAddress": "0x0efb18adf9638495dBEE87b98b1e21cEE7bf1116",
+    "createdFromOwnerAddress": "",
+    "checksum": "0x9ed78ee5497a2009b6a7f52601cd9f0b86b9a3c182cc99f14b6c25e79a47b7c2"
+  },
+  "transactions": [
+    {
+      "to": "0xe1F1599b47cbF5ca681109f8129f289FD29cfD49",
+      "value": "0",
+      "data": "0x5aa9372b00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000",
+      "contractMethod": null,
+      "contractInputsValues": null
+    }
+  ]
+}
