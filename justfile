@@ -141,7 +141,8 @@ deploy-vesting deployer sender chain *args:
         --broadcast --verify --rpc-url {{ chain }} --account {{ deployer }} --sender {{ sender }} {{ args }}
 
 # Check the recipients of `script/xan-v2-vesting-recipients.json` and write the `addRecipients` transaction of the
-# council multisig to `safe-payloads/addRecipients_to_xanV2Vesting.json`. Sends nothing.
+# council multisig to a Transaction Builder file for Ethereum mainnet and one for Sepolia in `safe-payloads/`. Sends
+# nothing.
 vesting-recipients-payload:
     forge script script/GenerateXanV2VestingRecipientsPayload.s.sol:GenerateXanV2VestingRecipientsPayload \
         --sig "run()"

@@ -10,7 +10,8 @@ extra_output = ["storageLayout"]
 fs_permissions = [
     { access = "read", path = "./out" },
     { access = "read", path = "./script/xan-v2-vesting-recipients.json" },
-    { access = "read-write", path = "./safe-payloads/addRecipients_to_xanV2Vesting.json" },
+    { access = "read-write", path = "./safe-payloads/addRecipients_to_xanV2Vesting_mainnet.json" },
+    { access = "read-write", path = "./safe-payloads/addRecipients_to_xanV2Vesting_sepolia.json" },
     { access = "read", path = "./test/fixtures" },
 ]
 

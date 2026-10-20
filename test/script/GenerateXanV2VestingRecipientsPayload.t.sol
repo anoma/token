@@ -18,12 +18,14 @@ contract GenerateXanV2VestingRecipientsPayloadTest is XanV2VestingFixture {
         _script = new GenerateXanV2VestingRecipientsPayload();
     }
 
-    function test_run_writes_the_payload_that_is_in_the_payload_file() public {
-        string memory payload = vm.readFile(_script.PAYLOAD_PATH());
+    function test_run_writes_the_batch_files_that_are_in_safe_payloads() public {
+        string memory mainnet = vm.readFile(_script.MAINNET_PAYLOAD_PATH());
+        string memory sepolia = vm.readFile(_script.SEPOLIA_PAYLOAD_PATH());
 
         _script.run();
 
-        assertEq(vm.readFile(_script.PAYLOAD_PATH()), payload, "run `just vesting-recipients-payload`");
+        assertEq(vm.readFile(_script.MAINNET_PAYLOAD_PATH()), mainnet, "run `just vesting-recipients-payload`");
+        assertEq(vm.readFile(_script.SEPOLIA_PAYLOAD_PATH()), sepolia, "run `just vesting-recipients-payload`");
     }
 
     function test_check_reverts_on_the_zero_account() public {
@@ -68,24 +70,18 @@ contract GenerateXanV2VestingRecipientsPayloadTest is XanV2VestingFixture {
         _script.check({recipients: _aliceAnd(_BOB, _PRINCIPAL), totalPrincipal: sum - 1});
     }
 
-    function test_payload_reports_the_recipient_count_and_the_total_principal() public {
-        string memory payload =
-            _script.payload({recipients: _aliceAnd(_BOB, _PRINCIPAL), totalPrincipal: 2 * _PRINCIPAL});
-
-        assertEq(vm.parseJsonUint(payload, ".recipientCount"), 2);
-        assertEq(vm.parseJsonUint(payload, ".totalPrincipal"), 2 * _PRINCIPAL);
-    }
-
-    function test_payload_adds_the_recipients_of_the_file_when_the_owner_submits_it() public {
+    function test_batchFile_adds_the_recipients_when_the_owner_submits_its_transaction() public {
         (IXanV2Vesting.Recipient[] memory recipients, uint256 totalPrincipal) =
-            _script.readRecipients(_script.RECIPIENTS_PATH());
-        string memory payload = _script.payload({recipients: recipients, totalPrincipal: totalPrincipal});
-        address to = vm.parseJsonAddress(payload, ".to");
-        uint256 value = vm.parseUint(vm.parseJsonString(payload, ".value"));
-        bytes memory data = vm.parseJsonBytes(payload, ".data");
+            _script.readRecipients(_RECIPIENTS_FIXTURE_PATH);
+        string memory json = _script.batchFile({
+            chainId: _script.MAINNET_CHAIN_ID(), recipients: recipients, totalPrincipal: totalPrincipal
+        });
+        address to = vm.parseJsonAddress(json, ".transactions[0].to");
+        uint256 value = vm.parseUint(vm.parseJsonString(json, ".transactions[0].value"));
+        bytes memory data = vm.parseJsonBytes(json, ".transactions[0].data");
 
         XanV2Vesting vesting = _deployPinnedVesting();
-        assertEq(to, address(vesting), "the payload must call the proxy of Ethereum mainnet and Sepolia");
+        assertEq(to, address(vesting), "the batch must call the proxy of Ethereum mainnet and Sepolia");
 
         vm.prank(_OWNER);
         (bool success,) = to.call{value: value}(data);
@@ -119,8 +115,48 @@ contract GenerateXanV2VestingRecipientsPayloadTest is XanV2VestingFixture {
         _script.check({recipients: recipients, totalPrincipal: totalPrincipal});
     }
 
-    function test_instruction_names_the_council_multisig() public view {
-        assertTrue(vm.contains(_script.instruction(), vm.toString(Parameters.COUNCIL_MULTISIG)));
+    function test_batchFile_has_the_checksum_that_the_transaction_builder_computes() public view {
+        (IXanV2Vesting.Recipient[] memory recipients, uint256 totalPrincipal) =
+            _script.readRecipients(_RECIPIENTS_FIXTURE_PATH);
+        string memory mainnet = _script.batchFile({
+            chainId: _script.MAINNET_CHAIN_ID(), recipients: recipients, totalPrincipal: totalPrincipal
+        });
+        string memory sepolia = _script.batchFile({
+            chainId: _script.SEPOLIA_CHAIN_ID(), recipients: recipients, totalPrincipal: totalPrincipal
+        });
+
+        // The checksums that `apps/tx-builder/src/lib/checksum.ts` of the Safe Transaction Builder computes.
+        assertEq(
+            vm.parseJsonString(mainnet, ".meta.checksum"),
+            "0xedcfb2375bacfbd46cf5f85050420472ee3371d10d3d835d632fcb79bf2e99a9"
+        );
+        assertEq(
+            vm.parseJsonString(sepolia, ".meta.checksum"),
+            "0x2196465da6604a7a5efc6a5dbce94f179078431e694071ad571096ef0bea99d6"
+        );
+    }
+
+    function test_batchFile_names_the_chain_and_the_council_multisig() public view {
+        IXanV2Vesting.Recipient[] memory recipients = new IXanV2Vesting.Recipient[](0);
+        string memory mainnet =
+            _script.batchFile({chainId: _script.MAINNET_CHAIN_ID(), recipients: recipients, totalPrincipal: 0});
+        string memory sepolia =
+            _script.batchFile({chainId: _script.SEPOLIA_CHAIN_ID(), recipients: recipients, totalPrincipal: 0});
+
+        assertEq(vm.parseJsonString(mainnet, ".chainId"), "1");
+        assertEq(vm.parseJsonString(sepolia, ".chainId"), "11155111");
+        assertEq(vm.parseJsonAddress(mainnet, ".meta.createdFromSafeAddress"), Parameters.COUNCIL_MULTISIG);
+        assertEq(vm.parseJsonAddress(sepolia, ".meta.createdFromSafeAddress"), Parameters.COUNCIL_MULTISIG);
+    }
+
+    function test_batchFile_describes_the_recipient_count_and_the_total_principal() public view {
+        string memory json = _script.batchFile({
+            chainId: _script.MAINNET_CHAIN_ID(), recipients: _aliceAnd(_BOB, _PRINCIPAL), totalPrincipal: 2 * _PRINCIPAL
+        });
+        string memory description = vm.parseJsonString(json, ".meta.description");
+
+        assertTrue(vm.contains(description, "Recipient count: 2."));
+        assertTrue(vm.contains(description, string.concat("Total principal: ", vm.toString(2 * _PRINCIPAL), " ")));
     }
 
     /// @dev Lists Alice with `_PRINCIPAL` first, so that the entry under test is at index 1.
@@ -134,7 +170,7 @@ contract GenerateXanV2VestingRecipientsPayloadTest is XanV2VestingFixture {
         recipients[1] = IXanV2Vesting.Recipient({account: account, principal: principal});
     }
 
-    /// @dev Starts the proxies without recipients, so that a payload adds every recipient of the vesting contract.
+    /// @dev Starts the proxies without recipients, so that a batch adds every recipient of the vesting contract.
     function _initialRecipients() internal pure override returns (IXanV2Vesting.Recipient[] memory recipients) {
         recipients = new IXanV2Vesting.Recipient[](0);
     }
