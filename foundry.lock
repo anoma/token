@@ -3,9 +3,9 @@
     "rev": "bf647bd6046f2f7da30d0c2bf435e5c76a780c1b"
   },
   "lib/openzeppelin-contracts-upgradeable": {
-    "rev": "7bf4727aacdbfaa0f36cbd664654d0c9e1dc52bf"
+    "rev": "14f52c54d3a1eefbda3d4071efba24d3c1e07e8a"
   },
   "lib/openzeppelin-foundry-upgrades": {
-    "rev": "258e12e727bfe7f0ec30c51995d01ec88b82efc1"
+    "rev": "8ddceb0c0d94f7f9420fee1ee30fffbdacadf08f"
   }
 }
