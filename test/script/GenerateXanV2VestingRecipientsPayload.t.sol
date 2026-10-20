@@ -55,6 +55,43 @@ contract GenerateXanV2VestingRecipientsPayloadTest is XanV2VestingFixture {
         _script.parseRecipients(json);
     }
 
+    function test_parseRecipients_reverts_on_a_repeated_key() public {
+        string memory json = _fixtureWith({
+            from: "\"principal\": \"1000000000000000000\"",
+            to: "\"principal\": \"1000000000000000000\", \"principal\": \"2000000000000000000\""
+        });
+        assertEq(
+            vm.parseJsonUint(json, ".recipients[1].principal"), 2e18, "JSON keeps the last value of a repeated key"
+        );
+
+        vm.expectRevert(GenerateXanV2VestingRecipientsPayload.RecipientsFileNotCanonical.selector);
+        _script.parseRecipients(json);
+    }
+
+    function test_parseRecipients_reverts_on_a_repeated_key_that_an_escape_hides() public {
+        // `\u0070` is the letter p.
+        string memory json = _fixtureWith({
+            from: "\"principal\": \"1000000000000000000\"",
+            to: "\"principal\": \"1000000000000000000\", \"\\u0070rincipal\": \"2000000000000000000\""
+        });
+        assertEq(vm.parseJsonUint(json, ".recipients[1].principal"), 2e18, "JSON reads the escaped key as principal");
+
+        vm.expectRevert(GenerateXanV2VestingRecipientsPayload.RecipientsFileNotCanonical.selector);
+        _script.parseRecipients(json);
+    }
+
+    function test_parseRecipients_reverts_on_a_principal_that_is_a_number() public {
+        string memory json = _fixtureWith({from: "\"1000000000000000000\"", to: "1000000000000000000"});
+        assertEq(
+            vm.parseJsonString(json, ".recipients[1].principal"),
+            "1000000000000000000",
+            "forge reads a number as its decimal string"
+        );
+
+        vm.expectRevert(GenerateXanV2VestingRecipientsPayload.RecipientsFileNotCanonical.selector);
+        _script.parseRecipients(json);
+    }
+
     function test_check_reverts_on_the_zero_account() public {
         vm.expectRevert(abi.encodeWithSelector(GenerateXanV2VestingRecipientsPayload.ZeroAccountNotAllowed.selector, 1));
         _script.check({recipients: _aliceAnd(address(0), _PRINCIPAL), totalPrincipal: 2 * _PRINCIPAL});

@@ -51,6 +51,13 @@ contract GenerateXanV2VestingRecipientsPayload is Script {
         "script/xan-v2-vesting-recipients.json. Recipient count: <count>. Total principal: <totalPrincipal> (smallest "
         "unit, 18 decimals).";
 
+    /// @notice The only text without whitespace that `parseRecipients` accepts for the values that it reads.
+    string internal constant _RECIPIENTS_FILE =
+        "{\"totalPrincipal\":\"<totalPrincipal>\",\"recipients\":[<recipients>]}";
+
+    /// @notice One recipient of `_RECIPIENTS_FILE`, which separates them with commas.
+    string internal constant _RECIPIENT = "{\"account\":\"<account>\",\"principal\":\"<principal>\"}";
+
     /// @notice Thrown if the text of the account at `index` is not its EIP-55 checksum form.
     error AccountNotChecksummed(uint256 index);
 
@@ -59,6 +66,11 @@ contract GenerateXanV2VestingRecipientsPayload is Script {
 
     /// @notice Thrown if the text of the total principal is not its value in decimal digits.
     error TotalPrincipalNotDecimal();
+
+    /// @notice Thrown if the recipients file without whitespace is not `_RECIPIENTS_FILE` with the values that the
+    /// script reads. JSON keeps only the last value of a repeated key, so other text can show a value that the payload
+    /// does not contain.
+    error RecipientsFileNotCanonical();
 
     /// @notice Thrown if the recipient at `index` is the zero address.
     error ZeroAccountNotAllowed(uint256 index);
@@ -118,6 +130,7 @@ contract GenerateXanV2VestingRecipientsPayload is Script {
         totalPrincipal = vm.parseJsonUint(json, ".totalPrincipal");
 
         // The cheatcodes above also read an address without its checksum and an amount in other forms.
+        string memory entries = "";
         for (uint256 i = 0; i < recipients.length; ++i) {
             string memory key = string.concat(".recipients[", vm.toString(i), "]");
             string memory account = vm.toString(recipients[i].account);
@@ -126,9 +139,16 @@ contract GenerateXanV2VestingRecipientsPayload is Script {
             require(
                 _equal(vm.parseJsonString(json, string.concat(key, ".principal")), principal), PrincipalNotDecimal(i)
             );
+            string memory entry = vm.replace(_RECIPIENT, "<account>", account);
+            entry = vm.replace(entry, "<principal>", principal);
+            entries = i == 0 ? entry : string.concat(entries, ",", entry);
         }
         string memory total = vm.toString(totalPrincipal);
         require(_equal(vm.parseJsonString(json, ".totalPrincipal"), total), TotalPrincipalNotDecimal());
+
+        string memory canonical = vm.replace(_RECIPIENTS_FILE, "<totalPrincipal>", total);
+        canonical = vm.replace(canonical, "<recipients>", entries);
+        require(_equal(_withoutWhitespace(json), canonical), RecipientsFileNotCanonical());
     }
 
     /// @notice Returns the Transaction Builder batch file that adds the recipients on a chain.
@@ -198,5 +218,15 @@ contract GenerateXanV2VestingRecipientsPayload is Script {
     /// @return equal Whether `left` and `right` have the same bytes.
     function _equal(string memory left, string memory right) internal pure returns (bool equal) {
         equal = keccak256(bytes(left)) == keccak256(bytes(right));
+    }
+
+    /// @notice Removes the characters that JSON allows as whitespace.
+    /// @param text A JSON text.
+    /// @return compact `text` without spaces, tabs, line feeds, and carriage returns.
+    function _withoutWhitespace(string memory text) internal pure returns (string memory compact) {
+        compact = vm.replace(text, " ", "");
+        compact = vm.replace(compact, "\t", "");
+        compact = vm.replace(compact, "\n", "");
+        compact = vm.replace(compact, "\r", "");
     }
 }
