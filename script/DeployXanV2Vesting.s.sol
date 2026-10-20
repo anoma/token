@@ -11,9 +11,9 @@ import {XanV2Vesting} from "../src/XanV2Vesting.sol";
 /// @dev The `XanV2Vesting` proxy on Ethereum mainnet and Sepolia. The two chains share the addresses of the token and
 /// the governance stack, and they must share those of `XanV2Vesting` too. The deployer of the governance stack,
 /// `0xc461247a7375cF7c70a576d636aA3dd38ff3bb2f`, is at the same nonce on both. It creates the implementation at nonce
-/// 11, at `0xA4b1B4032c30Ba42a44c3616D3AB95d10170De55`, and the proxy at nonce 12. A CREATE address depends only on
+/// 13, at `0x999b1a6641555816bb9a24692626963D7abe62D7`, and the proxy at nonce 14. A CREATE address depends only on
 /// the deployer and its nonce, so this one address pins both, and with them the address of the implementation.
-address constant XAN_V2_VESTING_PROXY = 0x60A149fE74D2f55219f1Abad2911756Da9c67bf4;
+address constant XAN_V2_VESTING_PROXY = 0xe1F1599b47cbF5ca681109f8129f289FD29cfD49;
 
 /// @dev The XAN token proxy, which has the same address on Ethereum mainnet and Sepolia.
 address constant XAN_TOKEN = 0xCEDbEA37C8872c4171259Cdfd5255CB8923Cf8e7;

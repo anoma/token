@@ -128,11 +128,11 @@ contract GenerateXanV2VestingRecipientsPayloadTest is XanV2VestingFixture {
         // The checksums that `apps/tx-builder/src/lib/checksum.ts` of the Safe Transaction Builder computes.
         assertEq(
             vm.parseJsonString(mainnet, ".meta.checksum"),
-            "0xedcfb2375bacfbd46cf5f85050420472ee3371d10d3d835d632fcb79bf2e99a9"
+            "0xe571a69d8f4879e92ae3a428c642be8cfd23b3c8ca69f82c14e74782912f51fd"
         );
         assertEq(
             vm.parseJsonString(sepolia, ".meta.checksum"),
-            "0x2196465da6604a7a5efc6a5dbce94f179078431e694071ad571096ef0bea99d6"
+            "0x33eea47f5144722945ba2471849dcde3450843fc0a23ef71eefe38d1dec6bcc0"
         );
     }
 
