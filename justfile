@@ -132,13 +132,15 @@ deploy-vesting-simulate sender chain *args:
         --rpc-url {{ chain }} --sender {{ sender }} {{ args }}
 
 # Deploy the `XanV2Vesting` implementation and its UUPS proxy. Verifies both on etherscan with the exact constructor
-# args from the broadcast.
+# args from the broadcast. The chain estimates the gas of each transaction once the previous one is confirmed: the
+# local simulation uses the `evm_version` of `foundry.toml`, which prices contract creation lower than Glamsterdam.
 deploy-vesting deployer sender chain *args:
     @echo "Cleaning contracts to ensure reproducible build..."
     @just clean
     forge script script/DeployXanV2Vesting.s.sol:DeployXanV2Vesting \
         --sig "run()" \
-        --broadcast --verify --rpc-url {{ chain }} --account {{ deployer }} --sender {{ sender }} {{ args }}
+        --broadcast --skip-simulation --slow --verify \
+        --rpc-url {{ chain }} --account {{ deployer }} --sender {{ sender }} {{ args }}
 
 # Check the recipients of `script/xan-v2-vesting-recipients.json` and write the `addRecipients` transaction of the
 # council multisig to a Transaction Builder file for Ethereum mainnet and one for Sepolia in `safe-payloads/`. Sends
