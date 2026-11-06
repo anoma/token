@@ -1,4 +1,21 @@
 {
-  "totalPrincipal": "0",
-  "recipients": []
+  "totalPrincipal": "24900000000000000000000000",
+  "recipients": [
+    {
+      "account": "0x7dCbe47C7E83785d4277a1c3981184B56A8B3090",
+      "principal": "600000000000000000000000"
+    },
+    {
+      "account": "0xD25abb97159a3d20Ce1f5426a7c9C7B696Fb2963",
+      "principal": "15000000000000000000000000"
+    },
+    {
+      "account": "0x541bfEc5F4D8f7D42D60201CA530e9699ab70f6e",
+      "principal": "4500000000000000000000000"
+    },
+    {
+      "account": "0xf014d3C0495026484f678246702E64CB22A5c36D",
+      "principal": "4800000000000000000000000"
+    }
+  ]
 }
